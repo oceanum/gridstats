@@ -26,15 +26,15 @@ def grid_smooth(darr, n=10):
     # else:
     #     return darr
     dout = darr.copy(deep=True)
-    val = dout.fillna(0.).values
-    left = np.hstack((val, val[:,-1:]))
-    right = np.hstack((val[:,:1], val))
-    top = np.vstack((val, val[-1:,:]))
+    val = dout.fillna(0.0).values
+    left = np.hstack((val, val[:, -1:]))
+    right = np.hstack((val[:, :1], val))
+    top = np.vstack((val, val[-1:, :]))
     bot = np.vstack((val[0], val))
-    val = 0.125 * (left[:,1:] + right[:,:-1] + top[1:,:] + bot[:-1,:]) + 0.5 * val
+    val = 0.125 * (left[:, 1:] + right[:, :-1] + top[1:, :] + bot[:-1, :]) + 0.5 * val
     dout.values = val
     if n > 1:
-        return grid_smooth(dout, n-1)
+        return grid_smooth(dout, n - 1)
     else:
         return dout
 
@@ -126,14 +126,16 @@ def wavelength(freq=None, period=None, depth=None):
         wavelength ndarray.
 
     """
-    assert freq is not None or period is not None, "Either freq or period must be provided"
+    assert (
+        freq is not None or period is not None
+    ), "Either freq or period must be provided"
     if freq is None:
-        freq = 1. / period
+        freq = 1.0 / period
     if depth is not None:
         ang_freq = 2 * np.pi * freq
         return 2 * np.pi / wavenumber(ang_freq, depth)
     else:
-        return 1.56 / freq**2
+        return 1.56 / freq ** 2
 
 
 def wavenumber(ang_freq, water_depth):
@@ -148,8 +150,8 @@ def wavenumber(ang_freq, water_depth):
     D = [0, 0.6522, 0.4622, 0, 0.0864, 0.0675]
     a = 1.0
     for i in range(1, 6):
-        a += D[i] * k0h**i
-    return (k0h * (1 + 1./(k0h*a))**0.5) / water_depth
+        a += D[i] * k0h ** i
+    return (k0h * (1 + 1.0 / (k0h * a)) ** 0.5) / water_depth
 
 
 if __name__ == "__main__":

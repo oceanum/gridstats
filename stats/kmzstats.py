@@ -16,31 +16,39 @@ from dateutil.parser import parse
 
 
 from simplekml import (
-    Kml, OverlayXY, ScreenXY, Units, RotationXY, AltitudeMode, Color, Camera
+    Kml,
+    OverlayXY,
+    ScreenXY,
+    Units,
+    RotationXY,
+    AltitudeMode,
+    Color,
+    Camera,
 )
 from simplekml.featgeom import GroundOverlay
 
-outdir = 'product'
+outdir = "product"
+
 
 class KMZ(object):
     """Make kmz from netcdf files."""
 
     def __init__(self, config, **kwargs):
-        self.layers = self._read_config(config, 'layer')
-        self.charts = self._read_config(config, 'chart')
-        self.groundoverlay = self._read_config(config, 'groundoverlay')
-        self.pixels = kwargs.pop('pixels', 1024)
+        self.layers = self._read_config(config, "layer")
+        self.charts = self._read_config(config, "chart")
+        self.groundoverlay = self._read_config(config, "groundoverlay")
+        self.pixels = kwargs.pop("pixels", 1024)
         self.kmls = OrderedDict()
-        self.outdir = kwargs.pop('outdir', './tmp')
-        self.kmzfile = kwargs.pop('kmzfile', 'southernocean.kmz')
+        self.outdir = kwargs.pop("outdir", "./tmp")
+        self.kmzfile = kwargs.pop("kmzfile", "southernocean.kmz")
         if not os.path.isdir(self.outdir):
             os.makedirs(self.outdir)
         self.kml = Kml()
 
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(
-            level=kwargs.get('log_level', 'INFO'),
-            format='[%(asctime)s - %(name)s - %(levelname)s]: - %(message)s'
+            level=kwargs.get("log_level", "INFO"),
+            format="[%(asctime)s - %(name)s - %(levelname)s]: - %(message)s",
         )
 
     def __repr__(self):
@@ -64,44 +72,51 @@ class KMZ(object):
 
     @property
     def layer_name(self):
-        return self.layer_val.get('desc', self.layer_val['var'])
+        return self.layer_val.get("desc", self.layer_val["var"])
 
     @property
     def visibility(self):
-        return self.layer_val.get('visibility', 0)
+        return self.layer_val.get("visibility", 0)
 
     @property
     def figname(self):
-        dimname = '_{}'.format(self.dim_name) or ''
-        dimindex = '_{}'.format(self.dim_index) or ''
-        return os.path.join(self.outdir, '{}{}{}_map.png'.format(
-            self.layer_id, dimname, dimindex))
+        dimname = "_{}".format(self.dim_name) or ""
+        dimindex = "_{}".format(self.dim_index) or ""
+        return os.path.join(
+            self.outdir, "{}{}{}_map.png".format(self.layer_id, dimname, dimindex)
+        )
 
     @property
     def colorbar_name(self):
-        dimname = '_{}'.format(self.dim_name) or ''
-        dimindex = '_{}'.format(self.dim_index) or ''
-        return os.path.join(self.outdir, '{}{}{}_colorbar.png'.format(
-            self.layer_id, dimname, dimindex))
+        dimname = "_{}".format(self.dim_name) or ""
+        dimindex = "_{}".format(self.dim_index) or ""
+        return os.path.join(
+            self.outdir, "{}{}{}_colorbar.png".format(self.layer_id, dimname, dimindex)
+        )
 
     @property
     def colorbar_label(self):
         name = self.layer_name
-        if 'units' in self.layer_val and self.layer_val['units']:
-            name += ' [{}]'.format(self.layer_val['units'])
+        if "units" in self.layer_val and self.layer_val["units"]:
+            name += " [{}]".format(self.layer_val["units"])
         return name
 
     @property
     def plot_kwargs(self):
         kwargs = self.chart.copy()
-        kwargs.pop('type', None)
-        if 'levels' not in kwargs and 'inc' in kwargs and 'vmin' in kwargs and 'vmax' in kwargs:
-            inc = kwargs.pop('inc', 0.1)
-            vmin = kwargs.pop('vmin', 0.0)
-            vmax = kwargs.pop('vmax', np.ceil(self.darr.max())) + inc
-            kwargs.update({'levels': np.arange(vmin, vmax, inc)})
-        if 'cmap' in kwargs:
-            kwargs.update({'cmap': self._get_cmap(kwargs['cmap'])})
+        kwargs.pop("type", None)
+        if (
+            "levels" not in kwargs
+            and "inc" in kwargs
+            and "vmin" in kwargs
+            and "vmax" in kwargs
+        ):
+            inc = kwargs.pop("inc", 0.1)
+            vmin = kwargs.pop("vmin", 0.0)
+            vmax = kwargs.pop("vmax", np.ceil(self.darr.max())) + inc
+            kwargs.update({"levels": np.arange(vmin, vmax, inc)})
+        if "cmap" in kwargs:
+            kwargs.update({"cmap": self._get_cmap(kwargs["cmap"])})
         return kwargs
 
     @property
@@ -119,18 +134,24 @@ class KMZ(object):
         """Generate KMZ file based on yml config."""
         # Logo layers
         # self.add_logo('Metocean', '../doc/MO_Horiz_White_rgb.png', 0.015, 0.90, 0.18)
-        self.add_logo('Oceanum', '/source/stats/stats/kmz/logo_light_text_transp_bg.png', 0.0350, 0.90, 0.20)
+        self.add_logo(
+            "Oceanum",
+            "/source/stats/stats/kmz/logo_light_text_transp_bg.png",
+            0.0350,
+            0.90,
+            0.20,
+        )
 
         for self.layer_id, self.layer_val in self.layers.items():
-            self.chart = self.charts[self.layer_val['chart']]
-            self.logger.info('Creating layer: {}'.format(self.layer_id))
-            self.logger.debug('Chart config: \n{}'.format(self.chart))
-            if self.chart.get('type', None) == 'contour':
-                layer_type = 'linestring'
-            elif self.chart.get('type', None) == 'cyclone':
-                layer_type = 'cyclone'
+            self.chart = self.charts[self.layer_val["chart"]]
+            self.logger.info("Creating layer: {}".format(self.layer_id))
+            self.logger.debug("Chart config: \n{}".format(self.chart))
+            if self.chart.get("type", None) == "contour":
+                layer_type = "linestring"
+            elif self.chart.get("type", None) == "cyclone":
+                layer_type = "cyclone"
             else:
-                layer_type = 'groundoverlay'
+                layer_type = "groundoverlay"
             self._plot_layer_figures(layer_type=layer_type)
         self.make_kmz()
         self.save_kmz()
@@ -142,7 +163,7 @@ class KMZ(object):
         except:
             return plt.cm.get_cmap(cmap)
 
-    def _plot_layer_figures(self, layer_type='groundoverlay'):
+    def _plot_layer_figures(self, layer_type="groundoverlay"):
         """Plotting and saving all figures from layer.
 
         layer_type (str):
@@ -153,65 +174,60 @@ class KMZ(object):
 
         """
         self._read_dataset()
-        indices = self.layer_val.get('indices', None)
+        indices = self.layer_val.get("indices", None)
         self.dim_names = []
         if indices is not None:
             for self.dim_name, dim_slice in indices.items():
                 for self.dim_index, self.dim_label in dim_slice.items():
                     self.dim_names.append(str(self.dim_label))
-                    if layer_type == 'groundoverlay':
+                    if layer_type == "groundoverlay":
                         self._make_plot()
-                    elif layer_type == 'linestring':
+                    elif layer_type == "linestring":
                         self._make_contour()
-                    elif layer_type == 'cyclone':
+                    elif layer_type == "cyclone":
                         self._make_cyclone()
         else:
             self.dim_name = None
             self.dim_index = 0
-            self.dim_label = 'Annual'
+            self.dim_label = "Annual"
             self.dim_names.append(str(self.dim_label))
-            if layer_type == 'groundoverlay':
+            if layer_type == "groundoverlay":
                 self._make_plot()
-            elif layer_type == 'linestring':
+            elif layer_type == "linestring":
                 self._make_contour()
-            elif layer_type == 'cyclone':
+            elif layer_type == "cyclone":
                 self._make_cyclone()
 
     def _make_plot(self):
         """Here the map and colorbar from each layer are generated."""
-        self.darr = self.ds[self.layer_val['var']]
+        self.darr = self.ds[self.layer_val["var"]]
         if self.dim_name is not None:
             self.darr = self.darr.isel(**{self.dim_name: self.dim_index})
         fig, ax = self.gearth_fig()
         # Plotting
         self.logger.info("Plotting png for layer: {}".format(self.figname))
-        cs = getattr(ax, self.chart['type'])(
-            self.darr.lon, self.darr.lat, self.darr, **self.plot_kwargs)
-        if self.chart['type'] == 'contour':
-            cs.clabel(fontsize=1, fmt='%im')
-        fig.savefig(
-            self.figname,
-            transparent=True,
-            format='png'
+        cs = getattr(ax, self.chart["type"])(
+            self.darr.lon, self.darr.lat, self.darr, **self.plot_kwargs
         )
+        if self.chart["type"] == "contour":
+            cs.clabel(fontsize=1, fmt="%im")
+        fig.savefig(self.figname, transparent=True, format="png")
         plt.close(fig)
-        if self.chart['type'] in ['contourf', 'pcolormesh']:
+        if self.chart["type"] in ["contourf", "pcolormesh"]:
             # Colorbar
             fig = plt.figure(figsize=(1.0, 4.0), facecolor=None, frameon=False)
             ax = fig.add_axes([0.0, 0.05, 0.2, 0.9])
             cb = fig.colorbar(cs, cax=ax)
-            cb.set_label(self.colorbar_label, rotation=-90, color='white', labelpad=20)
+            cb.set_label(self.colorbar_label, rotation=-90, color="white", labelpad=20)
 
             # set colorbar tick color
-            cb.ax.yaxis.set_tick_params(color='white')
-            # set colorbar edgecolor 
-            cb.outline.set_edgecolor('white')
+            cb.ax.yaxis.set_tick_params(color="white")
+            # set colorbar edgecolor
+            cb.outline.set_edgecolor("white")
             # set colorbar ticklabels
-            plt.setp(plt.getp(cb.ax.axes, 'yticklabels'), color='white')
+            plt.setp(plt.getp(cb.ax.axes, "yticklabels"), color="white")
             fig.savefig(
-                self.colorbar_name,
-                transparent=True,
-                format='png'
+                self.colorbar_name, transparent=True, format="png"
             )  # Change transparent to True if your colorbar is not on space
             plt.close(fig)
             self.colorbar = True
@@ -229,24 +245,25 @@ class KMZ(object):
         """Make linestring contour layers."""
         self.logger.info("Plotting linestring for layer: {}".format(self.figname))
         fig, ax = self.gearth_fig()
-        self.darr = self.ds[self.layer_val['var']]
+        self.darr = self.ds[self.layer_val["var"]]
 
         if self.dim_name is not None:
             self.darr = self.darr.isel(**{self.dim_name: self.dim_index})
 
         self.group = self.kml.newfolder(name=self.layer_name)
 
-        levels = self.plot_kwargs.pop('levels')
+        levels = self.plot_kwargs.pop("levels")
         gray_scales = np.linspace(0.2, 0.0, len(levels))
         for level, gray_scale in zip(levels, gray_scales):
-            self.logger.info('Drawing contour level {}'.format(level))
+            self.logger.info("Drawing contour level {}".format(level))
             kwargs = self.plot_kwargs.copy()
-            kwargs.update({'levels': [level]})
+            kwargs.update({"levels": [level]})
 
-            cs = getattr(ax, self.chart['type'])(
-                self.darr.lon, self.darr.lat, self.darr, **kwargs)
+            cs = getattr(ax, self.chart["type"])(
+                self.darr.lon, self.darr.lat, self.darr, **kwargs
+            )
 
-            multipoint = self.group.newmultigeometry(name='{:0.0f} m'.format(level))
+            multipoint = self.group.newmultigeometry(name="{:0.0f} m".format(level))
             paths = cs.collections[0].get_paths()
             for ipath, path in enumerate(paths):
                 coords = [
@@ -254,11 +271,10 @@ class KMZ(object):
                     for ivert in range(len(path.vertices))
                 ]
                 linestring = multipoint.newlinestring(
-                    coords=coords,
-                    altitudemode=AltitudeMode.relativetoground,
+                    coords=coords, altitudemode=AltitudeMode.relativetoground
                 )
                 linestring.style.linestyle.color = self._gray_to_hex(gray_scale)
-                linestring.style.linestyle.width = kwargs.get('linewidths', 2.0)
+                linestring.style.linestyle.width = kwargs.get("linewidths", 2.0)
             multipoint.visibility = 0
 
     def _make_cyclone_raster(self):
@@ -266,8 +282,8 @@ class KMZ(object):
         self.logger.info("Plotting cyclone for layer: {}".format(self.figname))
         # Parse ibtracs dataset
         self._parse_ibtracs(
-            tstart=self.layer_val.get('tstart', None),
-            tend=self.layer_val.get('tend', None)
+            tstart=self.layer_val.get("tstart", None),
+            tend=self.layer_val.get("tend", None),
         )
 
         # Plotting all cyclones over the glob
@@ -289,14 +305,25 @@ class KMZ(object):
             self.dim_name = "cat"
             self.dim_index = cat
 
-            fig, ax = self.gearth_fig(x0=x0, x1=x1, y0=y0, y1=y1, dpi=max(self.pixels, 512))
+            fig, ax = self.gearth_fig(
+                x0=x0, x1=x1, y0=y0, y1=y1, dpi=max(self.pixels, 512)
+            )
 
-            ax.scatter(ds.lon, ds.lat, 0.5, ds.usa_sshs, vmin=0, vmax=5, cmap='viridis', edgecolors='none')
+            ax.scatter(
+                ds.lon,
+                ds.lat,
+                0.5,
+                ds.usa_sshs,
+                vmin=0,
+                vmax=5,
+                cmap="viridis",
+                edgecolors="none",
+            )
             ax.set_xlim((x0, x1))
             ax.set_ylim((y0, y1))
-            fig.savefig(self.figname, transparent=True, format='png')
+            fig.savefig(self.figname, transparent=True, format="png")
 
-            ground = subgroup.newgroundoverlay(name='Cat {:0.0f}'.format(cat))
+            ground = subgroup.newgroundoverlay(name="Cat {:0.0f}".format(cat))
             ground.visibility = 0
             ground.icon.href = self.figname
             ground.latlonbox.west = x0
@@ -334,16 +361,16 @@ class KMZ(object):
         self.logger.info("Plotting cyclone for layer: {}".format(self.figname))
         # Parse ibtracs dataset
         self._parse_ibtracs(
-            tstart=self.layer_val.get('tstart', None),
-            tend=self.layer_val.get('tend', None)
+            tstart=self.layer_val.get("tstart", None),
+            tend=self.layer_val.get("tend", None),
         )
 
         symbols = {
-            1: 'symbols/circle_blue.png',
-            2: 'symbols/circle_green.png',
-            3: 'symbols/circle_yellow.png',
-            4: 'symbols/circle_orange.png',
-            5: 'symbols/circle_red.png',
+            1: "symbols/circle_blue.png",
+            2: "symbols/circle_green.png",
+            3: "symbols/circle_yellow.png",
+            4: "symbols/circle_orange.png",
+            5: "symbols/circle_red.png",
         }
         self.group = self.kml.newfolder(name=self.layer_name)
         # Loop over cat groups
@@ -369,8 +396,8 @@ class KMZ(object):
         self.logger.info("Plotting cyclone for layer: {}".format(self.figname))
         # Parse ibtracs dataset
         self._parse_ibtracs(
-            tstart=self.layer_val.get('tstart', None),
-            tend=self.layer_val.get('tend', None)
+            tstart=self.layer_val.get("tstart", None),
+            tend=self.layer_val.get("tend", None),
         )
 
         colors = {
@@ -392,22 +419,30 @@ class KMZ(object):
                     continue
                 else:
                     self.logger.info("Storm {}".format(istorm))
-                storm_name = '{:%Y-%m-%d}'.format(df.iloc[0].storm)
-                coords = [(x, y, 0) for x,y in zip(df.lon, df.lat)]
-                linestring = subgroup.newlinestring(name=storm_name, coords=coords, altitudemode=AltitudeMode.relativetoground)
-                linestring.style.linestyle.color = colors[df['catmax'].max()]
-                linestring.style.linestyle.width = self.plot_kwargs.get('linewidths', 2.0)
+                storm_name = "{:%Y-%m-%d}".format(df.iloc[0].storm)
+                coords = [(x, y, 0) for x, y in zip(df.lon, df.lat)]
+                linestring = subgroup.newlinestring(
+                    name=storm_name,
+                    coords=coords,
+                    altitudemode=AltitudeMode.relativetoground,
+                )
+                linestring.style.linestyle.color = colors[df["catmax"].max()]
+                linestring.style.linestyle.width = self.plot_kwargs.get(
+                    "linewidths", 2.0
+                )
                 linestring.visibility = 0
 
     def _append_kmls(self):
         """Append kml layer information."""
         self.kmls.setdefault(self.layer_name, [])
-        self.kmls[self.layer_name].append({
-            'dim': self.dim_label,
-            'map': self.figname,
-            'colorbar': self.colorbar_name,
-            'visibility': self.visibility,
-        })
+        self.kmls[self.layer_name].append(
+            {
+                "dim": self.dim_label,
+                "map": self.figname,
+                "colorbar": self.colorbar_name,
+                "visibility": self.visibility,
+            }
+        )
 
     def _to_180(self):
         """Convert longitudes in grid from 0-360 to -180--180 convention.
@@ -416,19 +451,19 @@ class KMZ(object):
 
         """
         # Ignore if lon is not a coordinate
-        if 'lon' not in self.ds.dims:
+        if "lon" not in self.ds.dims:
             return
         # Ignore if not global
         if not self._is_global:
             return
-        self.ds.lon.values = (self.ds.lon.values + 180) % 360 -180
-        self.ds = self.ds.sortby('lon')
+        self.ds.lon.values = (self.ds.lon.values + 180) % 360 - 180
+        self.ds = self.ds.sortby("lon")
         # Make it wrap
         dsi = self.ds.isel(lon=[0])
         dsi.lon.values = [180]
-        self.ds = xr.concat((self.ds, dsi), dim='lon')
+        self.ds = xr.concat((self.ds, dsi), dim="lon")
 
-    def _parse_ibtracs(self, tstart='2019-01-01', tend=None):
+    def _parse_ibtracs(self, tstart="2019-01-01", tend=None):
         """Read and parse relevant data from ibtracs file."""
         self.ds["storm"] = self.ds.time.isel(date_time=0)
         self.ds = self.ds.reset_coords()
@@ -436,20 +471,20 @@ class KMZ(object):
         self.ds = self.ds.isel(storm=np.argsort(self.ds.storm).values)
         self.ds = self.ds.sel(storm=slice(tstart, tend))
 
-        self.ds = self.ds.where(self.ds.usa_sshs>0)[['lat','lon','usa_sshs']]
-        self.ds['catmax'] = self.ds.usa_sshs.max(dim='date_time')
+        self.ds = self.ds.where(self.ds.usa_sshs > 0)[["lat", "lon", "usa_sshs"]]
+        self.ds["catmax"] = self.ds.usa_sshs.max(dim="date_time")
         return self.ds
 
     def _read_dataset(self):
-        self.ds = xr.open_dataset(self.layer_val['filename']).isel(
-            **self.layer_val.get('slice', {})
+        self.ds = xr.open_dataset(self.layer_val["filename"]).isel(
+            **self.layer_val.get("slice", {})
         )
-        if 'longitude' in self.ds and 'latitude' in self.ds:
-            self.ds = self.ds.rename({'longitude': 'lon', 'latitude': 'lat'})
+        if "longitude" in self.ds and "latitude" in self.ds:
+            self.ds = self.ds.rename({"longitude": "lon", "latitude": "lat"})
         self._to_180()
 
     def _read_config(self, filename, what):
-        with open(filename, 'r') as stream:
+        with open(filename, "r") as stream:
             return yaml.load(stream)[what]
 
     def gearth_fig(self, x0=None, x1=None, y0=None, y1=None, dpi=None):
@@ -469,7 +504,7 @@ class KMZ(object):
         y1 = y1 or self.urcrnrlat
         dpi = dpi or self.pixels
 
-        aspect = np.cos(np.mean([y0, y1]) * np.pi/180.0)
+        aspect = np.cos(np.mean([y0, y1]) * np.pi / 180.0)
         xsize = np.ptp([x1, x0]) * aspect
         ysize = np.ptp([y1, y0])
         aspect = ysize / xsize
@@ -483,7 +518,7 @@ class KMZ(object):
         ax = fig.add_axes([0, 0, 1, 1])
         ax.set_xlim(x0, x1)
         ax.set_ylim(y0, y1)
-        ax.axis('off')
+        ax.axis("off")
         return fig, ax
 
     def make_kmz(self, **kw):
@@ -491,10 +526,10 @@ class KMZ(object):
         self.kml.document.camera = Camera(
             latitude=np.mean([self.urcrnrlat, self.llcrnrlat]),
             longitude=np.mean([self.urcrnrlon, self.llcrnrlon]),
-            altitude=kw.pop('altitude', 2e7),
-            roll=kw.pop('roll', 0),
-            tilt=kw.pop('tilt', 0),
-            altitudemode=kw.pop('altitudemode', AltitudeMode.relativetoground)
+            altitude=kw.pop("altitude", 2e7),
+            roll=kw.pop("roll", 0),
+            tilt=kw.pop("tilt", 0),
+            altitudemode=kw.pop("altitudemode", AltitudeMode.relativetoground),
         )
 
         draworder = 0
@@ -503,35 +538,35 @@ class KMZ(object):
             if layer_name not in self.kml.containers:
                 self.group = self.kml.newfolder(name=layer_name)
             for ind, layer_group in enumerate(layer_groups):
-                subgroup = self.group.newfolder(name=layer_group['dim'])
-                ground = subgroup.newgroundoverlay(name='Map')
+                subgroup = self.group.newfolder(name=layer_group["dim"])
+                ground = subgroup.newgroundoverlay(name="Map")
                 # ground = self.group.newgroundoverlay()
                 for key, val in self.groundoverlay.items():
                     setattr(ground, key, val)
                 ground.draworder = draworder
-                ground.latlonbox.rotation = self.groundoverlay['rotation']
-                ground.icon.href = layer_group['map']
+                ground.latlonbox.rotation = self.groundoverlay["rotation"]
+                ground.icon.href = layer_group["map"]
                 ground.latlonbox.east = self.llcrnrlon
                 ground.latlonbox.south = self.llcrnrlat
                 ground.latlonbox.north = self.urcrnrlat
                 ground.latlonbox.west = self.urcrnrlon
                 # Ensure only first sublayer is visible
                 if ind == 0:
-                    ground.visibility = layer_group['visibility']
+                    ground.visibility = layer_group["visibility"]
 
                 if self.colorbar:
                     # screen = self.group.newscreenoverlay(name='Colorbar')
-                    screen = subgroup.newscreenoverlay(name='Colorbar')
-                    screen.icon.href = layer_group['colorbar']
-                    screen.overlayxy = OverlayXY(x=0, y=0,
-                                                xunits=Units.fraction,
-                                                yunits=Units.fraction)
-                    screen.screenxy = ScreenXY(x=0.015, y=0.075,
-                                            xunits=Units.fraction,
-                                            yunits=Units.fraction)
-                    screen.rotationXY = RotationXY(x=0.5, y=0.5,
-                                                xunits=Units.fraction,
-                                                yunits=Units.fraction)
+                    screen = subgroup.newscreenoverlay(name="Colorbar")
+                    screen.icon.href = layer_group["colorbar"]
+                    screen.overlayxy = OverlayXY(
+                        x=0, y=0, xunits=Units.fraction, yunits=Units.fraction
+                    )
+                    screen.screenxy = ScreenXY(
+                        x=0.015, y=0.075, xunits=Units.fraction, yunits=Units.fraction
+                    )
+                    screen.rotationXY = RotationXY(
+                        x=0.5, y=0.5, xunits=Units.fraction, yunits=Units.fraction
+                    )
                     screen.size.x = 0
                     screen.size.y = 0
                     screen.size.xunits = Units.fraction
@@ -542,19 +577,13 @@ class KMZ(object):
         screen = self.kml.newscreenoverlay(name=name)
         screen.icon.href = icon_href
         screen.overlayxy = OverlayXY(
-            x=0, y=0,
-            xunits=Units.fraction,
-            yunits=Units.fraction
+            x=0, y=0, xunits=Units.fraction, yunits=Units.fraction
         )
         screen.screenxy = ScreenXY(
-            x=x, y=y,
-            xunits=Units.fraction,
-            yunits=Units.fraction
+            x=x, y=y, xunits=Units.fraction, yunits=Units.fraction
         )
         screen.rotationXY = RotationXY(
-            x=0.5, y=0.5,
-            xunits=Units.fraction,
-            yunits=Units.fraction
+            x=0.5, y=0.5, xunits=Units.fraction, yunits=Units.fraction
         )
         screen.size.x = size_x
         screen.size.y = 0
@@ -563,9 +592,7 @@ class KMZ(object):
         screen.visibility = 1
 
     def save_kmz(self):
-        self.kml.savekmz(
-            os.path.join(self.outdir, self.kmzfile)
-        )
+        self.kml.savekmz(os.path.join(self.outdir, self.kmzfile))
 
 
 if __name__ == "__main__":
@@ -573,11 +600,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Make KMZ file from netcdf stats",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog=None
+        epilog=None,
     )
     parser.add_argument("config", help="yaml config file specifying layers")
-    parser.add_argument("-o", "--outdir", help="output directory for saving files", default='./outdir')
-    parser.add_argument("-k", "--kmzfile", help="output name for kmz", default='southernocean.kmz')
+    parser.add_argument(
+        "-o", "--outdir", help="output directory for saving files", default="./outdir"
+    )
+    parser.add_argument(
+        "-k", "--kmzfile", help="output name for kmz", default="southernocean.kmz"
+    )
     parser.add_argument("-p", "--pixels", help="Figure dpi", default=1024, type=int)
     args = vars(parser.parse_args())
 

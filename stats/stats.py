@@ -136,7 +136,7 @@ class DerivedVar(object):
         """Clear sky based on cloud cover fraction."""
         return dv.clear_sky(
             cloud_cover=self.dset[self.var_cloud_cover],
-            cover_threshold=self.clear_sky_threshold
+            cover_threshold=self.clear_sky_threshold,
         )
 
     @property
@@ -144,8 +144,9 @@ class DerivedVar(object):
         """Covered sky based on cloud cover fraction."""
         return dv.covered_sky(
             cloud_cover=self.dset[self.var_cloud_cover],
-            cover_threshold=self.covered_sky_threshold
+            cover_threshold=self.covered_sky_threshold,
         )
+
 
 class Stats(DerivedVar):
     def __init__(
@@ -218,8 +219,10 @@ class Stats(DerivedVar):
         if self._hour_of_day is not None:
             return self._hour_of_day
         self.logger.debug("Estimating hour offset and broadcasting to 3D")
-        hour_offset = da.floor((self.dset.longitude + 7.7) / 15).chunk({'longitude': self.dset.chunks['longitude'][0]})
-        hour = self.dset.time.dt.hour.chunk({'time': self.dset.chunks['time'][0]})
+        hour_offset = da.floor((self.dset.longitude + 7.7) / 15).chunk(
+            {"longitude": self.dset.chunks["longitude"][0]}
+        )
+        hour = self.dset.time.dt.hour.chunk({"time": self.dset.chunks["time"][0]})
         self._hour_of_day = (hour + hour_offset) % 24
         self._hour_of_day.name = "hour_of_day"
         return self._hour_of_day
@@ -434,11 +437,7 @@ class Stats(DerivedVar):
             self.dsout[bin_name] = bins
 
     def time_probability_hour_of_day(
-        self,
-        derived_var,
-        bin_value,
-        prefix="hprob_",
-        **kwargs
+        self, derived_var, bin_value, prefix="hprob_", **kwargs
     ):
         """Calculate the time probability for each hour with time offset accounted.
 
@@ -453,7 +452,9 @@ class Stats(DerivedVar):
         """
         self._update_dset([derived_var])
         data_var = derived_var
-        self.logger.debug("Calculating hourly time-probability for var: {}".format(data_var))
+        self.logger.debug(
+            "Calculating hourly time-probability for var: {}".format(data_var)
+        )
 
         darrays = []
         hours = range(24)
@@ -466,19 +467,14 @@ class Stats(DerivedVar):
             count = self._time_count(data_var=dvar, dim="time")
             in_bin = dvar == bin_value
             # Persist it here because code is blowing memory up.
-            prob = (in_bin.sum(dim="time") / count)
+            prob = in_bin.sum(dim="time") / count
             darrays.append(prob)
-
 
         self.dsout["{}{}".format(prefix, data_var)] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
 
     def time_probability_10_14(
-        self,
-        derived_var,
-        bin_value,
-        prefix="hprob_10h14h_",
-        **kwargs
+        self, derived_var, bin_value, prefix="hprob_10h14h_", **kwargs
     ):
         """Calculate the time probability for hours 10-14h.
 
@@ -495,14 +491,18 @@ class Stats(DerivedVar):
         """
         self._update_dset([derived_var])
         data_var = derived_var
-        self.logger.debug("Calculating hourly time-probability for var: {}".format(data_var))
+        self.logger.debug(
+            "Calculating hourly time-probability for var: {}".format(data_var)
+        )
 
         self.logger.info("Probability for hours 10-14h")
         hour_of_day = self.hour_of_day
-        dset_hour = self.dset.where((hour_of_day >= 10)&(hour_of_day <= 14))
+        dset_hour = self.dset.where((hour_of_day >= 10) & (hour_of_day <= 14))
         dvar = dset_hour[data_var]
         count = self._time_count(data_var=dvar, dim="time")
-        self.dsout["{}{}".format(prefix, data_var)] = (dvar == bin_value).sum(dim="time") / count
+        self.dsout["{}{}".format(prefix, data_var)] = (dvar == bin_value).sum(
+            dim="time"
+        ) / count
 
     def time_quantile(
         self,

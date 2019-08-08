@@ -164,11 +164,7 @@ def clear_sky(cloud_cover, cover_threshold=0.0, **kwargs):
 
     """
     dsout = cloud_cover <= cover_threshold
-    dsout.attrs = {
-        "long_name": "clear sky",
-        "standard_name": "clear_sky",
-        "units": "",
-    }
+    dsout.attrs = {"long_name": "clear sky", "standard_name": "clear_sky", "units": ""}
     return dsout
 
 

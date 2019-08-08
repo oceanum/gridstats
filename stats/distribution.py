@@ -698,11 +698,7 @@ class Stats(DerivedVar):
         # shutil.rmtree(tmpdir)
 
     def to_netcdf(
-        self,
-        outfile,
-        format="NETCDF4_CLASSIC",
-        zlib=True,
-        _FillValue=-32768,
+        self, outfile, format="NETCDF4_CLASSIC", zlib=True, _FillValue=-32768
     ):
         """Save output dataset as netcdf.
 
@@ -717,9 +713,7 @@ class Stats(DerivedVar):
         self.logger.debug("Saving stats dataset into file: {}".format(outfile))
         encoding = {}
         for data_var in self.dsout.data_vars:
-            encoding.update(
-                {data_var: {"zlib": zlib, "_FillValue": _FillValue}}
-            )
+            encoding.update({data_var: {"zlib": zlib, "_FillValue": _FillValue}})
         with ProgressBar():
             self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
 
