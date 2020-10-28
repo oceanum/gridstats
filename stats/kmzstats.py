@@ -474,11 +474,14 @@ class KMZ(object):
         return self.ds
 
     def _read_dataset(self):
-        self.ds = xr.open_dataset(self.layer_val["filename"]).isel(
-            **self.layer_val.get("slice", {})
-        )
+        x0 = self.layer_val.get("x0", None)
+        x1 = self.layer_val.get("x1", None)
+        y0 = self.layer_val.get("y0", None)
+        y1 = self.layer_val.get("y1", None)
+        self.ds = xr.open_dataset(self.layer_val["filename"])
         if "longitude" in self.ds and "latitude" in self.ds:
             self.ds = self.ds.rename({"longitude": "lon", "latitude": "lat"})
+        self.ds = self.ds.sel(lon=slice(x0, x1), lat=slice(y0, y1))
         self._to_180()
 
     def _read_config(self, filename, what):
