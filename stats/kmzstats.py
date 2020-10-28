@@ -6,7 +6,6 @@ import copy
 import yaml
 import argparse
 import logging
-from collections import OrderedDict
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
@@ -34,11 +33,12 @@ class KMZ(object):
     """Make kmz from netcdf files."""
 
     def __init__(self, config, **kwargs):
+        self.camera = self._read_config(config, "camera")
         self.layers = self._read_config(config, "layer")
         self.charts = self._read_config(config, "chart")
         self.groundoverlay = self._read_config(config, "groundoverlay")
         self.pixels = kwargs.pop("pixels", 1024)
-        self.kmls = OrderedDict()
+        self.kmls = {}
         self.outdir = kwargs.pop("outdir", "./tmp")
         self.kmzfile = kwargs.pop("kmzfile", "southernocean.kmz")
         if not os.path.isdir(self.outdir):
@@ -132,11 +132,9 @@ class KMZ(object):
 
     def run(self):
         """Generate KMZ file based on yml config."""
-        # Logo layers
-        # self.add_logo('Metocean', '../doc/MO_Horiz_White_rgb.png', 0.015, 0.90, 0.18)
         self.add_logo(
             "Oceanum",
-            "/source/stats/stats/kmz/logo_light_text_transp_bg.png",
+            "/config/stats/logo/oceanum_main_logo_transparent_background.png",
             0.0350,
             0.90,
             0.20,
@@ -153,7 +151,7 @@ class KMZ(object):
             else:
                 layer_type = "groundoverlay"
             self._plot_layer_figures(layer_type=layer_type)
-        self.make_kmz()
+        self.make_kmz(**self.camera)
         self.save_kmz()
 
     def _get_cmap(self, cmap):
@@ -275,7 +273,7 @@ class KMZ(object):
                 )
                 linestring.style.linestyle.color = self._gray_to_hex(gray_scale)
                 linestring.style.linestyle.width = kwargs.get("linewidths", 2.0)
-            multipoint.visibility = 0
+            multipoint.visibility = self.visibility
 
     def _make_cyclone_raster(self):
         """Make linestring for cyclone path layers."""
@@ -524,8 +522,8 @@ class KMZ(object):
     def make_kmz(self, **kw):
         """Create kmz file."""
         self.kml.document.camera = Camera(
-            latitude=np.mean([self.urcrnrlat, self.llcrnrlat]),
-            longitude=np.mean([self.urcrnrlon, self.llcrnrlon]),
+            latitude=kw.pop("latitude", np.mean([self.urcrnrlat, self.llcrnrlat])),
+            longitude=kw.pop("longitude", np.mean([self.urcrnrlon, self.llcrnrlon])),
             altitude=kw.pop("altitude", 2e7),
             roll=kw.pop("roll", 0),
             tilt=kw.pop("tilt", 0),
