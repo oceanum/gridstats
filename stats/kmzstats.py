@@ -456,11 +456,11 @@ class KMZ(object):
         # Ignore if not global
         if not self._is_global:
             return
-        self.ds.lon.values = (self.ds.lon.values + 180) % 360 - 180
+        self.ds = self.ds.assign_coords({"lon": (self.ds.lon.values + 180) % 360 - 180})
         self.ds = self.ds.sortby("lon")
         # Make it wrap
         dsi = self.ds.isel(lon=[0])
-        dsi.lon.values = [180]
+        dsi = dsi.assign_coords({"lon": [180]})
         self.ds = xr.concat((self.ds, dsi), dim="lon")
 
     def _parse_ibtracs(self, tstart="2019-01-01", tend=None):
