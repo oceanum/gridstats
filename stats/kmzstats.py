@@ -481,6 +481,7 @@ class KMZ(object):
         self.ds = xr.open_dataset(self.layer_val["filename"])
         if "longitude" in self.ds and "latitude" in self.ds:
             self.ds = self.ds.rename({"longitude": "lon", "latitude": "lat"})
+        self.ds = self.ds.sortby("lat").sortby("lon")
         self.ds = self.ds.sel(lon=slice(x0, x1), lat=slice(y0, y1))
         self._to_180()
 
