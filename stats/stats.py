@@ -558,14 +558,14 @@ class Stats(DerivedVar):
         data_vars += derived_vars
         self.logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
 
-        dsout = getattr(self.dset[data_vars], func)(dim="time")
+        dsout = getattr(self.dset[data_vars], func)(dim="time", **kwargs)
         self.dsout = self.dsout.merge(
             dsout.rename({v: "{}{}".format(prefix, v) for v in dsout.data_vars.keys()})
         )
         return dsout
 
     def to_netcdf(
-        self, outfile, format="NETCDF4_CLASSIC", zlib=True, _FillValue=-32767
+        self, outfile, format="NETCDF4", zlib=True, _FillValue=-32767
     ):
         """Save output dataset as netcdf.
 
