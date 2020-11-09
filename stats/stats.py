@@ -449,11 +449,12 @@ class Stats(DerivedVar):
         self.dsout["{}{}".format(prefix, data_var)] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
 
-    def time_stat(self, func, data_vars=None, derived_vars=[], prefix=None, **kwargs):
-        """apply stat defined by func.
+    def apply_func(self, func, dim="time", data_vars=None, derived_vars=[], prefix=None, **kwargs):
+        """apply xarray function.
 
         Args:
-            func (str): Name of valid stat to apply.
+            func (str): Name of valid xarray function to apply.
+            dim (str): Dimension to apply function over.
             data_vars (list): Data vars to apply stats over, all by default.
             derived_vars (list): Derived_vars to calculate before applying stats.
             prefix (str): String to prepend to each variable name in output dataset,
@@ -472,7 +473,7 @@ class Stats(DerivedVar):
         data_vars += derived_vars
         self.logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
 
-        dsout = getattr(self.dset[data_vars], func)(dim="time", **kwargs)
+        dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
         self.dsout = self.dsout.merge(
             dsout.rename({v: "{}{}".format(prefix, v) for v in dsout.data_vars.keys()})
         )
