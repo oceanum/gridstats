@@ -3,7 +3,7 @@ import numpy as np
 import dask.array as da
 import pandas as pd
 
-from stats.util import angle, wavelength
+from util import angle, wavelength
 
 DOUGLAS_SEA_INTERVALS = {
     0: pd.Interval(-np.inf, 0.0),

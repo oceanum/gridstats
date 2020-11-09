@@ -8,15 +8,15 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as da
+
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client, progress
 from distributed.diagnostics.progressbar import get_scheduler
 
-import intake
-import intake_xarray
+from ontake.ontake import Ontake
 
-from stats.util import uv_to_spddir
-import stats.derived_variable as dv
+from util import uv_to_spddir
+import derived_variable as dv
 
 
 logging.basicConfig(level="INFO")
@@ -24,7 +24,7 @@ logging.basicConfig(level="INFO")
 # TODO: Generalise input partitions in crossing_seas
 
 
-class DerivedVar(object):
+class DerivedVar:
     def __init__(
         self,
         dset,
@@ -152,7 +152,8 @@ class Stats(DerivedVar):
     def __init__(
         self,
         dataset,
-        intake_catalog="gs://oceanum-catalog/oceanum.yml",
+        master_url="gs://oceanum-catalog/oceanum.yml",
+        namespace="hindcast",
         mask=None,
         slice_dict={},
         chunks=None,
@@ -163,10 +164,9 @@ class Stats(DerivedVar):
         """Gridded stats using dask arrays.
 
         Args:
-            dataset (str, xr.Dataset): Either an intake dataset id if string or
-                an xarray dataset.
-            intake_catalog (str): Path for intake catalog in case dataset is a intake
-                id, can be either a local or a url path.
+            dataset (str, xr.Dataset): An ontake dataset id if string or an xarray dataset.
+            master_url (str): Ontake catalog master url path.
+            namespace (str): Ontake catalog namespace.
             mask (str): either a variable name or an expression to evaluate on one or
                 more variables to define a mask array for masking output dataset. e.g.,
                 `self.dset.hs==0`.
@@ -186,7 +186,8 @@ class Stats(DerivedVar):
 
         """
         self.dataset = dataset
-        self.intake_catalog = intake_catalog
+        self.master_url = master_url
+        self.namespace = namespace
         self.mask = mask
         self.chunks = chunks
         self.persist = persist
@@ -246,12 +247,11 @@ class Stats(DerivedVar):
             self.dset["mask"] = 1
 
     def _open_dataset(self):
-        """Set dset attribute either from intake dataset of from xarray dataset itself.
+        """Set dset attribute either from ontake dataset of from xarray dataset itself.
 
-        If self.dataset is a string, it should be a valid intake dataset and the
-            intake_catalog argument must be provided at initialisation so that the
-            catalog can be built. If self.dataset is an xarray dataset then it is just
-            assigned to self.dset attribute.
+        If self.dataset is a string, it should be a valid ontake dataset and the
+            ontake master_url and namespace arguments must be provided at initialisation.
+            If self.dataset is an xarray dataset then it is just assigned to self.dset attribute.
 
         Note: there is a point of failure here is the dataset string is a substring of
             more than one intake dataset in catalog. This should be fixed in the future.
@@ -259,31 +259,19 @@ class Stats(DerivedVar):
         """
         self.logger.info("Open dataset")
         if isinstance(self.dataset, str):
-            assert (
-                self.intake_catalog is not None
-            ), "dataset is a string but intake_catalog has not been provided"
             self.logger.debug(
-                "Opening dataset {} from intake catalog {}".format(
-                    self.dataset, self.intake_catalog
+                "Opening ontake dataset from: {} {} {}".format(
+                    self.dataset, self.master_url, self.namespace
                 )
             )
             # Open catalog and ensure dataset is a substring of a catalog entry
-            self.cat = intake.open_catalog(self.intake_catalog)
-            intake_dataset = ""
-            for intake_dataset in self.cat.walk().keys():
-                if self.dataset in intake_dataset:
-                    break
-            assert (
-                self.dataset in intake_dataset
-            ), "Cannot locate dataset {} in intake catalog [{}]".format(
-                self.dataset, ", ".join(self.cat.walk().keys())
-            )
-            self.dset = getattr(self.cat, intake_dataset).to_dask()
+            ot = Ontake(master_url=self.master_url, namespace=self.namespace)
+            self.dset = ot.dataset(self.dataset)
         elif isinstance(self.dataset, xr.Dataset):
             self.dset = self.dataset
         else:
             raise ValueError(
-                "dataset must be either a string specifying an intake dataset id or an xarray dataset itself"
+                "dataset must be either a string specifying an ontake dataset id or an xarray dataset."
             )
         if self.chunks:
             self.logger.info("Re-chunking dataset as {}".format(self.chunks))
@@ -589,7 +577,7 @@ class Stats(DerivedVar):
         return dsout
 
     def to_netcdf(
-        self, outfile, format="NETCDF4_CLASSIC", zlib=True, _FillValue=-32768
+        self, outfile, format="NETCDF4_CLASSIC", zlib=True, _FillValue=-32767
     ):
         """Save output dataset as netcdf.
 
@@ -633,6 +621,7 @@ def main(yaml_file, load_after_call=False, verbose=False, logger=logging):
         if load_after_call:
             logging.info("Trigerring computations")
             stats._load()
+    # import ipdb; ipdb.set_trace()
     return stats
 
 
