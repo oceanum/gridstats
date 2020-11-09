@@ -298,18 +298,6 @@ class Stats(DerivedVar):
             with ProgressBar():
                 self.dsout = self.dsout.compute()
 
-    def _grouper(self, iterable, n, fillvalue=None):
-        """Iterates over variable chunk sizes.
-
-        Args:
-            - iterable: sequence to iterate over.
-            - n (int): size of chunks to iterate over.
-            - fillvalue: value to use to complete last chunk if necessary.
-
-        """
-        args = [iter(iterable)] * n
-        return izip_longest(*args, fillvalue=fillvalue)
-
     def _update_dset(self, derived_vars):
         """Append derived variables to dataset.
 
