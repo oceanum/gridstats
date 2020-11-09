@@ -11,17 +11,3 @@ sources:
     args:
       path: "{{CATALOG_DIR}}/hindcast/hindcast.yml"
     metadata: {}
-
-  forecast:
-    description: Forecast testing catalog
-    driver: intake.catalog.local.YAMLFilesCatalog
-    args:
-      path: "{{CATALOG_DIR}}/forecast"
-    metadata: {}
-
-  wavespectra:
-    description: Wavespectra API datasets
-    driver: intake.catalog.local.YAMLFileCatalog
-    args:
-      path: "{{CATALOG_DIR}}/wavespectra/spectra.yml"
-    metadata: {}

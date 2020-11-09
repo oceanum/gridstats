@@ -32,12 +32,12 @@ calls:
         - u10
         - v10
 
-  # - method: time_probability
-  #   kwargs:
-  #     data_vars:
-  #       - tcc
-  #     bins: [0.,1.]
-  #     bin_name: cover
+  - method: time_probability
+    kwargs:
+      derived_vars:
+        - wspd
+      bins: [0.,1.]
+      bin_name: cover
 
   - method: to_netcdf
     kwargs:
