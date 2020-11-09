@@ -19,9 +19,10 @@ from util import uv_to_spddir
 import derived_variable as dv
 
 
-logging.basicConfig(level="INFO")
-
-# TODO: Generalise input partitions in crossing_seas
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 
 class DerivedVar:
@@ -78,7 +79,6 @@ class DerivedVar:
         self.var_fp_sw1 = var_fp_sw1
         self.var_tp_sw1 = var_tp_sw1
         self.var_cloud_cover = var_cloud_cover
-        self.logger = logger
 
     @property
     def douglas_sea(self):
@@ -95,7 +95,7 @@ class DerivedVar:
         """
         lp_sw1 = self.dset.data_vars.get(self.var_lp_sw1, None)
         if lp_sw1 is None:
-            self.logger.info("Deriving swell wave length from swell period")
+            logger.info("Deriving swell wave length from swell period")
             lp_sw1 = self.wlen_sw1
         return dv.douglas_swell(hs_sw1=self.dset[self.var_hs_sw1], lp_sw1=lp_sw1)
 
@@ -173,7 +173,6 @@ class Stats(DerivedVar):
             slice_dict (dict): Dictionary specifying slicing arg.
             chunks (dict): Chunking dict to rechunk dataset after opening.
             persist (bool): if True, persist output dataset before saving as netcdf.
-            logger (object): Logging object.
 
         Tips:
             Run the calculations on a dask distributed cluster. This optimise
@@ -191,7 +190,6 @@ class Stats(DerivedVar):
         self.mask = mask
         self.chunks = chunks
         self.persist = persist
-        self.logger = logger
 
         self._hour_of_day = None
 
@@ -219,7 +217,7 @@ class Stats(DerivedVar):
         """
         if self._hour_of_day is not None:
             return self._hour_of_day
-        self.logger.debug("Estimating hour offset and broadcasting to 3D")
+        logger.debug("Estimating hour offset and broadcasting to 3D")
         hour_offset = da.floor((self.dset.longitude + 7.7) / 15).chunk(
             {"longitude": self.dset.chunks["longitude"][0]}
         )
@@ -232,7 +230,7 @@ class Stats(DerivedVar):
         """Masking dataset using slice_dict."""
         for slice_method, slice_kwargs in slice_dict.items():
             self.dset = getattr(self.dset, slice_method)(**slice_kwargs)
-        self.logger.info("Processing dataset: {}".format(self.dset))
+        logger.debug("Processing dataset: {}".format(self.dset))
 
     def _set_mask(self, mask):
         """Define the mask data array."""
@@ -257,9 +255,9 @@ class Stats(DerivedVar):
             more than one intake dataset in catalog. This should be fixed in the future.
 
         """
-        self.logger.info("Open dataset")
+        logger.info("Open dataset")
         if isinstance(self.dataset, str):
-            self.logger.debug(
+            logger.debug(
                 "Opening ontake dataset from: {} {} {}".format(
                     self.dataset, self.master_url, self.namespace
                 )
@@ -274,7 +272,7 @@ class Stats(DerivedVar):
                 "dataset must be either a string specifying an ontake dataset id or an xarray dataset."
             )
         if self.chunks:
-            self.logger.info("Re-chunking dataset as {}".format(self.chunks))
+            logger.info("Re-chunking dataset as {}".format(self.chunks))
             self.dset = self.dset.chunk(self.chunks)
 
     def _load(self):
@@ -311,7 +309,7 @@ class Stats(DerivedVar):
             self._is_derived_variable(derived_var)
             if derived_var in self.dset.data_vars:
                 continue
-            self.logger.info(
+            logger.info(
                 "Updating dataset with derived variable: {}".format(derived_var)
             )
             self.dset[derived_var] = getattr(self, derived_var)
@@ -334,7 +332,7 @@ class Stats(DerivedVar):
 
     def _time_count(self, data_var, dim="time"):
         """Returns the count array over dimension dim accounting for missing values."""
-        self.logger.debug("Calculating {} count over {}".format(data_var, dim))
+        logger.debug("Calculating {} count over {}".format(data_var, dim))
         if isinstance(data_var, str):
             dvar = self.dset[data_var]
         else:
@@ -390,7 +388,7 @@ class Stats(DerivedVar):
         bins = list(bins)
         self._update_dset(derived_vars)
         data_vars = list(data_vars) + list(derived_vars)
-        self.logger.debug("Calculating time-probability for vars: {}".format(data_vars))
+        logger.debug("Calculating time-probability for vars: {}".format(data_vars))
 
         # Probability for each variable
         for data_var in data_vars:
@@ -428,14 +426,14 @@ class Stats(DerivedVar):
         """
         self._update_dset([derived_var])
         data_var = derived_var
-        self.logger.debug(
+        logger.debug(
             "Calculating hourly time-probability for var: {}".format(data_var)
         )
 
         darrays = []
         hours = range(24)
         for hour in hours:
-            self.logger.info("Probability for hour {:0.0f}".format(hour))
+            logger.info("Probability for hour {:0.0f}".format(hour))
             dset_hour = self.dset.where(self.hour_of_day == hour)
 
             # Probability for each variable
@@ -471,7 +469,7 @@ class Stats(DerivedVar):
         elif isinstance(data_vars, str):
             data_vars = [data_vars]
         data_vars += derived_vars
-        self.logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
+        logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
 
         dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
         self.dsout = self.dsout.merge(
@@ -492,7 +490,7 @@ class Stats(DerivedVar):
             dtype (int, object):
 
         """
-        self.logger.debug("Saving stats dataset into file: {}".format(outfile))
+        logger.debug("Saving stats dataset into file: {}".format(outfile))
         encoding = {}
         for data_var in self.dsout.data_vars:
             encoding.update({data_var: {"zlib": zlib, "_FillValue": _FillValue}})
@@ -515,7 +513,7 @@ def main(yaml_file, load_after_call=False, verbose=False, logger=logging):
         calls (dict): key is name of method to call, values are kwargs.
 
     """
-    conf = yaml.load(open(yaml_file))
+    conf = yaml.load(open(yaml_file), Loader=yaml.Loader)
     stats = Stats(**conf["init"])
     for call in conf.get("calls", []):
         if verbose:
