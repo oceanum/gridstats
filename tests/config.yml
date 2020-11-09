@@ -1,0 +1,38 @@
+init:
+  # From Stats
+  master_url: /source/stats/tests/catalog/oceanum.yml
+  namespace: hindcast
+  dataset: era5_wind10m
+  # intake_catalog: /config/catalog/intake/oceanum.yml
+  mask: null
+  slice_dict: {}
+  chunks:
+    latitude: 50
+    longitude: 50
+  persist: False
+  # From DerivedVar
+  var_uwnd: u10
+  var_vwnd: v10
+
+calls:
+  - method: time_stat
+    kwargs:
+      func: mean
+      data_vars:
+        - u10
+        - v10
+      derived_vars:
+        - wspd
+
+  # - method: time_probability
+  #   kwargs:
+  #     data_vars:
+  #       - tcc
+  #     bins: [0.,1.]
+  #     bin_name: cover
+
+  - method: to_netcdf
+    kwargs:
+      outfile: /source/stats/tests/gridstat.nc
+      format: NETCDF4
+      zlib: True

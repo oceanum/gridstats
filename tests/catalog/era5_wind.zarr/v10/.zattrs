@@ -1,0 +1,10 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "time",
+        "latitude",
+        "longitude"
+    ],
+    "long_name": "10 metre V wind component",
+    "scale_factor": 0.01,
+    "units": "m s**-1"
+}

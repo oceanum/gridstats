@@ -1,0 +1,70 @@
+metadata:
+  version: 1
+
+sources:
+
+  era5_wind10m:
+    description: Global ERA5 testing dataset.
+    metadata:
+      tname: time
+      yname: latitude
+      xname: longitude
+      url: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview
+      tags:
+        - wind
+        - model
+        - era5
+        - reanalyses
+        - hindcast
+        - ecmwf
+        - global
+    driver: intake_xarray.xzarr.ZarrSource
+    args:
+      urlpath: "{{CATALOG_DIR}}/../era5_wind.zarr"
+      storage_options:
+        token: null
+      consolidated: True
+
+  era5_wind10m_180:
+    description: Global ERA5 testing dataset on a -180 -- 180 degree convention.
+    metadata:
+      tname: time
+      yname: latitude
+      xname: longitude
+      url: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview
+      tags:
+        - wind
+        - model
+        - era5
+        - reanalyses
+        - hindcast
+        - ecmwf
+        - global
+    driver: intake_xarray.xzarr.ZarrSource
+    args:
+      urlpath: "{{CATALOG_DIR}}/../era5_wind_180.zarr"
+      storage_options:
+        token: null
+      consolidated: True
+
+  era5_wind10m_201201:
+    description: One month 2012-01 of daily ECMWF's ERA5 wind vectors at 10 m above ground level on a 1.0 degree regular grid.
+    metadata:
+      tname: time
+      yname: latitude
+      xname: longitude
+      url: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview
+      tags:
+        - wind
+        - model
+        - era5
+        - reanalyses
+        - hindcast
+        - ecmwf
+        - global
+    driver: intake_xarray.xzarr.ZarrSource
+    args:
+      urlpath: /scratch/era5/wind_10m/wind_10m-201201.zarr
+      storage_options:
+        token: null
+      consolidated: True
