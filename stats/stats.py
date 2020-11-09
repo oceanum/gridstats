@@ -15,8 +15,8 @@ from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
 
-from util import uv_to_spddir
-import derived_variable as dv
+from stats.util import uv_to_spddir
+import stats.derived_variable as dv
 
 
 logging.basicConfig(
@@ -498,48 +498,3 @@ class Stats(DerivedVar):
         self._load()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
 
-
-def main(yaml_file, load_after_call=False, verbose=False, logger=logging):
-    """Calculate stats from configuration file.
-
-    Args:
-        load_after_call (bool): If True, computation is triggered after running each
-            stats method, as opposed to only at the end before saving to disk.
-        verbose (bool): Add some extra logging if True.
-        logger (object): Logging instance.
-
-    Required keys in yaml config:
-        init (dict): kwarg options for initialising Stat class.
-        calls (dict): key is name of method to call, values are kwargs.
-
-    """
-    conf = yaml.load(open(yaml_file), Loader=yaml.Loader)
-    stats = Stats(**conf["init"])
-    for call in conf.get("calls", []):
-        if verbose:
-            logging.info("Stat.{}({})".format(call["method"], call.get("kwargs", {})))
-        getattr(stats, call["method"])(**call.get("kwargs", {}))
-        if load_after_call:
-            logging.info("Trigerring computations")
-            stats._load()
-    # import ipdb; ipdb.set_trace()
-    return stats
-
-
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(
-        description="Calculate gridded stats.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog="Usage: python stats.py stats.yml",
-    )
-    parser.add_argument("config", help="yaml config file stats")
-    parser.add_argument(
-        "-l",
-        "--load_after_call",
-        action="store_true",
-        help="Choose it to compute after each call method, slower but memory-friendly",
-    )
-    args = vars(parser.parse_args())
-
-    self = main(args["config"], load_after_call=args["load_after_call"], verbose=True)
