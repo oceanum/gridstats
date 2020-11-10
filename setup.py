@@ -24,6 +24,7 @@ requirements = [
     "partd",
     "pyyaml",
     "simplekml",
+    "scipy",
     "toolz",
     "tqdm",
     "xarray",
