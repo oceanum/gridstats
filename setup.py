@@ -16,6 +16,7 @@ requirements = [
     "cmocean",
     "dask",
     "distributed",
+    "fsspec",
     "intake",
     "intake_xarray",
     "nco",

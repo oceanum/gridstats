@@ -63,4 +63,8 @@ calls:
     kwargs:
       outfile: /source/onstats/tests/gridstat.nc
       format: NETCDF4
-      zlib: True
+
+  - method: to_zarr
+    kwargs:
+      outfile: /source/onstats/tests/gridstat.zarr
+      

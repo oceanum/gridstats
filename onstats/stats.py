@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as da
+from fsspec import get_mapper
 
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client, progress
@@ -530,23 +531,38 @@ class Stats(DerivedVar):
         return dsout
 
     def to_netcdf(
-        self, outfile, format="NETCDF4", zlib=True, _FillValue=-32767
+        self, outfile, format="NETCDF4", _FillValue=-32767
     ):
         """Save output dataset as netcdf.
 
         Args:
-            outfile (str):
-            format (str):
-            zlib (bool):
-            _FillValue (number):
-            dtype (int, object):
+            outfile (str): Name of output netcdf file.
+            format (str): Output Netcdf file format.
+            _FillValue (int): Fill Value.
 
         """
         logger.debug("Saving stats dataset into file: {}".format(outfile))
         encoding = {}
         for data_var in self.dsout.data_vars:
-            encoding.update({data_var: {"zlib": zlib, "_FillValue": _FillValue}})
+            encoding.update({data_var: {"zlib": True, "_FillValue": _FillValue}})
         # Loading into memory before saving to disk. We may want to reassess this.
         self._load()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
+
+    def to_zarr(
+        self, outfile, _FillValue=-32767, **kwargs
+    ):
+        """Save output dataset as zarr.
+
+        Args:
+            outfile (str): Name of output zarr file.
+            _FillValue (int): Fill Value.
+
+        """
+        logger.debug(f"Saving stats dataset into file: {outfile}")
+        encoding = {}
+        for data_var in self.dsout.data_vars:
+            encoding.update({data_var: {"_FillValue": _FillValue}})
+        fsmap = get_mapper(outfile)
+        self.dsout.to_zarr(fsmap, consolidated=True, encoding=encoding, mode="w")
 
