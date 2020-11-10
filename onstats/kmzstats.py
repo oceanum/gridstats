@@ -134,7 +134,7 @@ class KMZ(object):
         """Generate KMZ file based on yml config."""
         self.add_logo(
             "Oceanum",
-            "/config/stats/logo/oceanum_main_logo_transparent_background.png",
+            "/config/onstats/logo/oceanum_main_logo_transparent_background.png",
             0.0350,
             0.90,
             0.20,

@@ -2,8 +2,8 @@ version: '2'
 
 services:
 
-  stats:
-    image: registry.gitlab.com/oceanum/stats/stats:$CI_COMMIT_REF_NAME
+  onstats:
+    image: registry.gitlab.com/oceanum/onstats/onstats:$CI_COMMIT_REF_NAME
     build:
       context: .
       dockerfile: Dockerfile

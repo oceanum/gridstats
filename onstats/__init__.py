@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-"""Top-level package for stats."""
+"""Top-level package for onstats."""
 
 __author__ = """Oceanum Developers"""
 __email__ = "developers@oceanum.science"

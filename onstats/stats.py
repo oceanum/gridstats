@@ -15,8 +15,8 @@ from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
 
-from stats.util import uv_to_spddir
-import stats.derived_variable as dv
+from onstats.util import uv_to_spddir
+import onstats.derived_variable as dv
 
 
 logging.basicConfig(

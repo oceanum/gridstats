@@ -1,4 +1,4 @@
-* stats version:
+* onstats version:
 * Python version:
 * Operating System:
 

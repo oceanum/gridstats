@@ -1,6 +1,6 @@
 init:
   # From Stats
-  master_url: /source/stats/tests/catalog/oceanum.yml
+  master_url: /source/onstats/tests/catalog/oceanum.yml
   namespace: hindcast
   dataset: era5_wind10m
   # intake_catalog: /config/catalog/intake/oceanum.yml
@@ -61,6 +61,6 @@ calls:
 
   - method: to_netcdf
     kwargs:
-      outfile: /source/stats/tests/gridstat.nc
+      outfile: /source/onstats/tests/gridstat.nc
       format: NETCDF4
       zlib: True

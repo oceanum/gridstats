@@ -1,14 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""Tests for `stats` package."""
+"""Tests for `onstats` package."""
 
 import pytest
 
 from click.testing import CliRunner
 
-from stats import stats
-from stats import cli
+from onstats import stats
+from onstats import cli
 
 
 @pytest.fixture
@@ -32,7 +29,7 @@ def test_command_line_interface():
     runner = CliRunner()
     result = runner.invoke(cli.main)
     assert result.exit_code == 0
-    assert "stats.cli.main" in result.output
+    assert "onstats.cli.main" in result.output
     help_result = runner.invoke(cli.main, ["--help"])
     assert help_result.exit_code == 0
     assert "--help  Show this message and exit." in help_result.output

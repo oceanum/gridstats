@@ -6,10 +6,10 @@ ENV REPOS="/source"
 RUN echo "--------------- System packages ---------------" && \
     apt update && apt upgrade -y
 
-RUN echo "--------------- Installing stats ---------------"
-COPY setup.py requirements.txt README.rst HISTORY.rst $REPOS/stats/
-COPY stats $REPOS/stats/stats
-COPY tests $REPOS/stats/tests
-RUN cd $REPOS/stats && \
+RUN echo "--------------- Installing onstats ---------------"
+COPY setup.py requirements.txt README.rst HISTORY.rst $REPOS/onstats/
+COPY onstats $REPOS/onstats/onstats
+COPY tests $REPOS/onstats/tests
+RUN cd $REPOS/onstats && \
     pip install -U -r requirements.txt --no-cache-dir && \
     pip install -e . --no-cache-dir

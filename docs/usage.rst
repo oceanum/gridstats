@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use stats in a project::
+To use onstats in a project::
 
-    import stats
+    import onstats

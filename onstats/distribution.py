@@ -21,7 +21,7 @@ import intake
 import intake_xarray
 
 from util import uv_to_spddir
-import derived_variable as dv
+import onstats.derived_variable as dv
 
 
 logging.basicConfig(level="INFO")

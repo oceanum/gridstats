@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-"""Console script for stats."""
+"""Console script for onstats."""
 import sys
 import click
 import yaml
@@ -8,7 +6,7 @@ import logging
 
 from oncore.git import fetch_gitlab_file
 
-from stats.stats import Stats
+from onstats.stats import Stats
 
 
 logging.basicConfig(
@@ -28,7 +26,7 @@ logger = logging.getLogger(__name__)
     show_default=True,
 )
 def main(config, load):
-    """Console script for stats."""
+    """Console script for onstats."""
     if config.startswith("gitlab"):
         conf = yaml.load(fetch_gitlab_file(config), Loader=yaml.Loader)
     else:
