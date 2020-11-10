@@ -3,9 +3,11 @@ init:
   master_url: /source/onstats/tests/catalog/oceanum.yml
   namespace: hindcast
   dataset: era5_wind10m
-  # intake_catalog: /config/catalog/intake/oceanum.yml
   mask: null
-  slice_dict: {}
+  slice_dict:
+    sel:
+      latitude: !!python/object/apply:slice [30, -30]
+      longitude: !!python/object/apply:slice [0, 90]
   chunks:
     latitude: 50
     longitude: 50

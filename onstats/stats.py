@@ -233,6 +233,10 @@ class Stats(DerivedVar):
         for slice_method, slice_kwargs in slice_dict.items():
             self.dset = getattr(self.dset, slice_method)(**slice_kwargs)
         logger.debug("Processing dataset: {}".format(self.dset))
+        # Check if there is data left after slicing
+        for dim, slicing in slice_kwargs.items():
+            if self.dset[dim].size == 0:
+                raise ValueError(f"Empty {dim} slicing from {slicing},")
 
     def _set_mask(self, mask):
         """Define the mask data array."""
