@@ -32,12 +32,32 @@ calls:
         - u10
         - v10
 
-  - method: time_probability
+  - method: value_probability
     kwargs:
       derived_vars:
         - wspd
-      bins: [0.,1.]
+      bins: [0., 1.]
       bin_name: cover
+
+  - method: range_probability
+    kwargs:
+      dim: time
+      data_ranges:
+        - var: wspd
+          start: null
+          stop: 5
+          left: closed
+          right: open
+        - var: wspd
+          start: 5
+          stop: 10
+          left: closed
+          right: open
+        - var: wspd
+          start: 10
+          stop: null
+          left: closed
+          right: closed
 
   - method: to_netcdf
     kwargs:

@@ -340,12 +340,77 @@ class Stats(DerivedVar):
         count = (0 * dvar + 1).sum(dim=dim, skipna=True)
         return count.where(count > 0)
 
-    def time_probability(
+    def range_probability(
         self,
+        data_ranges,
+        dim="time",
+        **kwargs
+    ):
+        """Calculate probability of specific ranges.
+
+        Args:
+            data_ranges (list): List of dictionaries to define each data range to
+                calculate probabilities from with keys:
+                - var (str): Variable name, can be a valid data_var or derived_var.
+                - start (float): Minimum value for interval.
+                - stop (float); Maximum value for interval.
+                - left (closed | open): Define if minimum value should be included.
+                - right (closed | open): Define if maximum value should be included.
+            dim (str): Dimension name to calculate probabilities over.
+            kwargs: Not used here, ignored.
+
+        """
+        data_vars = list(set([data_range["var"] for data_range in data_ranges]))
+        derived_vars = [v for v in data_vars if v not in self.dset.data_vars]
+        self._update_dset(derived_vars)
+
+        logger.debug(f"Calculating time-probability for vars: {data_vars}")
+
+        # Probability for each range
+        counts = {}
+        for data_range in data_ranges:
+
+            # Data variable to compute
+            dvar = data_range["var"]
+            darray = self.dset[dvar]
+
+            # Data range values
+            start = data_range["start"] if data_range["start"] is not None else -np.inf
+            stop = data_range["stop"] if data_range["stop"] is not None else np.inf
+
+            # Functions for computing open and close intervals
+            left = data_range.get("left", "closed")
+            right = data_range.get("right", "closed")
+            if left == "closed":
+                lfunc = da.greater_equal
+            elif left == "open":
+                lfunc = da.greater
+            if right == "closed":
+                rfunc = da.less_equal
+            elif right == "open":
+                rfunc = da.less
+
+            # Output label
+            llabel = f"{start:g}" if data_range["start"] is not None else "min"
+            rlabel = f"{stop:g}" if data_range["stop"] is not None else "max"
+            varname = f"{dvar}_{llabel}-{rlabel}"
+
+            # Count array
+            if dvar not in counts:
+                counts[dvar] = self._time_count(data_var=dvar, dim=dim)
+
+            # Probability
+            in_range = lfunc(darray, start) & rfunc(darray, stop)
+            self.dsout[varname] = (in_range.sum(dim=dim) / counts[dvar])
+
+        self.dset = self.dset.where(self.dset.mask)
+
+    def value_probability(
+        self,
+        dim="time",
         data_vars=[],
         derived_vars=[],
         bins=[],
-        bin_type="exact",
         bin_name="bin",
         prefix="prob_",
         **kwargs
@@ -356,11 +421,6 @@ class Stats(DerivedVar):
             data_vars (list): Data vars to apply stats over.
             derived_vars (list): Derived_vars to calculate before applying stats.
             bins (list): List of values for binning the data to calculate probability.
-            bin_type (str): Either `"exact"` or `"bounds"`. If `bin_type=="exact"`,
-                the probability is calculated for the exact maches in the `bins` list
-                (suitable for integer types such as douglas scales). If
-                `bin_type=="bounds"`, the data are binned within each two neighbours in
-                the `bins` list and the probability is calculated over these bins.
             bin_name (str): Name of bin coordinate in output probability dataset. Note
                 that the bin coordinate is only created if there is more than one bin.
             prefix (str): String to prepend to each variable name in output dataset.
@@ -369,21 +429,11 @@ class Stats(DerivedVar):
             At least one `data_var` or `derived_var` should be provided.
             The output dataset has an extra coordinate with name defaulting to `bin`,
                 representing the bin values over which probabilities are calculated.
-                If `bin_type=="exact"`, the coordinate values are defined by the values
-                in the `bins` list. If `bin_type=="bounds"`, the coordinate values are
-                the central values of each bin.
 
         """
         assert list(data_vars) + list(
             derived_vars
         ), "At least one data_var or derived_var should be provided."
-        assert bin_type in [
-            "exact",
-            "bounds",
-        ], "bin_type must be either 'exact' or 'bounds'"
-
-        if bin_type == "bounds":
-            raise NotImplementedError("bounds option not yet implemented.")
 
         bins = list(bins)
         self._update_dset(derived_vars)
@@ -393,11 +443,11 @@ class Stats(DerivedVar):
         # Probability for each variable
         for data_var in data_vars:
             dvar = self.dset[data_var]
-            count = self._time_count(data_var=data_var, dim="time")
+            count = self._time_count(data_var=data_var, dim=dim)
             darrays = []
             for bin_value in bins:
                 in_bin = dvar == bin_value
-                darrays.append(in_bin.sum(dim="time") / count)
+                darrays.append(in_bin.sum(dim=dim) / count)
             # Create extra coordinate only if more than one bin
             if len(bins) == 1:
                 self.dsout["{}{}".format(prefix, data_var)] = darrays[0].where(
