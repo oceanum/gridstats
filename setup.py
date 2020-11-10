@@ -19,6 +19,7 @@ requirements = [
     "fsspec",
     "intake",
     "intake_xarray",
+    "matplotlib",
     "nco",
     "partd",
     "pyyaml",
