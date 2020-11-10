@@ -236,7 +236,11 @@ class Stats(DerivedVar):
         # Check if there is data left after slicing
         for dim, slicing in slice_kwargs.items():
             if self.dset[dim].size == 0:
-                raise ValueError(f"Empty {dim} slicing from {slicing},")
+                raise ValueError(
+                    f"Empty {dim} slicing from {slicing}, "
+                    "Perhaps the dataset has reversed coordinates (e.g., ERA5) "
+                    "or different longitude conventions."
+                )
 
     def _set_mask(self, mask):
         """Define the mask data array."""
