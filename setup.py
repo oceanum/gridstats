@@ -20,6 +20,7 @@ requirements = [
     "intake",
     "intake_xarray",
     "nco",
+    "partd",
     "pyyaml",
     "simplekml",
     "toolz",
