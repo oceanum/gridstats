@@ -4,6 +4,13 @@ import dask.array as da
 import pandas as pd
 import xarray as xr
 from scipy import mgrid, exp, signal
+from subprocess import run, PIPE, STDOUT
+
+
+def run_command(cmd):
+    process = run(cmd, shell=True, stdout=PIPE, stderr=STDOUT)
+    process.check_returncode()
+    return process
 
 
 def grid_smooth(darr, n=10):

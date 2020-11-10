@@ -15,6 +15,7 @@ from dask.distributed import Client, progress
 from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
+from oncore.dataio import put, isdir
 
 from onstats.util import uv_to_spddir
 import onstats.derived_variable as dv
@@ -566,3 +567,15 @@ class Stats(DerivedVar):
         fsmap = get_mapper(outfile)
         self.dsout.to_zarr(fsmap, consolidated=True, encoding=encoding, mode="w")
 
+    def upload(self, files, updir):
+        """Upload stats files.
+
+        Args:
+            files (list): Name of files to upload.
+            updir (str): Name of folder or bucket url to upload to.
+
+        """
+        for filename in files:
+            outfile = os.path.join(updir, os.path.basename(filename))
+            logger.info(f"Uploading {filename} --> {outfile}")
+            put(filename, outfile, recursive=isdir(filename))

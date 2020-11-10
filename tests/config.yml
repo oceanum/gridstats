@@ -67,4 +67,10 @@ calls:
   - method: to_zarr
     kwargs:
       outfile: /source/onstats/tests/gridstat.zarr
-      
+
+  - method: upload
+    kwargs:
+      files:
+        - /source/onstats/tests/gridstat.nc
+        - /source/onstats/tests/gridstat.zarr
+      updir: gs://oceanum-tmp/test-stats
