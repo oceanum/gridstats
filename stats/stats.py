@@ -415,7 +415,9 @@ class Stats(DerivedVar):
         prefix="prob_",
         **kwargs
     ):
-        """Calculate the time probability.
+        """Calculate the probability of specific values.
+
+        This function is useful for integer-type data, use range_probability for float.
 
         Args:
             data_vars (list): Data vars to apply stats over.
