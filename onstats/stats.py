@@ -523,7 +523,7 @@ class Stats(DerivedVar):
 
         # Variables to apply
         if data_vars is None:
-            data_vars = self.dset.data_vars.keys()
+            data_vars = list(self.dset.data_vars.keys())
         elif isinstance(data_vars, str):
             data_vars = [data_vars]
         data_vars += derived_vars
