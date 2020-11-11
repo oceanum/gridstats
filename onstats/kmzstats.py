@@ -13,6 +13,8 @@ import xarray as xr
 import cmocean
 from dateutil.parser import parse
 
+import oncore
+
 
 from simplekml import (
     Kml,
@@ -29,7 +31,7 @@ from simplekml.featgeom import GroundOverlay
 outdir = "product"
 
 
-class KMZ(object):
+class KMZ:
     """Make kmz from netcdf files."""
 
     def __init__(self, config, **kwargs):
@@ -37,6 +39,7 @@ class KMZ(object):
         self.layers = self._read_config(config, "layer")
         self.charts = self._read_config(config, "chart")
         self.groundoverlay = self._read_config(config, "groundoverlay")
+        self.logo = self._read_config(config, "logo")
         self.pixels = kwargs.pop("pixels", 1024)
         self.kmls = {}
         self.outdir = kwargs.pop("outdir", "./tmp")
@@ -132,14 +135,14 @@ class KMZ(object):
 
     def run(self):
         """Generate KMZ file based on yml config."""
-        self.add_logo(
-            "Oceanum",
-            "/config/onstats/logo/oceanum_main_logo_transparent_background.png",
-            0.0350,
-            0.90,
-            0.20,
-        )
-
+        if self.logo is not None:
+            self.add_logo(
+                "Oceanum",
+                self.logo,
+                0.0350,
+                0.90,
+                0.20,
+            )
         for self.layer_id, self.layer_val in self.layers.items():
             self.chart = self.charts[self.layer_val["chart"]]
             self.logger.info("Creating layer: {}".format(self.layer_id))
@@ -159,7 +162,10 @@ class KMZ(object):
         try:
             return getattr(cmocean.cm, cmap)
         except:
-            return plt.cm.get_cmap(cmap)
+            try:
+                return getattr(oncore.cm, cmap)
+            except:
+                return plt.cm.get_cmap(cmap)
 
     def _plot_layer_figures(self, layer_type="groundoverlay"):
         """Plotting and saving all figures from layer.
