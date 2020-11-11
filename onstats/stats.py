@@ -403,7 +403,7 @@ class Stats(DerivedVar):
             # Output label
             llabel = f"{start:g}" if data_range["start"] is not None else "min"
             rlabel = f"{stop:g}" if data_range["stop"] is not None else "max"
-            varname = f"{dvar}_{llabel}-{rlabel}"
+            varname = data_range.get("label", f"p_{dvar}_{llabel}-{rlabel}")
 
             # Count array
             if dvar not in counts:
@@ -509,13 +509,13 @@ class Stats(DerivedVar):
         self.dsout["{}{}".format(prefix, data_var)] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
 
-    def apply_func(self, func, dim="time", data_vars=None, derived_vars=[], prefix=None, **kwargs):
+    def apply_func(self, func, dim="time", data_vars=[], derived_vars=[], prefix=None, **kwargs):
         """apply xarray function.
 
         Args:
             func (str): Name of valid xarray function to apply.
             dim (str): Dimension to apply function over.
-            data_vars (list): Data vars to apply stats over, all by default.
+            data_vars (list): Data vars to apply stats over.
             derived_vars (list): Derived_vars to calculate before applying stats.
             prefix (str): String to prepend to each variable name in output dataset,
                 defined as `"{}_".format(func)` if `prefix==None`.
@@ -525,11 +525,6 @@ class Stats(DerivedVar):
         if prefix is None:
             prefix = "{}_".format(func)
 
-        # Variables to apply
-        if data_vars is None:
-            data_vars = list(self.dset.data_vars.keys())
-        elif isinstance(data_vars, str):
-            data_vars = [data_vars]
         data_vars += derived_vars
         logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
 
