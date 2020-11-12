@@ -20,9 +20,12 @@ logger = logging.getLogger(__name__)
 def main():
     pass
 
+@click.argument("config", envvar='CONFIG', default=None)
+@click.argument("method", envvar='METHOD',  default=None)
+@click.argument("cycle", envvar='CYCLE', default=None)
 
 @main.command()
-@click.argument("config")
+@click.argument("config", envvar='CONFIG')
 @click.option(
     "-l",
     "--load",
@@ -33,10 +36,13 @@ def main():
 )
 def gridstats(config, load):
     """Console script for gridstats."""
-    if config.startswith("gitlab"):
-        conf = yaml.load(fetch_gitlab_file(config), Loader=yaml.Loader)
+    if os.path.isfile(config):
+        instance = yaml.load(open(config), Loader=yaml.Loader)
+    elif "gitlab:" in config:
+        config = fetch_gitlab_file(config)
+        instance = yaml.load(config, Loader=yaml.Loader)
     else:
-        conf = yaml.load(open(config), Loader=yaml.Loader)
+        instance = yaml.load(config, Loader=yaml.Loader)
 
     stats = Stats(**conf["init"])
 
@@ -52,7 +58,7 @@ def gridstats(config, load):
 
 
 @main.command()
-@click.argument("config")
+@click.argument("config", envvar='CONFIG')
 @click.option(
     "-o",
     "--outdir",
