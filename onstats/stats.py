@@ -107,6 +107,11 @@ class DerivedVar:
         return dv.wspd(uwnd=self.dset[self.var_uwnd], vwnd=self.dset[self.var_vwnd])
 
     @property
+    def wdir(self):
+        """Wind from direction data_var."""
+        return dv.wdir(uwnd=self.dset[self.var_uwnd], vwnd=self.dset[self.var_vwnd])
+
+    @property
     def cspd(self):
         """Current speed data_var."""
         return dv.cspd(ucur=self.dset[self.var_ucur], vcur=self.dset[self.var_vcur])

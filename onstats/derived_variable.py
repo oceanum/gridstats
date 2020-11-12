@@ -3,7 +3,7 @@ import numpy as np
 import dask.array as da
 import pandas as pd
 
-from onstats.util import angle, wavelength
+from onstats.util import angle, wavelength, direc
 
 DOUGLAS_SEA_INTERVALS = {
     0: pd.Interval(-np.inf, 0.0),
@@ -151,6 +151,23 @@ def wspd(uwnd, vwnd, **kwargs):
         "long_name": "wind speed",
         "standard_name": "wind_speed",
         "units": "m/s",
+    }
+    return dsout
+
+
+def wdir(uwnd, vwnd, **kwargs):
+    """Wind coming-from direction.
+
+    Args:
+        uwnd (DataArray): East-west component of wind velocity.
+        vwnd (DataArray): North-south component of wind velocity.
+
+    """
+    dsout = direc(uwnd, vwnd)
+    dsout.attrs = {
+        "long_name": "wind from direction",
+        "standard_name": "wind_from_direction",
+        "units": "degree",
     }
     return dsout
 

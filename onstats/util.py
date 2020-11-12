@@ -108,6 +108,24 @@ def uv_to_spddir(u, v, coming_from=False):
     return mag, direc
 
 
+def direc(u, v, coming_from=False):
+    """Calculated direction from (u, v) components.
+
+    Args:
+        u (array): Eastward wind component.
+        v (array): Northward wind component.
+        coming_from (bool): True for output directions in coming-from convention, False for going-to.
+
+    Returns:
+        direc (array): directions (degree).
+
+    """
+    ang_rot = 180 if coming_from else 0
+    vetor = u + v * 1j
+    direc = xr.ufuncs.angle(vetor, deg=True) + ang_rot
+    return da.mod(90 - direc, 360)
+
+
 def angle(dir1, dir2, **kwargs):
     """Relative angle between two directions.
 
