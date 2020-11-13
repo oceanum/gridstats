@@ -17,12 +17,11 @@ init:
   var_vwnd: v10
 
 calls:
+
   - method: apply_func
     kwargs:
       func: mean
-      data_vars:
-        - u10
-        - v10
+      data_vars: all
       derived_vars:
         - wspd
 
@@ -30,6 +29,8 @@ calls:
     kwargs:
       func: quantile
       q: [0.5, 0.9]
+      data_vars:
+        - u10
       derived_vars:
         - wspd
 
@@ -45,16 +46,19 @@ calls:
       dim: time
       data_ranges:
         - var: wspd
+          label: p_wspd_lt_5
           start: null
           stop: 5
           left: closed
           right: open
         - var: wspd
+          label: p_wspd_5_to_10
           start: 5
           stop: 10
           left: closed
           right: open
         - var: wspd
+          label: p_wspd_gt_10
           start: 10
           stop: null
           left: closed
