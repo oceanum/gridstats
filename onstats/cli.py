@@ -1,14 +1,14 @@
 """Console script for onstats."""
+import logging
+import os
 import sys
+
 import click
 import yaml
-import logging
 
 from oncore.git import fetch_gitlab_file
-
-from onstats.stats import Stats
 from onstats.kmzstats import KMZ
-
+from onstats.stats import Stats
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
