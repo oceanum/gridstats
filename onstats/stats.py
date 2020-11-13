@@ -289,6 +289,7 @@ class Stats(DerivedVar):
         if self.chunks:
             logger.info("Re-chunking dataset as {}".format(self.chunks))
             self.dset = self.dset.chunk(self.chunks)
+        self.data_vars = list(self.dset.data_vars.keys())
 
     def _load(self):
         """Trigger computation and load output dataset in memory.
@@ -530,6 +531,8 @@ class Stats(DerivedVar):
         if prefix is None:
             prefix = "{}_".format(func)
 
+        if data_vars == "all":
+            data_vars = self.data_vars
         data_vars += derived_vars
         logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
 
