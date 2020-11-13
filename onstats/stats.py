@@ -521,7 +521,7 @@ class Stats(DerivedVar):
         Args:
             func (str): Name of valid xarray function to apply.
             dim (str): Dimension to apply function over.
-            data_vars (list): Data vars to apply stats over.
+            data_vars (list): Data vars to apply stats over, "all" for all variables.
             derived_vars (list): Derived_vars to calculate before applying stats.
             prefix (str): String to prepend to each variable name in output dataset,
                 defined as `"{}_".format(func)` if `prefix==None`.
