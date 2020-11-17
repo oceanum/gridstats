@@ -236,16 +236,18 @@ class Stats(DerivedVar):
     def _slice_dset(self, slice_dict):
         """Masking dataset using slice_dict."""
         for slice_method, slice_kwargs in slice_dict.items():
-            self.dset = getattr(self.dset, slice_method)(**slice_kwargs)
-        logger.debug("Processing dataset: {}".format(self.dset))
-        # Check if there is data left after slicing
-        for dim, slicing in slice_kwargs.items():
-            if self.dset[dim].size == 0:
-                raise ValueError(
-                    f"Empty {dim} slicing from {slicing}, "
-                    "Perhaps the dataset has reversed coordinates (e.g., ERA5) "
-                    "or different longitude conventions."
-                )
+            for dim, slicing in slice_kwargs.items():
+                sign_coord = np.sign(self.dset[dim][-1] - self.dset[dim][0])
+                sign_slice = np.sign(slicing.stop - slicing.start)
+                if sign_coord != sign_slice:
+                    logger.warn(f"Order in slice and coord {dim} differ, swapping slice.")
+                    slicing = slice(slicing.stop, slicing.start)
+                self.dset = getattr(self.dset, slice_method)(**{dim: slicing})
+                if self.dset[dim].size == 0:
+                    raise ValueError(
+                        f"Empty {dim} slicing from {slicing}, perhaps longitude "
+                        "conventions in dataset and slice are different."
+                    )
 
     def _set_mask(self, mask):
         """Define the mask data array."""
