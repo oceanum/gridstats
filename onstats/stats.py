@@ -312,6 +312,13 @@ class Stats(DerivedVar):
             with ProgressBar():
                 self.dsout = self.dsout.compute()
 
+    def _sortby(self):
+        """Sort output dataset by all coordinates."""
+        for name, coords in self.dsout.coords.items():
+            if coords[0] > coords[-1]:
+                logger.info(f"Sorting by coordinate {name}")
+                self.dsout = self.dsout.sortby(name)
+
     def _update_dset(self, derived_vars):
         """Append derived variables to dataset.
 
@@ -559,6 +566,7 @@ class Stats(DerivedVar):
             encoding.update({data_var: {"zlib": True, "_FillValue": _FillValue}})
         # Loading into memory before saving to disk. We may want to reassess this.
         self._load()
+        self._sortby()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
 
     def to_zarr(
@@ -572,6 +580,7 @@ class Stats(DerivedVar):
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
+        self._sortby()
         encoding = {}
         for data_var in self.dsout.data_vars:
             encoding.update({data_var: {"_FillValue": _FillValue}})
