@@ -3,20 +3,77 @@ import numpy as np
 import dask.array as da
 import pandas as pd
 import xarray as xr
-from scipy.signal import find_peaks
+from scipy import stats, signal
 from subprocess import run, PIPE, STDOUT
 
 
-def pot(data, perc=95, duration=24):
+def _timestep(df):
+    """Timestep from regularly-spaced dataframe with time-based index.
+
+    Args:
+        df (pd.Dataframe, pd.Series): Pandas object with a time-based index.
+
+    Returns:
+        dt (timedelta): Regular time-step in Timedelta format.
+
+    """
+    tdiff = np.diff(df.index)
+    if tdiff.min() != tdiff.max():
+        raise ValueError("Times are not regularly-spaced in time")
+    return pd.to_timedelta(tdiff[0])
+
+
+def _to_series(data):
+    """Convert to Pandas Series.
+
+    Args:
+        data: Data to convert, accepted types are pd.DataFrame, xr.Dataset and
+            xr.DataArray. Xarray objects must have one variable with one single
+            dimension, pd.DataFrame must have one single column. Objects to convert
+            must be indexed by time.
+
+    Returns:
+        Data converted to Pandas Series.
+
+    """
+    if isinstance(data, pd.Series):
+        return data
+    if isinstance(data, (xr.Dataset, xr.DataArray)):
+        if isinstance(data, xr.Dataset):
+            if len(data.data_vars) > 1:
+                raise ValueError(
+                    "Dataset must have single variables to be converted to Series"
+                )
+        if len(data.dims) > 1:
+            raise ValueError(
+                f"Xarray object must have single dimensions to be converted to Series"
+            )
+        df = data.to_dataframe()
+        df = df[df.columns[0]]
+    elif isinstance(data, pd.DataFrame):
+        if len(data.columns) > 1:
+            raise ValueError(
+                "DataFrame must have single columns to be converted to Series"
+            )
+        df = data[data.columns[0]]
+    else:
+        raise ValueError(
+            "Only xr.Dataset, xr.DataArray and pd.DataFrame are supported"
+        )
+    return df
+
+
+def pot(data, percentile=95, duration=24):
     """Peaks over threshold.
 
     Args:
         data (pd.Series): Timeseries data to select peaks from.
-        perc (float): Percentile above which peaks are selected.
+        percentile (float): Percentile above which peaks are selected.
         duration (float): Hours in storm below which extra peaks are discarded.
 
     Return:
-        Subset pandas series with data for selected peaks.
+        peaks (pd.Series): Subset pandas series with data for selected peaks.
+        height (float): Threshold value above which peaks are defined.
 
     """
     # Only supporting 1d array for now
@@ -27,17 +84,51 @@ def pot(data, perc=95, duration=24):
     if any(data.isna()):
         raise ValueError("Peak over threshold does not support missing values")
 
-    # Ensure regularly-spaced imeseries
-    tdiff = np.diff(data.index)
-    if tdiff.min() != tdiff.max():
-        raise ValueError("Peaks over threshold requires regular timesteps in data")
-
-    dt = pd.to_timedelta(tdiff[0]).total_seconds() / 3600
+    dt = _timestep(data).total_seconds() / 3600
     distance = duration / dt
-    ind_perc = int(0.01 * perc * len(data))
+    ind_perc = int(0.01 * percentile * len(data))
     height = data.sort_values()[ind_perc]
-    ind = find_peaks(data, height=height, distance=distance)[0]
-    return data.iloc[ind]
+    ind = signal.find_peaks(data, height=height, distance=distance)[0]
+    return data.iloc[ind], height
+
+
+def rpv(
+    data,
+    return_periods=[1, 5, 10, 50, 100, 1000, 10000],
+    percentile=95,
+    distribution="gumbel_r",
+    duration=24,
+):
+    """Return period values.
+
+    Args:
+        data (pd.Series): Data to calculate rpv for.
+        return_periods (list): Return period years to calculate rpv values for.
+        percentile (float): Percentile above which peaks are selected.
+        distribution (str): Statistical distribution to fit the data, any valid
+            distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
+        duration (float): Hours in storm below which extra peaks are discarded.
+
+    Returns:
+        rpvs (dict): Return period values for years in return_periods.
+
+    """
+    try:
+        func = getattr(stats, distribution)
+    except AttributeError as err:
+        raise ValueError(
+            f"Distribution '{distribution}' not available in scipy.stats, valid "
+            f"distributions are: {[f for f in dir(stats) if f[0].islower()]}"
+        ) from err
+    df = _to_series(data)
+    peaks, height = pot(df, percentile, duration)
+    fits = func.fit(peaks.values, floc=height)
+    dt = (df.index[1] - df.index[0]).total_seconds() / (3600 * 24 * 365)
+    rpvs = {}
+    for return_period in return_periods:
+        p = df.shape[0] * dt / (return_period * peaks.shape[0])
+        rpvs.update({return_period: func.isf(p, *fits)})
+    return rpvs
 
 
 def run_command(cmd):
