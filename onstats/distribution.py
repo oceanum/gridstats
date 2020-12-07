@@ -20,7 +20,7 @@ from tqdm import tqdm
 import intake
 import intake_xarray
 
-from util import uv_to_spddir
+from utils import uv_to_spddir
 import onstats.derived_variable as dv
 
 
