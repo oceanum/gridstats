@@ -3,8 +3,41 @@ import numpy as np
 import dask.array as da
 import pandas as pd
 import xarray as xr
-from scipy import mgrid, exp, signal
+from scipy.signal import find_peaks
 from subprocess import run, PIPE, STDOUT
+
+
+def pot(data, perc=95, duration=24):
+    """Peaks over threshold.
+
+    Args:
+        data (pd.Series): Timeseries data to select peaks from.
+        perc (float): Percentile above which peaks are selected.
+        duration (float): Hours in storm below which extra peaks are discarded.
+
+    Return:
+        Subset pandas series with data for selected peaks.
+
+    """
+    # Only supporting 1d array for now
+    if not isinstance(data, pd.Series):
+        raise ValueError("Only pandas Series are supported")
+
+    # Ensure no missing values in timeseries
+    if any(data.isna()):
+        raise ValueError("Peak over threshold does not support missing values")
+
+    # Ensure regularly-spaced imeseries
+    tdiff = np.diff(data.index)
+    if tdiff.min() != tdiff.max():
+        raise ValueError("Peaks over threshold requires regular timesteps in data")
+
+    dt = pd.to_timedelta(tdiff[0]).total_seconds() / 3600
+    distance = duration / dt
+    ind_perc = int(0.01 * perc * len(data))
+    height = data.sort_values()[ind_perc]
+    ind = find_peaks(data, height=height, distance=distance)[0]
+    return data.iloc[ind]
 
 
 def run_command(cmd):
