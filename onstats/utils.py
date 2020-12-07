@@ -124,9 +124,11 @@ def rpv(
     peaks, height = pot(df, percentile, duration)
     fits = func.fit(peaks.values, floc=height)
     dt = (df.index[1] - df.index[0]).total_seconds() / (3600 * 24 * 365)
+    ntimes = df.shape[0]
+    npeaks = peaks.shape[0]
     rpvs = {}
     for return_period in return_periods:
-        p = df.shape[0] * dt / (return_period * peaks.shape[0])
+        p = ntimes * dt / (return_period * npeaks)
         rpvs.update({return_period: func.isf(p, *fits)})
     return rpvs
 
