@@ -94,7 +94,7 @@ def pot(data, percentile=95, duration=24):
 
 def rpv(
     data,
-    return_periods=[1, 5, 10, 50, 100, 1000, 10000],
+    return_periods=[1, 5, 10, 20, 50, 100, 1000, 10000],
     percentile=95,
     distribution="gumbel_r",
     duration=24,
