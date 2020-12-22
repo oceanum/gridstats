@@ -249,11 +249,13 @@ class Stats(DerivedVar):
         """Masking dataset using slice_dict."""
         for slice_method, slice_kwargs in slice_dict.items():
             for dim, slicing in slice_kwargs.items():
-                sign_coord = np.sign(self.dset[dim][-1] - self.dset[dim][0])
-                sign_slice = np.sign(slicing.stop - slicing.start)
-                if sign_coord != sign_slice:
-                    logger.warn(f"Order in slice and coord {dim} differ, swapping slice.")
-                    slicing = slice(slicing.stop, slicing.start)
+                if isinstance(slicing, slice):
+                    # Ensure order in slice object is correct (era5)
+                    sign_coord = np.sign(self.dset[dim][-1] - self.dset[dim][0])
+                    sign_slice = np.sign(slicing.stop - slicing.start)
+                    if sign_coord != sign_slice:
+                        logger.warn(f"Order in slice and coord {dim} differ, swapping slice.")
+                        slicing = slice(slicing.stop, slicing.start)
                 self.dset = getattr(self.dset, slice_method)(**{dim: slicing})
                 if self.dset[dim].size == 0:
                     raise ValueError(
