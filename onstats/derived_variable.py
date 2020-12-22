@@ -2,6 +2,7 @@
 import numpy as np
 import dask.array as da
 import pandas as pd
+from scipy.optimize import curve_fit
 
 from onstats.utils import angle, wavelength, direc
 
@@ -285,3 +286,31 @@ def crossing_seas(
         "hs_threshold": hs_threshold,
     }
     return dsout
+
+
+def winpow(uwnd150, vwnd150):
+    """Wind Power for Wind Quarry turbine.
+
+    Args:
+        u150 (array): Eastward wind component at 150 m elevation.
+        v150 (array): Northward wind component at 150 m elevation.
+
+    """
+    def func(x, a, b, c, d):
+        return (a * x) + (b * x**2) + (c * x**3) + d
+
+    x = np.array([3.0, 3.6, 4.32, 5.06, 6.2, 7.05, 8.83, 10.61])
+    y = np.array([1500, 1915, 2719, 3872, 6110, 7963, 13490, 16000])
+    fits, __ = curve_fit(func, x, y)
+
+    wspd150 = wspd(uwnd150, vwnd150)
+    power = func(wspd150, *fits)
+
+    # Zero below cut-in
+    power = power.where(wspd150 > 3, 0)
+    # Maximum between rated and cut-out
+    power = power.where(wspd150 < 10.61, 16000)
+    # Zero above cut-out
+    power = power.where(wspd150 < 25, 0)
+
+    return power

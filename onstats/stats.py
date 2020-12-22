@@ -51,6 +51,8 @@ class DerivedVar:
         var_fp_sw1="pfp1",
         var_tp_sw1="ptp1",
         var_cloud_cover="tcc",
+        var_uwnd150="u150",
+        var_vwnd150="v150",
         logger=logging,
         **kwargs
     ):
@@ -81,6 +83,16 @@ class DerivedVar:
         self.var_fp_sw1 = var_fp_sw1
         self.var_tp_sw1 = var_tp_sw1
         self.var_cloud_cover = var_cloud_cover
+        self.var_uwnd150 = var_uwnd150
+        self.var_vwnd150 = var_vwnd150
+
+    @property
+    def winpow(self):
+        """Wind Power for Wind Quarry turbine."""
+        wp = dv.winpow(
+            uwnd150=self.dset[self.var_uwnd150], vwnd150=self.dset[self.var_vwnd150]
+        )
+        return wp
 
     @property
     def douglas_sea(self):

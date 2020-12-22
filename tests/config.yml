@@ -15,8 +15,21 @@ init:
   # From DerivedVar
   var_uwnd: u10
   var_vwnd: v10
+  var_uwnd150: u10
+  var_vwnd150: v10
 
 calls:
+  # - method: apply_stat_sector
+  #   kwargs:
+  #     func: mean
+  #     data_vars:
+  #       - wspd
+  #     sectors:
+  #       wdir:
+  #         start: 45
+  #         stop: 45
+  #         step: 90
+  #         circular: True
 
   - method: apply_func
     kwargs:
@@ -24,6 +37,7 @@ calls:
       data_vars: all
       derived_vars:
         - wspd
+        - winpow
 
   - method: apply_func
     kwargs:
