@@ -158,7 +158,7 @@ class KMZ:
             else:
                 layer_type = "groundoverlay"
             self._plot_layer_figures(layer_type=layer_type)
-        self.make_kmz(**self.camera)
+        self.add_camera(**self.camera)
         self.save_kmz()
 
     def _set_mask(self, ncfile, var, vmin=None, vmax=None):
@@ -252,8 +252,6 @@ class KMZ:
             self.colorbar = True
         else:
             self.colorbar = False
-        # # Store in kml dict
-        # self._append_kmls()
         self.add_raster_to_kmz()
 
     def _gray_to_hex(self, scale):
@@ -546,8 +544,8 @@ class KMZ:
         ax.axis("off")
         return fig, ax
 
-    def make_kmz(self, **kw):
-        """Create kmz file."""
+    def add_camera(self, **kw):
+        """Add camera settings to kmz."""
         self.kml.document.camera = Camera(
             latitude=kw.pop("latitude", np.mean([self.urcrnrlat, self.llcrnrlat])),
             longitude=kw.pop("longitude", np.mean([self.urcrnrlon, self.llcrnrlon])),
@@ -556,47 +554,6 @@ class KMZ:
             tilt=kw.pop("tilt", 0),
             altitudemode=kw.pop("altitudemode", AltitudeMode.relativetoground),
         )
-
-        # draworder = 0
-        # for layer_name, layer_groups in self.kmls.items():
-        #     draworder += 1
-        #     if layer_name not in self.kml.containers:
-        #         self.group = self.kml.newfolder(name=layer_name)
-        #     for ind, layer_group in enumerate(layer_groups):
-        #         subgroup = self.group.newfolder(name=layer_group["dim"])
-        #         ground = subgroup.newgroundoverlay(name="Map")
-        #         # ground = self.group.newgroundoverlay()
-        #         for key, val in self.groundoverlay.items():
-        #             setattr(ground, key, val)
-        #         ground.draworder = draworder
-        #         ground.latlonbox.rotation = self.groundoverlay["rotation"]
-        #         ground.icon.href = layer_group["map"]
-        #         ground.latlonbox.east = self.llcrnrlon
-        #         ground.latlonbox.south = self.llcrnrlat
-        #         ground.latlonbox.north = self.urcrnrlat
-        #         ground.latlonbox.west = self.urcrnrlon
-        #         # Ensure only first sublayer is visible
-        #         if ind == 0:
-        #             ground.visibility = layer_group["visibility"]
-
-        #         if self.colorbar:
-        #             # screen = self.group.newscreenoverlay(name='Colorbar')
-        #             screen = subgroup.newscreenoverlay(name="Colorbar")
-        #             screen.icon.href = layer_group["colorbar"]
-        #             screen.overlayxy = OverlayXY(
-        #                 x=0, y=0, xunits=Units.fraction, yunits=Units.fraction
-        #             )
-        #             screen.screenxy = ScreenXY(
-        #                 x=0.015, y=0.075, xunits=Units.fraction, yunits=Units.fraction
-        #             )
-        #             screen.rotationXY = RotationXY(
-        #                 x=0.5, y=0.5, xunits=Units.fraction, yunits=Units.fraction
-        #             )
-        #             screen.size.x = 0
-        #             screen.size.y = 0
-        #             screen.size.xunits = Units.fraction
-        #             screen.size.yunits = Units.fraction
-        #             screen.visibility = ground.visibility
 
     def add_raster_to_kmz(self, **kw):
         """Create kmz file."""
