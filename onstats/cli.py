@@ -7,7 +7,7 @@ import click
 import yaml
 
 from oncore.git import fetch_gitlab_file
-from onstats.kmzstats import KMZ
+from onstats.kmzstats_new import KMZ
 from onstats.stats import Stats
 
 logging.basicConfig(

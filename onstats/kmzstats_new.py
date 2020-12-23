@@ -54,9 +54,9 @@ class KMZ:
         self.kml = Kml()
 
         try:
-            self.mask = self._set_mask(**self._read_config(config, "mask"))
+            self.mask_file = self._read_config(config, "mask_file")
         except KeyError:
-            self.mask = None
+            self.mask_file = None
 
     def __repr__(self):
         return "KMZ Object"
@@ -179,16 +179,19 @@ class KMZ:
         self.add_camera(**self.camera)
         self.save_kmz()
 
-    def _set_mask(self, ncfile, var, vmin=None, vmax=None):
-        darr = xr.open_dataset(ncfile)[var]
-        self.dset_mask = (darr * 0 + 1)
-        if vmin is not None:
-            self.dset_mask = self.dset_mask.where(darr >= vmin)
-        if vmax is not None:
-            self.dset_mask = self.dset_mask.where(darr <= vmax)
-        if "longitude" in self.dset_mask and "latitude" in self.dset_mask:
-            self.dset_mask = self.dset_mask.rename({"longitude": "lon", "latitude": "lat"})
-        return self.dset_mask
+    def _set_mask(self, dset):#, ncfile, var, vmin=None, vmax=None):
+        import geopandas as gpd
+        import rioxarray
+        from shapely.geometry import mapping
+
+        gdf = gpd.read_file(self.mask_file).to_crs("EPSG:4326")
+        tmp = dset.copy(deep=True)
+        tmp.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=True)
+        tmp.rio.write_crs(gdf.crs, inplace=True)
+        tmp = tmp.rio.clip(
+            gdf.geometry.apply(mapping), gdf.crs, drop=False, invert=True
+        )
+        return tmp
 
     def _get_cmap(self, cmap):
         """Get colormap from cmocean if available otherwise matplotlib."""
@@ -495,9 +498,10 @@ class KMZ:
             lats = np.arange(self.ds.lat[0], self.ds.lat[-1]+newres, newres)
             self.ds = self.ds.interp(lon=lons, lat=lats)
 
-        if self.mask is not None:
-            mask = self.dset_mask.interp_like(self.ds)
-            self.ds = self.ds.where(mask.notnull())
+        if self.mask_file is not None:
+            self.ds = self._set_mask(self.ds)
+            # mask = self.dset_mask.interp_like(self.ds)
+            # self.ds = self.ds.where(mask.notnull())
 
     def _read_config(self, filename, what):
         with open(filename, "r") as stream:
