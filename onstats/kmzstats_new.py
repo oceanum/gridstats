@@ -118,10 +118,11 @@ class KMZ:
             and "vmin" in kwargs
             and "vmax" in kwargs
         ):
-            inc = kwargs.pop("inc", 0.1)
-            vmin = kwargs.pop("vmin", 0.0)
-            vmax = kwargs.pop("vmax", np.ceil(self.darr.max())) + inc
-            kwargs.update({"levels": np.arange(vmin, vmax, inc)})
+            if "levels" not in kwargs:
+                inc = kwargs.pop("inc", 0.1)
+                vmin = kwargs.pop("vmin", 0.0)
+                vmax = kwargs.pop("vmax", np.ceil(self.darr.max())) + inc
+                kwargs.update({"levels": np.arange(vmin, vmax, inc)})
         if "cmap" in kwargs:
             kwargs.update({"cmap": self._get_cmap(kwargs["cmap"])})
         return kwargs
@@ -601,6 +602,7 @@ class KMZ:
         group = self.group.newfolder(name=self.layer_name)
 
         levels = self.plot_kwargs.pop("levels")
+        # import ipdb; ipdb.set_trace()
         gray_scales = np.linspace(0.2, 0.0, len(levels))
         for level, gray_scale in zip(levels, gray_scales):
             logger.info("Drawing contour level {}".format(level))
@@ -609,7 +611,9 @@ class KMZ:
 
             cs = ax.contour(self.darr.lon, self.darr.lat, self.darr, **kwargs)
 
-            multipoint = group.newmultigeometry(name="{:0.0f} m".format(level))
+            units = self.layer_val.get("units", "m")
+            precision = self.chart.get("precision", "0.0f")
+            multipoint = group.newmultigeometry(name=f"{level:{precision}} {units}")
             paths = cs.collections[0].get_paths()
             for ipath, path in enumerate(paths):
                 coords = [
@@ -617,7 +621,7 @@ class KMZ:
                     for ivert in range(len(path.vertices))
                 ]
                 linestring = multipoint.newlinestring(
-                    coords=coords, altitudemode=AltitudeMode.relativetoground, name="aaaaa"
+                    coords=coords, altitudemode=AltitudeMode.relativetoground
                 )
                 linestring.style.linestyle.color = self._gray_to_hex(gray_scale)
                 linestring.style.linestyle.width = kwargs.get("linewidths", 2.0)
