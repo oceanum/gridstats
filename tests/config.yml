@@ -31,6 +31,10 @@ calls:
   #         step: 90
   #         circular: True
 
+  - method: data_count
+    kwargs:
+      data_vars: all
+
   - method: apply_func
     kwargs:
       func: mean
