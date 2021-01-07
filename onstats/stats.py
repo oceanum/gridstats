@@ -369,7 +369,7 @@ class Stats(DerivedVar):
             name
         )
 
-    def _time_count(self, data_var, dim="time"):
+    def _count(self, data_var, dim="time"):
         """Returns the count array over dimension dim accounting for missing values."""
         logger.debug("Calculating {} count over {}".format(data_var, dim))
         if isinstance(data_var, str):
@@ -436,13 +436,43 @@ class Stats(DerivedVar):
 
             # Count array
             if dvar not in counts:
-                counts[dvar] = self._time_count(data_var=dvar, dim=dim)
+                counts[dvar] = self._count(data_var=dvar, dim=dim)
 
             # Probability
             in_range = lfunc(darray, start) & rfunc(darray, stop)
             self.dsout[varname] = (in_range.sum(dim=dim) / counts[dvar])
 
         self.dset = self.dset.where(self.dset.mask)
+
+    def data_count(
+        self,
+        dim="time",
+        data_vars=[],
+        derived_vars=[],
+        prefix="pcount_",
+        **kwargs
+    ):
+        """Calculate the percentage of valid data along dimension.
+
+        Args:
+            dim (str): Dimension to calculate percentage count over.
+            data_vars (list): Data vars to apply stats over.
+            derived_vars (list): Derived_vars to calculate before applying stats.
+            prefix (str): String to prepend to each variable name in output dataset.
+
+        """
+        data_vars = list(data_vars) + list(derived_vars)
+        if not data_vars:
+            raise ValueError("At least one data_var or derived_var should be provided")
+
+        self._update_dset(derived_vars)
+        logger.debug(f"Calculating count percentage for vars: {data_vars}")
+
+        dsout = 100 * self._count(self.dset[data_vars], dim) / self.dset[dim].size
+        self.dsout = self.dsout.merge(
+            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
+        )
+        return dsout
 
     def value_probability(
         self,
@@ -484,7 +514,7 @@ class Stats(DerivedVar):
         # Probability for each variable
         for data_var in data_vars:
             dvar = self.dset[data_var]
-            count = self._time_count(data_var=data_var, dim=dim)
+            count = self._count(data_var=data_var, dim=dim)
             darrays = []
             for bin_value in bins:
                 in_bin = dvar == bin_value
@@ -529,7 +559,7 @@ class Stats(DerivedVar):
 
             # Probability for each variable
             dvar = dset_hour[data_var]
-            count = self._time_count(data_var=dvar, dim="time")
+            count = self._count(data_var=dvar, dim="time")
             in_bin = dvar == bin_value
             # Persist it here because code is blowing memory up.
             prob = in_bin.sum(dim="time") / count
@@ -561,7 +591,7 @@ class Stats(DerivedVar):
 
         dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
         self.dsout = self.dsout.merge(
-            dsout.rename({v: "{}{}".format(prefix, v) for v in dsout.data_vars.keys()})
+            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
