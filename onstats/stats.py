@@ -207,6 +207,7 @@ class Stats(DerivedVar):
         self.master_url = master_url
         self.namespace = namespace
         self.mask = mask
+        self.slice_dict = slice_dict
         self.chunks = chunks
         self.persist = persist
 
@@ -221,9 +222,6 @@ class Stats(DerivedVar):
 
         # Define mask
         self._set_mask(mask)
-
-        # Slicing
-        self._slice_dset(slice_dict or {})
 
     @property
     def hour_of_day(self):
@@ -245,9 +243,9 @@ class Stats(DerivedVar):
         self._hour_of_day.name = "hour_of_day"
         return self._hour_of_day
 
-    def _slice_dset(self, slice_dict):
+    def _slice_dset(self):
         """Masking dataset using slice_dict."""
-        for slice_method, slice_kwargs in slice_dict.items():
+        for slice_method, slice_kwargs in self.slice_dict.items():
             for dim, slicing in slice_kwargs.items():
                 if isinstance(slicing, slice):
                     # Ensure order in slice object is correct (era5)
@@ -302,6 +300,9 @@ class Stats(DerivedVar):
             raise ValueError(
                 "dataset must be either a string specifying an ontake dataset id or an xarray dataset."
             )
+        # Slicing
+        self._slice_dset()
+        # Rechunking
         if self.chunks:
             logger.info("Re-chunking dataset as {}".format(self.chunks))
             self.dset = self.dset.chunk(self.chunks)
