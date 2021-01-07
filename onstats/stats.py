@@ -461,7 +461,9 @@ class Stats(DerivedVar):
             prefix (str): String to prepend to each variable name in output dataset.
 
         """
-        data_vars = list(data_vars) + list(derived_vars)
+        if data_vars == "all":
+            data_vars = self.data_vars
+        data_vars += derived_vars
         if not data_vars:
             raise ValueError("At least one data_var or derived_var should be provided")
 
