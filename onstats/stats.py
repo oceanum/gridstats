@@ -247,7 +247,7 @@ class Stats(DerivedVar):
         """Masking dataset using slice_dict."""
         for slice_method, slice_kwargs in self.slice_dict.items():
             for dim, slicing in slice_kwargs.items():
-                if isinstance(slicing, slice):
+                if isinstance(slicing, slice) and not isinstance(slicing.start, str) and not isinstance(slicing.stop, str):
                     # Ensure order in slice object is correct (era5)
                     sign_coord = np.sign(self.dset[dim][-1] - self.dset[dim][0])
                     sign_slice = np.sign(slicing.stop - slicing.start)
