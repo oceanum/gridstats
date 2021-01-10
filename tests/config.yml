@@ -1,8 +1,9 @@
 init:
   # From Stats
-  master_url: /source/onstats/tests/catalog/oceanum.yml
-  namespace: hindcast
-  dataset: era5_wind10m
+  # master_url: /source/onstats/tests/catalog/oceanum.yml
+  # namespace: hindcast
+  # dataset: era5_wind10m
+  dataset: /source/onzarr/tests/catalog/era5_wind.zarr
   mask: null
   slice_dict:
     sel:
