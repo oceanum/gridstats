@@ -19,6 +19,7 @@ from oncore.dataio import put, isdir
 
 from onstats.utils import uv_to_spddir
 import onstats.derived_variable as dv
+from onstats.xarray_stats import rpv
 
 
 logging.basicConfig(
@@ -583,22 +584,46 @@ class Stats(DerivedVar):
 
     def rpv(
         self,
-        return_periods=[1, 5, 10, 50, 100, 1000, 10000],
+        return_periods=[1, 5, 10, 20, 50, 100, 1000, 10000],
         percentile=95,
         distribution="gumbel_r",
         duration=24,
+        dim="time",
+        data_vars=[],
+        derived_vars=[],
+        prefix="rpv_",
     ):
         """Return period values.
 
         Args:
-            return_periods (list):
-            percentile (float):
+            return_periods (list): Return period years to calculate rpv values for.
+            percentile (float): Percentile above which peaks are selected.
             distribution (str): Statistical distribution to fit the data, any valid
                 distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
             duration (float): Hours in storm below which extra peaks are discarded.
+            dim (str): Dimension to calculate rpv along.
+            data_vars (list): Data vars to apply stats over, "all" for all variables.
+            derived_vars (list): Derived_vars to calculate before applying stats.
+            prefix (str): String to prepend to each variable name in output dataset.
 
         """
-        raise NotImplementedError("rpv method not yet implemented")
+        self._update_dset(derived_vars)
+        if data_vars == "all":
+            data_vars = self.data_vars
+        data_vars += derived_vars
+        logger.debug(f"Calculating rpv for vars: {data_vars}")
+        dsout = rpv(
+            darr=self.dset[data_vars],
+            return_periods=return_periods,
+            percentile=percentile,
+            distribution=distribution,
+            duration=duration,
+            dim=dim
+        )
+        self.dsout = self.dsout.merge(
+            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
+        )
+        return dsout
 
     def apply_func(self, func, dim="time", data_vars=[], derived_vars=[], prefix=None, **kwargs):
         """apply xarray function.
@@ -619,7 +644,7 @@ class Stats(DerivedVar):
         if data_vars == "all":
             data_vars = self.data_vars
         data_vars += derived_vars
-        logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
+        logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
         dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
         self.dsout = self.dsout.merge(
