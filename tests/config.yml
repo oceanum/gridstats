@@ -32,6 +32,14 @@ calls:
   #         step: 90
   #         circular: True
 
+  - method: rpv
+    kwargs:
+      return_periods: [1, 5, 10, 20, 50, 100, 1000, 10000]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 120
+      derived_vars: [wspd]
+
   - method: data_count
     kwargs:
       data_vars: all
@@ -92,9 +100,9 @@ calls:
     kwargs:
       outfile: /source/onstats/tests/gridstat.zarr
 
-  - method: upload
-    kwargs:
-      files:
-        - /source/onstats/tests/gridstat.nc
-        - /source/onstats/tests/gridstat.zarr
-      updir: gs://oceanum-tmp/test-stats
+  # - method: upload
+  #   kwargs:
+  #     files:
+  #       - /source/onstats/tests/gridstat.nc
+  #       - /source/onstats/tests/gridstat.zarr
+  #     updir: gs://oceanum-tmp/test-stats
