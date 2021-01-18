@@ -151,10 +151,14 @@ def xrpv(
 
 if __name__ == "__main__":
 
+    import datetime
     dset = xr.open_dataset(
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
     )
-    darr = dset[["hs", "tps"]].isel(latitude=[0,1,2])#, longitude=-1)
-    # darr = darr.chunk({"longitude": 1})
+    darr = dset[["hs", "tps"]]#.isel(latitude=[0,1,2])#, longitude=-1)
+    darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
+    then = datetime.datetime.now()
     ret = xrpv(darr)
+    elapsed = datetime.datetime.now() - then
+    print(f"Elapsed time: {round(elapsed.total_seconds())} sec")
 
