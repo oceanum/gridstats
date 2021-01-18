@@ -22,6 +22,8 @@ def _pov(data, dt_hour, percentile=95, duration=24):
         height (float): Threshold value above which peaks are defined.
 
     """
+    if duration < dt_hour:
+        raise ValueError(f"timestep({dt_hour}h) must be less than the storm duration ({duration}h)")
     distance = duration / dt_hour
     ind_perc = int(0.01 * percentile * data.shape[0])
     height = np.sort(data)[ind_perc]
