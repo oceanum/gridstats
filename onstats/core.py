@@ -138,7 +138,7 @@ def xrpv(
         exclude_dims=set(("time",)),
         vectorize=True,
         dask="parallelized",
-        output_dtypes=[darr.dtype]
+        output_dtypes=["float32"]
     )
     dsout = dsout.assign_coords({"period": return_periods})
     dsout.period.attrs = {
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     dset = xr.open_dataset(
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
     )
-    darr = dset.hs.isel(latitude=[0,1,2])#, longitude=-1)
+    darr = dset[["hs", "tps"]].isel(latitude=[0,1,2])#, longitude=-1)
     # darr = darr.chunk({"longitude": 1})
     ret = xrpv(darr)
 
