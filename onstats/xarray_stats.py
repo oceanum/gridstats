@@ -11,18 +11,19 @@ from onstats.numpy_stats import np_rpv
 logger = logging.getLogger(__name__)
 
 
-def _timestep(df):
+def _timestep(df, dim="time"):
     """Timestep from regularly-spaced dataframe with time-based index.
 
     Args:
         df (pd.Dataframe, pd.Series): Pandas object with a time-based index.
+        dim (str): Time dimension if xarray object.
 
     Returns:
         dt (timedelta): Regular time-step in Timedelta format.
 
     """
     if isinstance(df, (xr.Dataset, xr.DataArray)):
-        tdiff = np.diff(df.time)
+        tdiff = np.diff(df[dim])
     elif isinstance(df, (pd.DataFrame, pd.Series)):
         tdiff = np.diff(df.index)
     if tdiff.min() != tdiff.max():
@@ -36,6 +37,7 @@ def rpv(
     percentile=95,
     distribution="gumbel_r",
     duration=24,
+    dim="time",
 ):
     """Return period values from DataArray.
 
@@ -46,12 +48,13 @@ def rpv(
         distribution (str): Statistical distribution to fit the data, any valid
             distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
         duration (float): Hours in storm below which extra peaks are discarded.
+        dim (str): Dimension to calculate rpv along.
 
     Returns:
         rpvs (dict): Return period values for years in return_periods.
 
     """
-    dt_hour = _timestep(darr).total_seconds() / 3600
+    dt_hour = _timestep(darr, dim).total_seconds() / 3600
     dsout = xr.apply_ufunc(
         np_rpv,
         darr,
@@ -60,9 +63,9 @@ def rpv(
         percentile,
         distribution,
         duration,
-        input_core_dims=[["time"], [], ["period"], [], [], []],
+        input_core_dims=[[dim], [], ["period"], [], [], []],
         output_core_dims=[["period"]],
-        exclude_dims=set(("time",)),
+        exclude_dims=set((dim,)),
         vectorize=True,
         dask="parallelized",
         output_dtypes=["float32"]
@@ -84,7 +87,7 @@ if __name__ == "__main__":
     dset = xr.open_dataset(
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
     )
-    darr = dset[["hs", "tps"]].isel(latitude=[0,1,2])#, longitude=-1)
+    darr = dset[["hs", "tps"]]#.isel(latitude=[0,1,2])#, longitude=-1)
     darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
     then = datetime.datetime.now()
     ret = rpv(darr)
@@ -92,4 +95,5 @@ if __name__ == "__main__":
         elapsed = datetime.datetime.now() - then
         ret = ret.load()
     print(f"Elapsed time: {round(elapsed.total_seconds())} sec")
+    ret.to_netcdf("/home/rguedes/tmp/rpv.nc")
 
