@@ -54,8 +54,26 @@ calls:
 
   - method: apply_func
     kwargs:
+      func: mean
+      group: season
+      data_vars: all
+      derived_vars:
+        - wspd
+
+  - method: apply_func
+    kwargs:
       func: quantile
       q: [0.5, 0.9]
+      data_vars:
+        - u10
+      derived_vars:
+        - wspd
+
+  - method: apply_func
+    kwargs:
+      func: quantile
+      q: [0.5, 0.9]
+      group: month
       data_vars:
         - u10
       derived_vars:
