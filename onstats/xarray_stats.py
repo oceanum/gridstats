@@ -76,7 +76,7 @@ def rpv(
         "long_name": "return period",
         "units": "year",
     }
-    return dsout.transpose("period", ...)
+    return dsout.transpose("period", ...).chunk({"period": 1})
 
 
 if __name__ == "__main__":
