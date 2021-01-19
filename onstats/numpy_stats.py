@@ -66,13 +66,13 @@ def np_rpv(
     # Ensure no missing values
     if np.isnan(data).any():
         logger.debug("Missing values not allowed, returning nan")
-        return da.tile(np.nan, len(return_periods))
+        return da.from_array([np.nan] * len(return_periods), chunks=(1,))
 
     peaks, height = _pov(data, dt_hour, percentile, duration)
 
     if peaks.size == 0:
         logger.debug(f"No peaks over {height} ({percentile}th percentile), returning nan")
-        return da.tile(np.nan, len(return_periods))
+        return da.from_array([np.nan] * len(return_periods), chunks=(1,))
 
     fits = func.fit(peaks, floc=height)
     dt_year = dt_hour / (24 * 365)
@@ -82,5 +82,5 @@ def np_rpv(
     for return_period in return_periods:
         p = ntimes * dt_year / (return_period * npeaks)
         rpvs.append(func.isf(p, *fits))
-    return da.array(rpvs)
+    return da.from_array(rpvs, chunks=(1,))
 
