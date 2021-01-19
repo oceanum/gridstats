@@ -647,6 +647,12 @@ class Stats(DerivedVar):
         logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
         dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
+        if func == "quantile":
+            dsout["quantile"].attrs = {
+                "standard_name": "quantile",
+                "long_name": "quantile",
+                "units": "",
+            }
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
         )
