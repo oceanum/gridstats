@@ -315,7 +315,7 @@ class Stats(DerivedVar):
         self._slice_dset()
         # Rechunking
         if self.chunks:
-            logger.info("Re-chunking dataset as {}".format(self.chunks))
+            logger.info(f"Re-chunking dataset as {self.chunks}")
             self.dset = self.dset.chunk(self.chunks)
         self.data_vars = list(self.dset.data_vars.keys())
 
@@ -360,30 +360,24 @@ class Stats(DerivedVar):
             self._is_derived_variable(derived_var)
             if derived_var in self.dset.data_vars:
                 continue
-            logger.info(
-                "Updating dataset with derived variable: {}".format(derived_var)
-            )
+            logger.info(f"Updating dataset with derived variable: {derived_var}")
             self.dset[derived_var] = getattr(self, derived_var)
 
     def _is_derived_variable(self, name):
         """Check that derived variable has been properly prescribed."""
         assert (
             getattr(DerivedVar, name, None) is not None
-        ), "Derived variable {} must be defined in DerivedVar class".format(name)
+        ), f"Derived variable {name} must be defined in DerivedVar class"
         assert isinstance(
             getattr(DerivedVar, name), property
-        ), "Derived variable {} must be defined as a @property in the DerivedVar class".format(
-            name
-        )
+        ), f"Derived variable {name} must be defined as a @property in the DerivedVar class"
         assert isinstance(
             getattr(self, name), xr.DataArray
-        ), "Property {} in DerivedVar class must return a DataArray object.".format(
-            name
-        )
+        ), f"Property {name} in DerivedVar class must return a DataArray object."
 
     def _count(self, data_var, dim="time"):
         """Returns the count array over dimension dim accounting for missing values."""
-        logger.debug("Calculating {} count over {}".format(data_var, dim))
+        logger.debug(f"Calculating {data_var} count over {dim}")
         if isinstance(data_var, str):
             dvar = self.dset[data_var]
         else:
@@ -444,7 +438,7 @@ class Stats(DerivedVar):
             # Output label
             llabel = f"{start:g}" if data_range["start"] is not None else "min"
             rlabel = f"{stop:g}" if data_range["stop"] is not None else "max"
-            varname = data_range.get("label", f"p_{dvar}_{llabel}-{rlabel}")
+            varname = data_range.get("label", f"{dvar}_p_{llabel}-{rlabel}")
 
             # Count array
             if dvar not in counts:
@@ -461,7 +455,7 @@ class Stats(DerivedVar):
         dim="time",
         data_vars=[],
         derived_vars=[],
-        prefix="pcount_",
+        suffix="_pcount",
         **kwargs
     ):
         """Calculate the percentage of valid data along dimension.
@@ -470,7 +464,7 @@ class Stats(DerivedVar):
             dim (str): Dimension to calculate percentage count over.
             data_vars (list): Data vars to apply stats over.
             derived_vars (list): Derived_vars to calculate before applying stats.
-            prefix (str): String to prepend to each variable name in output dataset.
+            suffix (str): String to append to each variable name in output dataset.
 
         """
         if data_vars == "all":
@@ -484,7 +478,7 @@ class Stats(DerivedVar):
 
         dsout = 100 * self._count(self.dset[data_vars], dim) / self.dset[dim].size
         self.dsout = self.dsout.merge(
-            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
+            dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
@@ -495,7 +489,7 @@ class Stats(DerivedVar):
         derived_vars=[],
         bins=[],
         bin_name="bin",
-        prefix="prob_",
+        suffix="_prob",
         **kwargs
     ):
         """Calculate the probability of specific values.
@@ -508,7 +502,7 @@ class Stats(DerivedVar):
             bins (list): List of values for binning the data to calculate probability.
             bin_name (str): Name of bin coordinate in output probability dataset. Note
                 that the bin coordinate is only created if there is more than one bin.
-            prefix (str): String to prepend to each variable name in output dataset.
+            suffix (str): String to append to each variable name in output dataset.
 
         Note:
             At least one `data_var` or `derived_var` should be provided.
@@ -523,7 +517,7 @@ class Stats(DerivedVar):
         bins = list(bins)
         self._update_dset(derived_vars)
         data_vars = list(data_vars) + list(derived_vars)
-        logger.debug("Calculating time-probability for vars: {}".format(data_vars))
+        logger.debug(f"Calculating time-probability for vars: {data_vars}")
 
         # Probability for each variable
         for data_var in data_vars:
@@ -535,25 +529,23 @@ class Stats(DerivedVar):
                 darrays.append(in_bin.sum(dim=dim) / count)
             # Create extra coordinate only if more than one bin
             if len(bins) == 1:
-                self.dsout["{}{}".format(prefix, data_var)] = darrays[0].where(
+                self.dsout[f"{data_var}{suffix}"] = darrays[0].where(self.dset.mask)
+            else:
+                self.dsout[f"{data_var}{suffix}"] = xr.concat(darrays, bin_name).where(
                     self.dset.mask
                 )
-            else:
-                self.dsout["{}{}".format(prefix, data_var)] = xr.concat(
-                    darrays, bin_name
-                ).where(self.dset.mask)
         if len(bins) > 1:
             self.dsout[bin_name] = bins
 
     def time_probability_hour_of_day(
-        self, derived_var, bin_value, prefix="hprob_", **kwargs
+        self, derived_var, bin_value, suffix="_hprob", **kwargs
     ):
         """Calculate the time probability for each hour with time offset accounted.
 
         Args:
             derived_var (str): Derived_vars to calculate before applying stats.
             bin (value): List of values for binning the data to calculate probability.
-            prefix (str): String to prepend to each variable name in output dataset.
+            suffix (str): String to append to each variable name in output dataset.
 
         Note:
             Only implemented atm for one single derived variable and one matching bin.
@@ -561,14 +553,12 @@ class Stats(DerivedVar):
         """
         self._update_dset([derived_var])
         data_var = derived_var
-        logger.debug(
-            "Calculating hourly time-probability for var: {}".format(data_var)
-        )
+        logger.debug(f"Calculating hourly time-probability for var: {data_var}")
 
         darrays = []
         hours = range(24)
         for hour in hours:
-            logger.info("Probability for hour {:0.0f}".format(hour))
+            logger.info(f"Probability for hour {hour:0.0f}")
             dset_hour = self.dset.where(self.hour_of_day == hour)
 
             # Probability for each variable
@@ -579,7 +569,7 @@ class Stats(DerivedVar):
             prob = in_bin.sum(dim="time") / count
             darrays.append(prob)
 
-        self.dsout["{}{}".format(prefix, data_var)] = xr.concat(darrays, "hour_of_day")
+        self.dsout[f"{data_var}{suffix}"] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
 
     def rpv(
@@ -591,7 +581,7 @@ class Stats(DerivedVar):
         dim="time",
         data_vars=[],
         derived_vars=[],
-        prefix="rpv_",
+        suffix="_rpv",
     ):
         """Return period values.
 
@@ -604,7 +594,7 @@ class Stats(DerivedVar):
             dim (str): Dimension to calculate rpv along.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
             derived_vars (list): Derived_vars to calculate before applying stats.
-            prefix (str): String to prepend to each variable name in output dataset.
+            suffix (str): String to append to each variable name in output dataset.
 
         """
         self._update_dset(derived_vars)
@@ -621,11 +611,11 @@ class Stats(DerivedVar):
             dim=dim
         )
         self.dsout = self.dsout.merge(
-            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
+            dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
-    def apply_func(self, func, dim="time", data_vars=[], derived_vars=[], prefix=None, **kwargs):
+    def apply_func(self, func, dim="time", data_vars=[], derived_vars=[], suffix=None, **kwargs):
         """apply xarray function.
 
         Args:
@@ -633,13 +623,13 @@ class Stats(DerivedVar):
             dim (str): Dimension to apply function over.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
             derived_vars (list): Derived_vars to calculate before applying stats.
-            prefix (str): String to prepend to each variable name in output dataset,
-                defined as `"{}_".format(func)` if `prefix==None`.
+            suffix (str): String to append to each variable name in output dataset,
+                defined as `f"_{func}"` if `suffix==None`.
 
         """
         self._update_dset(derived_vars)
-        if prefix is None:
-            prefix = "{}_".format(func)
+        if suffix is None:
+            suffix = f"_{func}"
 
         if data_vars == "all":
             data_vars = self.data_vars
@@ -654,22 +644,22 @@ class Stats(DerivedVar):
                 "units": "",
             }
         self.dsout = self.dsout.merge(
-            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
+            dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
-    def apply_stat_sector(self, data_vars, func, sectors={}, dim="time", prefix=None, **kwargs):
+    def apply_stat_sector(self, data_vars, func, sectors={}, dim="time", suffix=None, **kwargs):
         """apply xarray function.
 
         Args:
             data_vars (list): Data vars to apply stats over, includes derived vars.
             func (str): Name of valid xarray function to apply.
             dim (str): Dimension to apply function over.
-            prefix (str): String to prepend to each variable name in output dataset,
-                defined as `"{}_".format(func)` if `prefix==None`.
+            suffix (str): String to append to each variable name in output dataset,
+                defined as `f"_{func}"` if `suffix==None`.
 
         """
-        logger.debug("Calculating time-{} for vars: {}".format(func, data_vars))
+        logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
         new_derived_vars = [v for v in data_vars if v not in self.dset.data_vars]
         new_derived_vars.extend(list(sectors.keys()))
@@ -683,12 +673,12 @@ class Stats(DerivedVar):
                 step = np.deg2rad(sector_params["step"])
                 import ipdb; ipdb.set_trace()
 
-        if prefix is None:
-            prefix = f"{func}_"
+        if suffix is None:
+            suffix = f"_{func}"
 
         dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
         self.dsout = self.dsout.merge(
-            dsout.rename({v: f"{prefix}{v}" for v in dsout.data_vars.keys()})
+            dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
@@ -703,7 +693,7 @@ class Stats(DerivedVar):
             _FillValue (int): Fill Value.
 
         """
-        logger.debug("Saving stats dataset into file: {}".format(outfile))
+        logger.debug(f"Saving stats dataset into file: {outfile}")
         encoding = {}
         for data_var in self.dsout.data_vars:
             encoding.update({data_var: {"zlib": True, "_FillValue": _FillValue}})
@@ -789,9 +779,7 @@ class Stats(DerivedVar):
         """
         tmpfiles = []
         tmpdir = mkdtemp(dir=os.path.dirname(outfile))
-        self.logger.debug(
-            "Temporary directory for intermediate files: {}".format(tmpdir)
-        )
+        self.logger.debug(f"Temporary directory for intermediate files: {tmpdir}")
 
         # Load on memory for speed
         with ProgressBar():
@@ -866,7 +854,7 @@ class Stats(DerivedVar):
                 # self.logger.info('{}\nProcessing lat={}\n{}'.format(100*'=', float(lat), 100*'='))
                 dset_lon = self.dset.sel(latitude=lat, drop=True)
                 # if not (dset_lon[hs_name]>=0).any():
-                #     self.logger.debug('No valid point in lat={}, skipping.'.format(float(lat)))
+                #     logger.debug(f"No valid point in lat={lat}, skipping.")
                 #     pbar.update(self.dset.latitude.size)
                 #     isite += self.dset.latitude.size
                 #     continue
