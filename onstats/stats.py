@@ -612,7 +612,7 @@ class Stats(DerivedVar):
         return dsout
 
     def apply_func(
-        self, func, dim="time", data_vars=[], derived_vars=[], suffix=None, **kwargs
+        self, func, dim="time", data_vars=[], derived_vars=[], group=None, suffix=None, **kwargs
     ):
         """apply xarray function.
 
@@ -621,6 +621,7 @@ class Stats(DerivedVar):
             dim (str): Dimension to apply function over.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
             derived_vars (list): Derived_vars to calculate before applying stats.
+            group (str): Time grouping type, any valid time_{group} such month, season.
             suffix (str): String to append to each variable name in output dataset,
                 defined as `f"_{func}"` if `suffix==None`.
 
@@ -634,7 +635,17 @@ class Stats(DerivedVar):
         data_vars += derived_vars
         logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
-        dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
+        dset = self.dset[data_vars]
+
+        if group is not None:
+            logger.info(f"Grouping by {group}")
+            suffix += f"_{group}"
+            dset = dset.groupby(f"time.{group}")
+
+        # Calculate dask stats
+        dsout = getattr(dset, func)(dim=dim, **kwargs)
+
+        # Write attributes for quantile coordinate
         if func == "quantile":
             dsout["quantile"].attrs = {
                 "standard_name": "quantile",
