@@ -71,7 +71,12 @@ def gridstats(config, load):
     show_default=True,
 )
 @click.option(
-    "-p", "--pixels", help="Pixels DPI", default=512, type=int, show_default=True,
+    "-p",
+    "--pixels",
+    help="Pixels DPI",
+    default=512,
+    type=int,
+    show_default=True,
 )
 def kmz(config, outdir, kmzfile, pixels):
     """Console script for kmz."""

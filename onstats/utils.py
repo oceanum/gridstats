@@ -177,4 +177,3 @@ def wavenumber(ang_freq, water_depth):
     for i in range(1, 6):
         a += D[i] * k0h ** i
     return (k0h * (1 + 1.0 / (k0h * a)) ** 0.5) / water_depth
-

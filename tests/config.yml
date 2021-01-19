@@ -73,19 +73,19 @@ calls:
       dim: time
       data_ranges:
         - var: wspd
-          label: p_wspd_lt_5
+          label: wspd_p_lt_5
           start: null
           stop: 5
           left: closed
           right: open
         - var: wspd
-          label: p_wspd_5_to_10
+          label: wspd_p_5_to_10
           start: 5
           stop: 10
           left: closed
           right: open
         - var: wspd
-          label: p_wspd_gt_10
+          label: wspd_p_gt_10
           start: 10
           stop: null
           left: closed

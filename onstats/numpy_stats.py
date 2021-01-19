@@ -23,7 +23,9 @@ def _pov(data, dt_hour, percentile=95, duration=24):
 
     """
     if duration < dt_hour:
-        raise ValueError(f"timestep({dt_hour}h) must be less than the storm duration ({duration}h)")
+        raise ValueError(
+            f"timestep({dt_hour}h) must be less than the storm duration ({duration}h)"
+        )
     distance = duration / dt_hour
     ind_perc = int(0.01 * percentile * data.shape[0])
     height = np.sort(data)[ind_perc]
@@ -71,7 +73,9 @@ def np_rpv(
     peaks, height = _pov(data, dt_hour, percentile, duration)
 
     if peaks.size == 0:
-        logger.debug(f"No peaks over {height} ({percentile}th percentile), returning nan")
+        logger.debug(
+            f"No peaks over {height} ({percentile}th percentile), returning nan"
+        )
         return da.from_array([np.nan] * len(return_periods), chunks=(1,))
 
     fits = func.fit(peaks, floc=height)
@@ -83,4 +87,3 @@ def np_rpv(
         p = ntimes * dt_year / (return_period * npeaks)
         rpvs.append(func.isf(p, *fits))
     return da.from_array(rpvs, chunks=(1,))
-

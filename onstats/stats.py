@@ -55,7 +55,7 @@ class DerivedVar:
         var_uwnd150="u150",
         var_vwnd150="v150",
         logger=logging,
-        **kwargs
+        **kwargs,
     ):
         """Wrapper around derived variable functions.
 
@@ -180,7 +180,7 @@ class Stats(DerivedVar):
         chunks=None,
         persist=False,
         logger=logging,
-        **kwargs
+        **kwargs,
     ):
         """Gridded stats using dask arrays.
 
@@ -252,12 +252,18 @@ class Stats(DerivedVar):
         """Masking dataset using slice_dict."""
         for slice_method, slice_kwargs in self.slice_dict.items():
             for dim, slicing in slice_kwargs.items():
-                if isinstance(slicing, slice) and not isinstance(slicing.start, str) and not isinstance(slicing.stop, str):
+                if (
+                    isinstance(slicing, slice)
+                    and not isinstance(slicing.start, str)
+                    and not isinstance(slicing.stop, str)
+                ):
                     # Ensure order in slice object is correct (era5)
                     sign_coord = np.sign(self.dset[dim][-1] - self.dset[dim][0])
                     sign_slice = np.sign(slicing.stop - slicing.start)
                     if sign_coord != sign_slice:
-                        logger.warn(f"Order in slice and coord {dim} differ, swapping slice.")
+                        logger.warn(
+                            f"Order in slice and coord {dim} differ, swapping slice."
+                        )
                         slicing = slice(slicing.stop, slicing.start)
                 self.dset = getattr(self.dset, slice_method)(**{dim: slicing})
                 if self.dset[dim].size == 0:
@@ -385,12 +391,7 @@ class Stats(DerivedVar):
         count = (0 * dvar + 1).sum(dim=dim, skipna=True)
         return count.where(count > 0)
 
-    def range_probability(
-        self,
-        data_ranges,
-        dim="time",
-        **kwargs
-    ):
+    def range_probability(self, data_ranges, dim="time", **kwargs):
         """Calculate probability of specific ranges.
 
         Args:
@@ -446,17 +447,12 @@ class Stats(DerivedVar):
 
             # Probability
             in_range = lfunc(darray, start) & rfunc(darray, stop)
-            self.dsout[varname] = (in_range.sum(dim=dim) / counts[dvar])
+            self.dsout[varname] = in_range.sum(dim=dim) / counts[dvar]
 
         self.dset = self.dset.where(self.dset.mask)
 
     def data_count(
-        self,
-        dim="time",
-        data_vars=[],
-        derived_vars=[],
-        suffix="_pcount",
-        **kwargs
+        self, dim="time", data_vars=[], derived_vars=[], suffix="_pcount", **kwargs
     ):
         """Calculate the percentage of valid data along dimension.
 
@@ -490,7 +486,7 @@ class Stats(DerivedVar):
         bins=[],
         bin_name="bin",
         suffix="_prob",
-        **kwargs
+        **kwargs,
     ):
         """Calculate the probability of specific values.
 
@@ -608,14 +604,16 @@ class Stats(DerivedVar):
             percentile=percentile,
             distribution=distribution,
             duration=duration,
-            dim=dim
+            dim=dim,
         )
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
-    def apply_func(self, func, dim="time", data_vars=[], derived_vars=[], suffix=None, **kwargs):
+    def apply_func(
+        self, func, dim="time", data_vars=[], derived_vars=[], suffix=None, **kwargs
+    ):
         """apply xarray function.
 
         Args:
@@ -648,7 +646,9 @@ class Stats(DerivedVar):
         )
         return dsout
 
-    def apply_stat_sector(self, data_vars, func, sectors={}, dim="time", suffix=None, **kwargs):
+    def apply_stat_sector(
+        self, data_vars, func, sectors={}, dim="time", suffix=None, **kwargs
+    ):
         """apply xarray function.
 
         Args:
@@ -671,7 +671,9 @@ class Stats(DerivedVar):
                 start = np.deg2rad(sector_params["start"])
                 stop = np.deg2rad(360 + sector_params["stop"])
                 step = np.deg2rad(sector_params["step"])
-                import ipdb; ipdb.set_trace()
+                import ipdb
+
+                ipdb.set_trace()
 
         if suffix is None:
             suffix = f"_{func}"
@@ -682,9 +684,7 @@ class Stats(DerivedVar):
         )
         return dsout
 
-    def to_netcdf(
-        self, outfile, format="NETCDF4", _FillValue=-32767
-    ):
+    def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
         """Save output dataset as netcdf.
 
         Args:
@@ -702,9 +702,7 @@ class Stats(DerivedVar):
         self._sortby()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
 
-    def to_zarr(
-        self, outfile, _FillValue=-32767, **kwargs
-    ):
+    def to_zarr(self, outfile, _FillValue=-32767, **kwargs):
         """Save output dataset as zarr.
 
         Args:
@@ -749,7 +747,7 @@ class Stats(DerivedVar):
         memory_safe=True,
         maskval=np.int16(0),
         attrs={},
-        **kwargs
+        **kwargs,
     ):
         """Distribution statistics.
 

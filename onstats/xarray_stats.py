@@ -68,7 +68,7 @@ def rpv(
         exclude_dims=set((dim,)),
         vectorize=True,
         dask="parallelized",
-        output_dtypes=["float32"]
+        output_dtypes=["float32"],
     )
     dsout = dsout.assign_coords({"period": return_periods})
     dsout.period.attrs = {
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     dset = xr.open_dataset(
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
     )
-    darr = dset[["hs", "tps"]]#.isel(latitude=[0,1,2])#, longitude=-1)
+    darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
     darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
     then = datetime.datetime.now()
     ret = rpv(darr)
@@ -96,4 +96,3 @@ if __name__ == "__main__":
         ret = ret.load()
     print(f"Elapsed time: {round(elapsed.total_seconds())} sec")
     ret.to_netcdf("/home/rguedes/tmp/rpv.nc")
-

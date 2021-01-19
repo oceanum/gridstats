@@ -296,8 +296,9 @@ def winpow(uwnd150, vwnd150):
         v150 (array): Northward wind component at 150 m elevation.
 
     """
+
     def func(x, a, b, c, d):
-        return (a * x) + (b * x**2) + (c * x**3) + d
+        return (a * x) + (b * x ** 2) + (c * x ** 3) + d
 
     x = np.array([3.0, 3.6, 4.32, 5.06, 6.2, 7.05, 8.83, 10.61])
     y = np.array([1500, 1915, 2719, 3872, 6110, 7963, 13490, 16000])

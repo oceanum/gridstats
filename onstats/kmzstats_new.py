@@ -148,7 +148,7 @@ class KMZ:
                 0.90,
                 0.20,
             )
-        
+
         for group0, layers in self.layers.items():
             self.group0 = self.kml.newfolder(name=group0)
             for self.layer_id, self.layer_val in layers.items():
@@ -179,7 +179,7 @@ class KMZ:
         self.add_camera(**self.camera)
         self.save_kmz()
 
-    def _set_mask(self, dset):#, ncfile, var, vmin=None, vmax=None):
+    def _set_mask(self, dset):  # , ncfile, var, vmin=None, vmax=None):
         import geopandas as gpd
         import rioxarray
         from shapely.geometry import mapping
@@ -494,8 +494,8 @@ class KMZ:
         newres = 0.005
         res = np.float(np.diff(self.ds.lon[[0, 1]]))
         if res > newres:
-            lons = np.arange(self.ds.lon[0], self.ds.lon[-1]+newres, newres)
-            lats = np.arange(self.ds.lat[0], self.ds.lat[-1]+newres, newres)
+            lons = np.arange(self.ds.lon[0], self.ds.lon[-1] + newres, newres)
+            lats = np.arange(self.ds.lat[0], self.ds.lat[-1] + newres, newres)
             self.ds = self.ds.interp(lon=lons, lat=lats)
 
         if self.mask_file is not None:

@@ -163,13 +163,15 @@ class KMZ:
 
     def _set_mask(self, ncfile, var, vmin=None, vmax=None):
         darr = xr.open_dataset(ncfile)[var]
-        self.dset_mask = (darr * 0 + 1)
+        self.dset_mask = darr * 0 + 1
         if vmin is not None:
             self.dset_mask = self.dset_mask.where(darr >= vmin)
         if vmax is not None:
             self.dset_mask = self.dset_mask.where(darr <= vmax)
         if "longitude" in self.dset_mask and "latitude" in self.dset_mask:
-            self.dset_mask = self.dset_mask.rename({"longitude": "lon", "latitude": "lat"})
+            self.dset_mask = self.dset_mask.rename(
+                {"longitude": "lon", "latitude": "lat"}
+            )
         return self.dset_mask
 
     def _get_cmap(self, cmap):
@@ -287,7 +289,9 @@ class KMZ:
                     for ivert in range(len(path.vertices))
                 ]
                 linestring = multipoint.newlinestring(
-                    coords=coords, altitudemode=AltitudeMode.relativetoground, name="aaaaa"
+                    coords=coords,
+                    altitudemode=AltitudeMode.relativetoground,
+                    name="aaaaa",
                 )
                 linestring.style.linestyle.color = self._gray_to_hex(gray_scale)
                 linestring.style.linestyle.width = kwargs.get("linewidths", 2.0)
