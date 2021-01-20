@@ -26,6 +26,8 @@ def _timestep(df, dim="time"):
         tdiff = np.diff(df[dim])
     elif isinstance(df, (pd.DataFrame, pd.Series)):
         tdiff = np.diff(df.index)
+    elif isinstance(df, xr.core.groupby.DatasetGroupBy):
+        tdiff = np.diff(list(df)[0][1][dim])
     if tdiff.min() != tdiff.max():
         raise ValueError("Times are not regularly-spaced in time")
     return pd.to_timedelta(tdiff[0])
@@ -101,3 +103,6 @@ if __name__ == "__main__":
         ret = ret.load()
     print(f"Elapsed time: {round(elapsed.total_seconds())} sec")
     ret.to_netcdf("/home/rguedes/tmp/rpv.nc")
+
+    ds = dset[["hs"]].chunk({})
+    ret = rpv(ds.groupby("time.month"))
