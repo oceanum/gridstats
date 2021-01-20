@@ -76,6 +76,11 @@ def rpv(
         "long_name": "return period",
         "units": "year",
     }
+    dsout.attrs = {
+        "distribution": distribution,
+        "threshold_percentile": percentile,
+        "storm_duration": duration,
+    }
     return dsout.transpose("period", ...).chunk({"period": 1})
 
 
