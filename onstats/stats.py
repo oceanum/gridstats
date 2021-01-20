@@ -15,7 +15,7 @@ from dask.distributed import Client, progress
 from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
-from oncore.dataio import put, isdir
+from oncore.dataio import put, isdir, exists, rm
 
 from onstats.utils import uv_to_spddir
 import onstats.derived_variable as dv
@@ -179,6 +179,7 @@ class Stats(DerivedVar):
         slice_dict={},
         chunks=None,
         persist=False,
+        updir=None,
         logger=logging,
         **kwargs,
     ):
@@ -195,7 +196,8 @@ class Stats(DerivedVar):
                 `self.dset.hs==0`.
             slice_dict (dict): Dictionary specifying slicing arg.
             chunks (dict): Chunking dict to rechunk dataset after opening.
-            persist (bool): if True, persist output dataset before saving as netcdf.
+            persist (bool): If True, persist output dataset before saving as netcdf.
+            updir (str): Upload direction to upload netcdf and zarr stats files to.
 
         Tips:
             Run the calculations on a dask distributed cluster. This optimise
@@ -215,6 +217,7 @@ class Stats(DerivedVar):
         self.slice_dict = slice_dict
         self.chunks = chunks
         self.persist = persist
+        self.updir = updir
 
         self._hour_of_day = None
 
@@ -283,6 +286,20 @@ class Stats(DerivedVar):
             self.dset["mask"] = eval(mask)
         else:
             self.dset["mask"] = 1
+
+    def _upload(self, filename):
+        """Upload stats files.
+
+        Args:
+            filename (str): Name of file to upload.
+
+        """
+        outfile = os.path.join(self.updir, os.path.basename(filename))
+        logger.info(f"Uploading {filename} --> {outfile}")
+        if exists(outfile):
+            logger.debug(f"Removing existing file {outfile} before uploading")
+            rm(outfile, recursive=isdir(outfile))
+        put(filename, outfile, recursive=isdir(filename))
 
     def _open_dataset(self):
         """Set dset attribute either from ontake dataset of from xarray dataset itself.
@@ -356,7 +373,7 @@ class Stats(DerivedVar):
     def _setattrs(self):
         """Define some attributes in output dataset."""
         if "quantile" in self.dsout.coords:
-            dsout["quantile"].attrs = {
+            self.dsout["quantile"].attrs = {
                 "standard_name": "quantile",
                 "long_name": "quantile",
                 "units": "",
@@ -702,10 +719,10 @@ class Stats(DerivedVar):
             dsout.append(dset.where(mask))
         dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
         dsout["direction"].attrs = {
-            "standard_name": "direction",
-            "long_name": "direction sector",
-            "units": "degree",
-            "directional_variable": dir_var,
+            "standard_name": dirs.attrs.get("standard_name", "direction"),
+            "long_name": dirs.attrs.get("standard_name", "direction sector"),
+            "units": dirs.attrs.get("units", "degree"),
+            "variable_name": dir_var,
         }
 
         # Calculate dask stats
@@ -734,6 +751,8 @@ class Stats(DerivedVar):
         self._sortby()
         self._setattrs()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
+        if self.updir:
+            self._upload(outfile)
 
     def to_zarr(self, outfile, _FillValue=-32767, **kwargs):
         """Save output dataset as zarr.
@@ -751,19 +770,8 @@ class Stats(DerivedVar):
             encoding.update({data_var: {"_FillValue": _FillValue}})
         fsmap = get_mapper(outfile)
         self.dsout.to_zarr(fsmap, consolidated=True, encoding=encoding, mode="w")
-
-    def upload(self, files, updir):
-        """Upload stats files.
-
-        Args:
-            files (list): Name of files to upload.
-            updir (str): Name of folder or bucket url to upload to.
-
-        """
-        for filename in files:
-            outfile = os.path.join(updir, os.path.basename(filename))
-            logger.info(f"Uploading {filename} --> {outfile}")
-            put(filename, outfile, recursive=isdir(filename))
+        if self.updir:
+            self._upload(outfile)
 
     def time_distribution(
         self,

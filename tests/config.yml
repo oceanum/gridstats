@@ -13,6 +13,7 @@ init:
     latitude: 50
     longitude: 50
   persist: False
+  updir: gs://oceanum-tmp/test-stats
   # From DerivedVar
   var_uwnd: u10
   var_vwnd: v10
@@ -20,17 +21,13 @@ init:
   var_vwnd150: v10
 
 calls:
-  # - method: apply_stat_sector
-  #   kwargs:
-  #     func: mean
-  #     data_vars:
-  #       - wspd
-  #     sectors:
-  #       wdir:
-  #         start: 45
-  #         stop: 45
-  #         step: 90
-  #         circular: True
+  - method: apply_func_sector
+    kwargs:
+      func: mean
+      data_vars:
+        - wspd
+      dir_var: wdir
+      nsector: 4
 
   - method: rpv
     kwargs:
