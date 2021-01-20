@@ -601,6 +601,7 @@ class Stats(DerivedVar):
         dim="time",
         data_vars=[],
         derived_vars=[],
+        group=None,
         suffix="_rpv",
     ):
         """Return period values.
@@ -614,6 +615,7 @@ class Stats(DerivedVar):
             dim (str): Dimension to calculate rpv along.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
             derived_vars (list): Derived_vars to calculate before applying stats.
+            group (str): Time grouping type, any valid time_{group} such month, season.
             suffix (str): String to append to each variable name in output dataset.
 
         """
@@ -621,9 +623,18 @@ class Stats(DerivedVar):
         if data_vars == "all":
             data_vars = self.data_vars
         data_vars += derived_vars
+
         logger.debug(f"Calculating rpv for vars: {data_vars}")
+
+        dset = self.dset[data_vars]
+
+        if group is not None:
+            logger.info(f"Grouping by {group}")
+            suffix += f"_{group}"
+            dset = dset.groupby(f"time.{group}")
+
         dsout = rpv(
-            darr=self.dset[data_vars],
+            darr=dset,
             return_periods=return_periods,
             percentile=percentile,
             distribution=distribution,

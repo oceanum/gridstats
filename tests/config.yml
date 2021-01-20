@@ -37,6 +37,15 @@ calls:
       duration: 120
       derived_vars: [wspd]
 
+  - method: rpv
+    kwargs:
+      group: month
+      return_periods: [1, 5, 10, 20, 50, 100, 1000, 10000]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 120
+      derived_vars: [wspd]
+
   - method: data_count
     kwargs:
       data_vars: all
