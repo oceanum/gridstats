@@ -353,6 +353,15 @@ class Stats(DerivedVar):
                 logger.info(f"Sorting by coordinate {name}")
                 self.dsout = self.dsout.sortby(name)
 
+    def _setattrs(self):
+        """Define some attributes in output dataset."""
+        if "quantile" in self.dsout.coords:
+            dsout["quantile"].attrs = {
+                "standard_name": "quantile",
+                "long_name": "quantile",
+                "units": "",
+            }
+
     def _update_dset(self, derived_vars):
         """Append derived variables to dataset.
 
@@ -363,23 +372,21 @@ class Stats(DerivedVar):
 
         """
         for derived_var in derived_vars:
-            self._is_derived_variable(derived_var)
             if derived_var in self.dset.data_vars:
+                logger.debug(f"{derived_var} already a variable in dataset")
                 continue
+            self._is_derived_variable(derived_var)
             logger.info(f"Updating dataset with derived variable: {derived_var}")
             self.dset[derived_var] = getattr(self, derived_var)
 
     def _is_derived_variable(self, name):
         """Check that derived variable has been properly prescribed."""
-        assert (
-            getattr(DerivedVar, name, None) is not None
-        ), f"Derived variable {name} must be defined in DerivedVar class"
-        assert isinstance(
-            getattr(DerivedVar, name), property
-        ), f"Derived variable {name} must be defined as a @property in the DerivedVar class"
-        assert isinstance(
-            getattr(self, name), xr.DataArray
-        ), f"Property {name} in DerivedVar class must return a DataArray object."
+        if getattr(DerivedVar, name, None) is None:
+            raise AttributeError(f"Derived var {name} must be defined in DerivedVar")
+        if not isinstance(getattr(DerivedVar, name), property):
+            raise TypeError(f"Derived var {name} must be a property in DerivedVar")
+        if not isinstance(getattr(self, name), xr.DataArray):
+            raise TypeError(f"Property {name} in DerivedVar must return a DataArray.")
 
     def _count(self, data_var, dim="time"):
         """Returns the count array over dimension dim accounting for missing values."""
@@ -645,20 +652,20 @@ class Stats(DerivedVar):
         # Calculate dask stats
         dsout = getattr(dset, func)(dim=dim, **kwargs)
 
-        # Write attributes for quantile coordinate
-        if func == "quantile":
-            dsout["quantile"].attrs = {
-                "standard_name": "quantile",
-                "long_name": "quantile",
-                "units": "",
-            }
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
         return dsout
 
-    def apply_stat_sector(
-        self, data_vars, func, sectors={}, dim="time", suffix=None, **kwargs
+    def apply_func_sector(
+        self,
+        func,
+        data_vars,
+        dir_var,
+        nsector=4,
+        dim="time",
+        suffix=None,
+        **kwargs,
     ):
         """apply xarray function.
 
@@ -672,24 +679,38 @@ class Stats(DerivedVar):
         """
         logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
-        new_derived_vars = [v for v in data_vars if v not in self.dset.data_vars]
-        new_derived_vars.extend(list(sectors.keys()))
-        self._update_dset(list(set(new_derived_vars)))
-
-        for sector_var, sector_params in sectors.items():
-            circular = sector_params.pop("circular", False)
-            if circular:
-                start = np.deg2rad(sector_params["start"])
-                stop = np.deg2rad(360 + sector_params["stop"])
-                step = np.deg2rad(sector_params["step"])
-                import ipdb
-
-                ipdb.set_trace()
+        derived_vars = [v for v in data_vars + [dir_var] if v not in self.dset.data_vars]
+        self._update_dset(list(set(derived_vars)))
 
         if suffix is None:
             suffix = f"_{func}"
+        suffix += "_dir"
 
-        dsout = getattr(self.dset[data_vars], func)(dim=dim, **kwargs)
+        dset = self.dset[data_vars]
+        dirs = self.dset[dir_var]
+
+        ds = 360 / nsector
+        sectors = np.linspace(0, 360 - ds, nsector)
+        starts = (sectors - ds / 2) % 360
+        stops = (sectors + ds / 2) % 360
+        dsout = []
+        for start, stop in zip(starts, stops):
+            if stop > start:
+                mask = (dirs >= start) & (dirs < stop)
+            else:
+                mask = (dirs >=start) | (dirs < stop)
+            dsout.append(dset.where(mask))
+        dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
+        dsout["direction"].attrs = {
+            "standard_name": "direction",
+            "long_name": "direction sector",
+            "units": "degree",
+            "directional_variable": dir_var,
+        }
+
+        # Calculate dask stats
+        dsout = getattr(dsout, func)(dim=dim, **kwargs)
+
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
@@ -711,6 +732,7 @@ class Stats(DerivedVar):
         # Loading into memory before saving to disk. We may want to reassess this.
         self._load()
         self._sortby()
+        self._setattrs()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
 
     def to_zarr(self, outfile, _FillValue=-32767, **kwargs):
@@ -723,6 +745,7 @@ class Stats(DerivedVar):
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
         self._sortby()
+        self._setattrs()
         encoding = {}
         for data_var in self.dsout.data_vars:
             encoding.update({data_var: {"_FillValue": _FillValue}})
