@@ -9,6 +9,7 @@ import pandas as pd
 import xarray as xr
 import dask.array as da
 from fsspec import get_mapper
+from itertools import product
 
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client, progress
@@ -313,7 +314,10 @@ class Stats(DerivedVar):
 
         """
         logger.info("Open dataset")
-        if isinstance(self.dataset, str):
+        if isinstance(self.dataset, str) and self.dataset.endswith(".nc"):
+            logger.debug(f"Opening netcdf file: {self.dataset}")
+            self.dset = xr.open_dataset(self.dataset, chunks=self.chunks)
+        elif isinstance(self.dataset, str):
             try:
                 logger.debug(f"Try opening zarr store from URI: {self.dataset}")
                 self.dset = xr.open_zarr(get_mapper(self.dataset), consolidated=True)
@@ -378,6 +382,26 @@ class Stats(DerivedVar):
                 "long_name": "quantile",
                 "units": "",
             }
+
+    def _set_wave_distribution_attrs(self, dsout, hs_name, tp_name, dp_name):
+        """Define attributes for wave distribution dataset."""
+        for name in ["hs", "tp", "dp"]:
+            dsout[f"{name}_bin"].attrs["standard_name"] = self.dset[eval(f"{name}_name")].attrs.get(
+                "standard_name", name
+            ) + "_bin"
+            dsout[f"{name}_bin"].attrs["long_name"] = self.dset[eval(f"{name}_name")].attrs.get(
+                "long_name", name
+            ) + " bin"
+            dsout[f"{name}_bin"].attrs["units"] = ""
+
+        for name in [hs_name, tp_name, dp_name]:
+             dsout[name].attrs["standard_name"] = self.dset[name].attrs.get(
+                 "standard_name", name
+             ) + "_count"
+             dsout[name].attrs["long_name"] = self.dset[name].attrs.get(
+                 "long_name", name
+             ) + " count"
+             dsout[name].attrs["units"] = ""
 
     def _update_dset(self, derived_vars):
         """Append derived variables to dataset.
@@ -647,7 +671,14 @@ class Stats(DerivedVar):
         return dsout
 
     def apply_func(
-        self, func, dim="time", data_vars=[], derived_vars=[], group=None, suffix=None, **kwargs
+        self,
+        func,
+        dim="time",
+        data_vars=[],
+        derived_vars=[],
+        group=None,
+        suffix=None,
+        **kwargs,
     ):
         """apply xarray function.
 
@@ -707,7 +738,9 @@ class Stats(DerivedVar):
         """
         logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
-        derived_vars = [v for v in data_vars + [dir_var] if v not in self.dset.data_vars]
+        derived_vars = [
+            v for v in data_vars + [dir_var] if v not in self.dset.data_vars
+        ]
         self._update_dset(list(set(derived_vars)))
 
         if suffix is None:
@@ -726,7 +759,7 @@ class Stats(DerivedVar):
             if stop > start:
                 mask = (dirs >= start) & (dirs < stop)
             else:
-                mask = (dirs >=start) | (dirs < stop)
+                mask = (dirs >= start) | (dirs < stop)
             dsout.append(dset.where(mask))
         dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
         dsout["direction"].attrs = {
@@ -784,224 +817,73 @@ class Stats(DerivedVar):
         if self.updir:
             self._upload(outfile)
 
-    def time_distribution(
+    def distribution(
         self,
-        outfile,
-        hs_bins,
-        tp_bins,
-        dir_bins,
-        wsp_bins=None,
+        dim="time",
+        hs_ranges={"start": 0, "end": 11, "freq": 1},
+        tp_ranges={"start": 0, "end": 22, "freq": 2},
+        dp_ranges={"start": 0, "end": 360, "freq": 90},
         hs_name="hs",
         tp_name="tp",
-        dir_name="dp",
-        u_name=None,
-        v_name=None,
-        nlat=10,
-        memory_safe=True,
-        maskval=np.int16(0),
-        attrs={},
+        dp_name="dp",
         **kwargs,
     ):
         """Distribution statistics.
 
         Args:
             - outfile (str): name for output distribution stats file.
-            - hs_bins (dict): `start`, `stop` and `step` to define Hs bins.
-            - tp_bins (dict): `start`, `stop` and `step` to define Tp bins.
-            - dir_bins (dict): `start`, `stop` and `step` to define wave/wind
-              direction bins.
-            - wsp_bins (dict): `start`, `stop` and `step` to define wind speed
-              bins.
+            - dim (str): Dimension to calculate distribution along.
+            - hs_ranges (dict): `start`, `end` and `freq` to define Hs bins.
+            - tp_ranges (dict): `start`, `end` and `freq` to define Tp bins.
+            - dp_ranges (dict): `start`, `end` and `freq` to define direction bins.
             - hs_name (str): name of Hs variable in input datasets.
             - tp_name (str): name of Tp variable in input datasets.
-            - dir_name (str): name of Dp variable in input datasets.
-            - u_name (str): name of u-component of wind, if available.
-            - v_name (str): name of v-component of wind, if available.
-            - nlat (int): number of latitude rows to load into memory.
-            - memory_safe (bool): choose it to save each site into disk
-              and concatenate after to avoid blowing up memory (olny option
-              currently available, in-memory not yet implemented).
-            - maskval (digit): used for _FillValue.
-            - attrs (dict): used for global attributes in output file.
-
-        Note:
-            - waves and winds share the same direction bins dimension.
+            - dp_name (str): name of Dp variable in input datasets.
 
         """
-        tmpfiles = []
-        tmpdir = mkdtemp(dir=os.path.dirname(outfile))
-        self.logger.debug(f"Temporary directory for intermediate files: {tmpdir}")
 
-        # Load on memory for speed
-        with ProgressBar():
-            self.dset.load().fillna(-1e10)
-            nsites = self.dset.latitude.size * self.dset.longitude.size
+        dset = self.dset[[hs_name, tp_name, dp_name]]
 
-        # Wave coordinates and bins
-        wave_coords = {
-            "site": np.arange(nsites),
-            "month": np.arange(1, 13),
-            "hs_bins": np.arange(**hs_bins) + hs_bins["step"] / 2.0,
-            "tp_bins": np.arange(**tp_bins) + tp_bins["step"] / 2.0,
-            "dir_bins": np.arange(**dir_bins) + dir_bins["step"] / 2.0,
+        ranges = {
+            "hs_range": pd.interval_range(**hs_ranges),
+            "tp_range": pd.interval_range(**tp_ranges),
+            "dp_range": pd.interval_range(**dp_ranges),
         }
+        ranges_iterator = product(*iter(ranges.values()))
 
-        wave_bins = (
-            np.hstack((np.arange(**hs_bins), hs_bins["stop"])),
-            np.hstack((np.arange(**tp_bins), tp_bins["stop"])),
-            np.hstack((np.arange(**dir_bins), dir_bins["stop"])),
-        )
-
-        # Wind coordinates and bins
-        if u_name is not None and v_name is not None:
-            assert wsp_bins is not None, "wsp_bins must be provided."
-            is_wind = True
-            self.logger.info("Wind stats will be included")
-            wind_coords = {
-                "month",
-                np.arange(1, 13),
-                "wsp_bins",
-                np.arange(**wsp_bins) + wsp_bins["step"] / 2.0,
-                "dir_bins",
-                np.arange(**dir_bins) + dir_bins["step"] / 2.0,
+        dset_list = []
+        for hs_range, tp_range, dp_range in ranges_iterator:
+            coords = {
+                "hs_bin": [hs_range.mid],
+                "tp_bin": [tp_range.mid],
+                "dp_bin": [dp_range.mid],
             }
-
-            wind_bins = (
-                np.hstack((np.arange(**wsp_bins), wsp_bins["stop"])),
-                np.hstack((np.arange(**dir_bins), dir_bins["stop"])),
+            logger.info(f"Counting data within range: {coords}")
+            mask = (
+                (dset[hs_name] >= hs_range.left)
+                & (dset[hs_name] < hs_range.right)
+                & (dset[tp_name] >= tp_range.left)
+                & (dset[tp_name] < tp_range.right)
+                & (dset[dp_name] >= dp_range.left)
+                & (dset[dp_name] < dp_range.right)
             )
-        else:
-            is_wind = False
-            self.logger.info("Wind stats will NOT be included")
 
-        # Initialise output
-        data_shape = [c.size for c in wave_coords.values()]
-        self.dsout["wave_count"] = xr.DataArray(
-            data=np.empty(data_shape, dtype=np.int16),
-            coords=wave_coords,
-            dims=wave_coords.keys(),
-            attrs={
-                "standard_name": "sea_surface_wave_count",
-                "units": "",
-                "missing_value": maskval,
-            },
-        )
-        grid_lon, grid_lat = np.meshgrid(
-            self.dset.longitude.values, self.dset.latitude.values
-        )
-        self.dsout["lon"] = xr.DataArray(
-            grid_lon.ravel(), coords={"site": self.dsout.site}, dims=("site")
-        )
-        self.dsout["lat"] = xr.DataArray(
-            grid_lat.ravel(), coords={"site": self.dsout.site}, dims=("site")
-        )
+            dset_list.append(
+                (1 + 0 * dset.where(mask))
+                .fillna(0)
+                .sum(dim=dim)
+                .astype("int32")
+                .expand_dims(dim=coords, axis=[0, 1, 2])
+            )
 
-        isite = 0
-        with tqdm(total=nsites) as pbar:
-            # ------------------------------------
-            # Looping over latitudes and loading
-            # ------------------------------------
-            for lat in self.dset.latitude:
-                # self.logger.info('{}\nProcessing lat={}\n{}'.format(100*'=', float(lat), 100*'='))
-                dset_lon = self.dset.sel(latitude=lat, drop=True)
-                # if not (dset_lon[hs_name]>=0).any():
-                #     logger.debug(f"No valid point in lat={lat}, skipping.")
-                #     pbar.update(self.dset.latitude.size)
-                #     isite += self.dset.latitude.size
-                #     continue
+        logger.debug("Combining binned datasets")
+        dsout = xr.combine_by_coords(dset_list)
 
-                # -------------------------------------------------------
-                # Looping over longitudes and reset lon/lat coordinates
-                # -------------------------------------------------------
-                for lon in dset_lon.longitude:
-                    ds_site = dset_lon.sel(longitude=lon, drop=True).reset_coords()
-                    if not (ds_site[hs_name] >= 0).any():
-                        pbar.update(1)
-                        isite += 1
-                        continue
-                    if is_wind:
-                        ds_site["wsp"], ds_site["wdir"] = uv_to_spddir(
-                            ds_site[u_name], ds_site[v_name], coming_from=True
-                        )
+        self._set_wave_distribution_attrs(dsout, hs_name, tp_name, dp_name)
 
-                    # ---------------------
-                    # Looping over months
-                    # ---------------------
-                    monthly_wave_dict = {}
-                    monthly_wind_dict = {}
-                    for month, ds in ds_site.groupby("time.month"):
+        import ipdb; ipdb.set_trace()
 
-                        # Calculate waves distribution
-                        mask = (
-                            ds[dir_name] > dir_bins["stop"]
-                        )  # to allow directions will be bin-centred
-                        ds[dir_name][mask] = ds[dir_name][mask] - 360
-                        hdd = np.histogramdd(
-                            sample=(
-                                ds[hs_name].values,
-                                ds[tp_name].values,
-                                ds[dir_name].values,
-                            ),
-                            normed=False,
-                            bins=wave_bins,
-                        )
-                        wave_count = hdd[0].astype("int32")
-                        monthly_wave_dict.update({month: wave_count})
 
-                        # Calculate wind distribution
-                        if is_wind:
-                            mask = (
-                                ds["wsp"] > dir_bins["stop"]
-                            )  # to allow directions will be bin-centred
-                            ds["wsp"][mask] = ds["wsp"][mask] - 360
-                            hdd = np.histogramdd(
-                                sample=(ds["wsp"].values, ds["wdir"].values),
-                                normed=False,
-                                bins=wind_bins,
-                            )
-                            wind_count = hdd[0].astype("int32")
-                            monthly_wind_dict.update({month: wind_count})
-
-                    # Ensure there are arrays for every month
-                    monthly_wave_arrays = [
-                        monthly_wave_dict.get(m, 0 * wave_count) for m in range(1, 13)
-                    ]
-                    if is_wind:
-                        monthly_wind_arrays = [
-                            monthly_wind_dict.get(m, 0 * wind_count)
-                            for m in range(1, 13)
-                        ]
-
-                    # Fill in current site
-                    self.dsout["wave_count"].loc[
-                        dict(site=isite)
-                    ] += monthly_wave_arrays
-                    # # Distribution wave stats for current site
-                    # self.dsout['wave_count'] = xr.DataArray(
-                    #     data=monthly_wave_arrays,
-                    #     coords=wave_coords,
-                    #     dims=wave_coords.keys(),
-                    #     name='wave_count',
-                    #     attrs={
-                    #         'standard_name': 'sea_surface_wave_count',
-                    #         'units': '',
-                    #         'missing_value': maskval,
-                    #     },
-                    # )
-
-                    # Distribution wind stats for current site
-                    if is_wind:
-                        self.dsout["wind_count"] = xr.DataArray(
-                            data=monthly_wind_arrays,
-                            coords=wind_coords,
-                            dims=wind_coords.keys(),
-                            name="wind_count",
-                            attrs={
-                                "standard_name": "wind_count_at_10m_above_ground_level",
-                                "units": "",
-                                "missing_value": maskval,
-                            },
-                        )
 
                     # # Aditional wave stats (required by stats api)
                     # self.dsout['msum'] = (ds_site.hs>=0).groupby('time.month').sum()
@@ -1031,30 +913,30 @@ class Stats(DerivedVar):
                     #     )
                     #     tmpfiles.append(tmpfile)
 
-                    isite += 1
-                    pbar.update(1)
+                    # isite += 1
+                    # pbar.update(1)
 
-        # Set global attributes
-        self.dsout.attrs = attrs
+        # # Set global attributes
+        # self.dsout.attrs = attrs
 
-        # Saving output
-        self.encoding = {
-            v: {"zlib": True, "_FillValue": maskval, "dtype": np.int16}
-            for v in self.dsout.data_vars
-        }
-        self.to_netcdf(outfile)
+        # # Saving output
+        # self.encoding = {
+        #     v: {"zlib": True, "_FillValue": maskval, "dtype": np.int16}
+        #     for v in self.dsout.data_vars
+        # }
+        # self.to_netcdf(outfile)
 
-        # # Eliminate site from msum to support API (this makes it not valid for time-varying masks)
-        # self.logger.info(' {}'.format(outfile))
-        # dset = xr.open_dataset(outfile)
+        # # # Eliminate site from msum to support API (this makes it not valid for time-varying masks)
+        # # self.logger.info(' {}'.format(outfile))
+        # # dset = xr.open_dataset(outfile)
 
-        # # Concatenate output
-        # self.logger.info('Merging individual sites into {}'.format(outfile))
-        # tmpfile = self.nco.ncecat(
-        #     input=tmpfiles,
-        #     output=outfile,
-        #     options=['-h'],
-        #     ulm_nm='site'
-        # )
+        # # # Concatenate output
+        # # self.logger.info('Merging individual sites into {}'.format(outfile))
+        # # tmpfile = self.nco.ncecat(
+        # #     input=tmpfiles,
+        # #     output=outfile,
+        # #     options=['-h'],
+        # #     ulm_nm='site'
+        # # )
 
-        # shutil.rmtree(tmpdir)
+        # # shutil.rmtree(tmpdir)
