@@ -123,7 +123,7 @@ def distribution(
     # Summing data along dim within each bin combination
     dsout = []
     for data_ranges in ranges_iterator:
-        logger.info(f"Data Ranges: {data_ranges}")
+        logger.debug(f"Data Ranges: {data_ranges}")
         coords = {}
         mask = True
         for data_var, data_range in zip(data_vars, data_ranges):
