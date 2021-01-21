@@ -87,13 +87,7 @@ def rpv(
     return dsout.transpose("period", ...).chunk({"period": 1})
 
 
-def distribution(
-    dset,
-    ranges,
-    dim="time",
-    mask_var=None,
-    mapping={}
-):
+def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
     """Distribution statistics.
 
     Args:
@@ -147,25 +141,25 @@ def distribution(
     # Attributes
     for data_var in data_vars:
         # Data variable
-        dsout[f"{data_var}"].attrs["standard_name"] = ds[f"{data_var}"].attrs.get(
-            "standard_name", data_var
-        ) + "_count"
-        dsout[f"{data_var}"].attrs["long_name"] = ds[f"{data_var}"].attrs.get(
-            "long_name", data_var
-        ) + " count"
+        dsout[f"{data_var}"].attrs["standard_name"] = (
+            ds[f"{data_var}"].attrs.get("standard_name", data_var) + "_count"
+        )
+        dsout[f"{data_var}"].attrs["long_name"] = (
+            ds[f"{data_var}"].attrs.get("long_name", data_var) + " count"
+        )
         dsout[f"{data_var}"].attrs["units"] = ""
         dsout["data_count"].attrs = {
             "standard_name": "data_count",
             "long_name": "number of valid data points",
-            "units": ""
+            "units": "",
         }
         # Coordinate
-        dsout[f"{data_var}_bin"].attrs["standard_name"] = ds[f"{data_var}"].attrs.get(
-            "standard_name", data_var
-        ) + "_bin"
-        dsout[f"{data_var}_bin"].attrs["long_name"] = ds[f"{data_var}"].attrs.get(
-            "long_name", data_var
-        ) + " bin"
+        dsout[f"{data_var}_bin"].attrs["standard_name"] = (
+            ds[f"{data_var}"].attrs.get("standard_name", data_var) + "_bin"
+        )
+        dsout[f"{data_var}_bin"].attrs["long_name"] = (
+            ds[f"{data_var}"].attrs.get("long_name", data_var) + " bin"
+        )
         dsout[f"{data_var}_bin"].attrs["units"] = ds[f"{data_var}"].attrs.get(
             "units", data_var
         )
@@ -185,14 +179,14 @@ if __name__ == "__main__":
     ranges = {
         "hs": {"start": 0, "end": 5, "freq": 1},
         "tps": {"start": 0, "end": 20, "freq": 5},
-        "dpm": {"start": 0, "end": 360, "freq": 90}
+        "dpm": {"start": 0, "end": 360, "freq": 90},
     }
     dsout = distribution(
         dset=dset,
         ranges={
             "hs": {"start": 0, "end": 5, "freq": 1},
             "tps": {"start": 0, "end": 20, "freq": 5},
-            "dpm": {"start": 0, "end": 360, "freq": 90}
+            "dpm": {"start": 0, "end": 360, "freq": 90},
         },
         mask_var="hs",
         mapping={"tps": "tp", "dpm": "dp"},

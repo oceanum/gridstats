@@ -756,6 +756,42 @@ class Stats(DerivedVar):
         )
         return dsout
 
+    def distribution(
+        self,
+        ranges,
+        dim="time",
+        mask_var=None,
+        mapping={},
+        suffix="_dist",
+        **kwargs,
+    ):
+        """Distribution statistics.
+
+        Args:
+            ranges (dict): Bins definition, keys are the variable names, values
+                are the kwargs for pandas.interval_range function to define bins, e.g.
+                ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
+            dim (str): Dimension to calculate distribution along.
+            mask_var (str): Name of variable to use for masking land.
+            mapping (dict): Mapping to rename distribution variables.
+            suffix (str): String to append to each variable name in output dataset.
+
+        """
+
+        data_vars = list(ranges.keys())
+        self._update_dset(data_vars)
+
+        dsout = distribution(
+            dset=self.dset, ranges=ranges, dim=dim, mask_var=mask_var, mapping=mapping
+        )
+
+        self.dsout = self.dsout.merge(
+            dsout.rename(
+                {v: f"{v}{suffix}" for v in dsout.data_vars if v != "data_count"}
+            )
+        )
+        dsout
+
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
         """Save output dataset as netcdf.
 
@@ -795,43 +831,3 @@ class Stats(DerivedVar):
         self.dsout.to_zarr(fsmap, consolidated=True, encoding=encoding, mode="w")
         if self.updir:
             self._upload(outfile)
-
-    def distribution(
-        self,
-        ranges,
-        dim="time",
-        mask_var=None,
-        mapping={},
-        suffix="_dist",
-        **kwargs,
-    ):
-        """Distribution statistics.
-
-        Args:
-            ranges (dict): Bins definition, keys are the variable names, values
-                are the kwargs for pandas.interval_range function to define bins, e.g.
-                ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
-            dim (str): Dimension to calculate distribution along.
-            mask_var (str): Name of variable to use for masking land.
-            mapping (dict): Mapping to rename distribution variables.
-            suffix (str): String to append to each variable name in output dataset.
-
-        """
-
-        data_vars = list(ranges.keys())
-        self._update_dset(data_vars)
-
-        dsout = distribution(
-            dset=self.dset,
-            ranges=ranges,
-            dim=dim,
-            mask_var=mask_var,
-            mapping=mapping
-        )
-
-        self.dsout = self.dsout.merge(
-            dsout.rename(
-                {v: f"{v}{suffix}" for v in dsout.data_vars if v != "data_count"}
-            )
-        )
-        dsout
