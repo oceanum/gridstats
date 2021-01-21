@@ -19,6 +19,15 @@ init:
   var_vwnd: v10
   var_uwnd150: u10
   var_vwnd150: v10
+  # Attributes
+  attrs:
+    title: test stats
+    history: ""
+    institution: Oceanum
+    source: ECMWF ERA5
+    comment: Some stats
+    references: A reference
+
 
 calls:
   - method: apply_func_sector

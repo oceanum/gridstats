@@ -499,7 +499,7 @@ class Stats(DerivedVar):
         self._update_dset(derived_vars)
         logger.debug(f"Calculating count percentage for vars: {data_vars}")
 
-        dsout = 100 * self._count(self.dset[data_vars], dim) / self.dset[dim].size
+        dsout = 100 * self.dset[data_vars].count(dim) / self.dset[dim].size
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
@@ -678,7 +678,7 @@ class Stats(DerivedVar):
         if data_vars == "all":
             data_vars = self.data_vars
         data_vars += derived_vars
-        logger.debug(f"Calculating time-{func} for vars: {data_vars}")
+        logger.debug(f"Calculating {dim}-{func} for vars: {data_vars}")
 
         dset = self.dset[data_vars]
 
