@@ -4,6 +4,7 @@ import numpy as np
 import dask.array as da
 import pandas as pd
 import xarray as xr
+from itertools import product
 
 from onstats.numpy_stats import np_rpv
 
@@ -86,6 +87,92 @@ def rpv(
     return dsout.transpose("period", ...).chunk({"period": 1})
 
 
+def distribution(
+    dset,
+    ranges,
+    dim="time",
+    mask_var=None,
+    mapping={}
+):
+    """Distribution statistics.
+
+    Args:
+        dset (xr.Dataset): Dataset to calculate distribution from.
+        ranges (dict): Bins definition, keys are the variable names, values
+            are the kwargs for pandas.interval_range function to define bins,
+            e.g. ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
+        dim (str): Dimension to calculate distribution along.
+        mask_var (str): Name of variable to use for masking land.
+        mapping (dict): Mapping to rename distribution variables.
+
+    """
+    data_vars = list(ranges.keys())
+    missing_vars = list(set(data_vars) - set(dset.data_vars))
+    if missing_vars:
+        raise KeyError(f"Vars {missing_vars} defined in ranges not in dset {dset}")
+
+    ds = dset[data_vars].rename(mapping)
+    data_vars = list(ds.data_vars)
+    nvar = len(data_vars)
+    ax = [i - nvar for i in range(nvar)]
+
+    # Combinations of bins to loop over
+    interval_ranges = [pd.interval_range(**kwargs) for kwargs in ranges.values()]
+    ranges_iterator = product(*iter(interval_ranges))
+
+    # Summing data along dim within each bin combination
+    dsout = []
+    for data_ranges in ranges_iterator:
+        logger.info(f"Data Ranges: {data_ranges}")
+        coords = {}
+        mask = True
+        for data_var, data_range in zip(data_vars, data_ranges):
+            coords.update({f"{data_var}_bin": [data_range.mid]})
+            mask *= (ds[data_var] >= data_range.left) & (ds[data_var] < data_range.right)
+        dsout.append(ds.where(mask).count(dim).expand_dims(dim=coords, axis=ax))
+    dsout = xr.combine_by_coords(dsout)
+
+    # Total count based on first variable in ranges dict
+    dsout["data_count"] = ds[data_vars[0]].count(dim)
+
+    # Masking
+    if mask_var is not None:
+        mask = dset[mask_var]
+        if dim in mask.dims:
+            mask = mask.isel(**{dim: 0})
+        mask = mask.notnull()
+        logger.debug(f"Masking output from {mask}")
+        dsout = dsout.where(mask)
+
+    # Attributes
+    for data_var in data_vars:
+        # Data variable
+        dsout[f"{data_var}"].attrs["standard_name"] = ds[f"{data_var}"].attrs.get(
+            "standard_name", data_var
+        ) + "_count"
+        dsout[f"{data_var}"].attrs["long_name"] = ds[f"{data_var}"].attrs.get(
+            "long_name", data_var
+        ) + " count"
+        dsout[f"{data_var}"].attrs["units"] = ""
+        dsout["data_count"].attrs = {
+            "standard_name": "data_count",
+            "long_name": "number of valid data points",
+            "units": ""
+        }
+        # Coordinate
+        dsout[f"{data_var}_bin"].attrs["standard_name"] = ds[f"{data_var}"].attrs.get(
+            "standard_name", data_var
+        ) + "_bin"
+        dsout[f"{data_var}_bin"].attrs["long_name"] = ds[f"{data_var}"].attrs.get(
+            "long_name", data_var
+        ) + " bin"
+        dsout[f"{data_var}_bin"].attrs["units"] = ds[f"{data_var}"].attrs.get(
+            "units", data_var
+        )
+
+    return dsout
+
+
 if __name__ == "__main__":
 
     import datetime
@@ -93,16 +180,33 @@ if __name__ == "__main__":
 
     dset = xr.open_dataset(
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
-    )
-    darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
-    darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
-    then = datetime.datetime.now()
-    ret = rpv(darr)
-    with ProgressBar():
-        elapsed = datetime.datetime.now() - then
-        ret = ret.load()
-    print(f"Elapsed time: {round(elapsed.total_seconds())} sec")
-    ret.to_netcdf("/home/rguedes/tmp/rpv.nc")
+    ).chunk()
 
-    ds = dset[["hs"]].chunk({})
-    ret = rpv(ds.groupby("time.month"))
+    ranges = {
+        "hs": {"start": 0, "end": 5, "freq": 1},
+        "tps": {"start": 0, "end": 20, "freq": 5},
+        "dpm": {"start": 0, "end": 360, "freq": 90}
+    }
+    dsout = distribution(
+        dset=dset,
+        ranges={
+            "hs": {"start": 0, "end": 5, "freq": 1},
+            "tps": {"start": 0, "end": 20, "freq": 5},
+            "dpm": {"start": 0, "end": 360, "freq": 90}
+        },
+        mask_var="hs",
+        mapping={"tps": "tp", "dpm": "dp"},
+    )
+
+    # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
+    # darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
+    # then = datetime.datetime.now()
+    # ret = rpv(darr)
+    # with ProgressBar():
+    #     elapsed = datetime.datetime.now() - then
+    #     ret = ret.load()
+    # print(f"Elapsed time: {round(elapsed.total_seconds())} sec")
+    # ret.to_netcdf("/home/rguedes/tmp/rpv.nc")
+
+    # ds = dset[["hs"]].chunk({})
+    # ret = rpv(ds.groupby("time.month"))
