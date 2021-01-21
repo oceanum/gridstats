@@ -9,7 +9,6 @@ import pandas as pd
 import xarray as xr
 import dask.array as da
 from fsspec import get_mapper
-from itertools import product
 
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client, progress
@@ -20,7 +19,7 @@ from oncore.dataio import put, isdir, exists, rm
 
 from onstats.utils import uv_to_spddir
 import onstats.derived_variable as dv
-from onstats.xarray_stats import rpv
+from onstats.xarray_stats import rpv, distribution
 
 
 logging.basicConfig(
@@ -382,26 +381,6 @@ class Stats(DerivedVar):
                 "long_name": "quantile",
                 "units": "",
             }
-
-    def _set_wave_distribution_attrs(self, dsout, hs_name, tp_name, dp_name):
-        """Define attributes for wave distribution dataset."""
-        for name in ["hs", "tp", "dp"]:
-            dsout[f"{name}_bin"].attrs["standard_name"] = self.dset[eval(f"{name}_name")].attrs.get(
-                "standard_name", name
-            ) + "_bin"
-            dsout[f"{name}_bin"].attrs["long_name"] = self.dset[eval(f"{name}_name")].attrs.get(
-                "long_name", name
-            ) + " bin"
-            dsout[f"{name}_bin"].attrs["units"] = ""
-
-        for name in [hs_name, tp_name, dp_name]:
-             dsout[name].attrs["standard_name"] = self.dset[name].attrs.get(
-                 "standard_name", name
-             ) + "_count"
-             dsout[name].attrs["long_name"] = self.dset[name].attrs.get(
-                 "long_name", name
-             ) + " count"
-             dsout[name].attrs["units"] = ""
 
     def _update_dset(self, derived_vars):
         """Append derived variables to dataset.
@@ -773,7 +752,7 @@ class Stats(DerivedVar):
         dsout = getattr(dsout, func)(dim=dim, **kwargs)
 
         self.dsout = self.dsout.merge(
-            dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
+            dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars})
         )
         return dsout
 
@@ -819,124 +798,40 @@ class Stats(DerivedVar):
 
     def distribution(
         self,
+        ranges,
         dim="time",
-        hs_ranges={"start": 0, "end": 11, "freq": 1},
-        tp_ranges={"start": 0, "end": 22, "freq": 2},
-        dp_ranges={"start": 0, "end": 360, "freq": 90},
-        hs_name="hs",
-        tp_name="tp",
-        dp_name="dp",
+        mask_var=None,
+        mapping={},
+        suffix="_dist",
         **kwargs,
     ):
         """Distribution statistics.
 
         Args:
-            - outfile (str): name for output distribution stats file.
-            - dim (str): Dimension to calculate distribution along.
-            - hs_ranges (dict): `start`, `end` and `freq` to define Hs bins.
-            - tp_ranges (dict): `start`, `end` and `freq` to define Tp bins.
-            - dp_ranges (dict): `start`, `end` and `freq` to define direction bins.
-            - hs_name (str): name of Hs variable in input datasets.
-            - tp_name (str): name of Tp variable in input datasets.
-            - dp_name (str): name of Dp variable in input datasets.
+            ranges (dict): Bins definition, keys are the variable names, values
+                are the kwargs for pandas.interval_range function to define bins, e.g.
+                ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
+            dim (str): Dimension to calculate distribution along.
+            mask_var (str): Name of variable to use for masking land.
+            mapping (dict): Mapping to rename distribution variables.
+            suffix (str): String to append to each variable name in output dataset.
 
         """
 
-        dset = self.dset[[hs_name, tp_name, dp_name]]
+        data_vars = list(ranges.keys())
+        self._update_dset(data_vars)
 
-        ranges = {
-            "hs_range": pd.interval_range(**hs_ranges),
-            "tp_range": pd.interval_range(**tp_ranges),
-            "dp_range": pd.interval_range(**dp_ranges),
-        }
-        ranges_iterator = product(*iter(ranges.values()))
+        dsout = distribution(
+            dset=self.dset,
+            ranges=ranges,
+            dim=dim,
+            mask_var=mask_var,
+            mapping=mapping
+        )
 
-        dset_list = []
-        for hs_range, tp_range, dp_range in ranges_iterator:
-            coords = {
-                "hs_bin": [hs_range.mid],
-                "tp_bin": [tp_range.mid],
-                "dp_bin": [dp_range.mid],
-            }
-            logger.info(f"Counting data within range: {coords}")
-            mask = (
-                (dset[hs_name] >= hs_range.left)
-                & (dset[hs_name] < hs_range.right)
-                & (dset[tp_name] >= tp_range.left)
-                & (dset[tp_name] < tp_range.right)
-                & (dset[dp_name] >= dp_range.left)
-                & (dset[dp_name] < dp_range.right)
+        self.dsout = self.dsout.merge(
+            dsout.rename(
+                {v: f"{v}{suffix}" for v in dsout.data_vars if v != "data_count"}
             )
-
-            dset_list.append(
-                (1 + 0 * dset.where(mask))
-                .fillna(0)
-                .sum(dim=dim)
-                .astype("int32")
-                .expand_dims(dim=coords, axis=[0, 1, 2])
-            )
-
-        logger.debug("Combining binned datasets")
-        dsout = xr.combine_by_coords(dset_list)
-
-        self._set_wave_distribution_attrs(dsout, hs_name, tp_name, dp_name)
-
-        import ipdb; ipdb.set_trace()
-
-
-
-                    # # Aditional wave stats (required by stats api)
-                    # self.dsout['msum'] = (ds_site.hs>=0).groupby('time.month').sum()
-                    # self.dsout['msum'] = self.dsout['msum'].fillna(0).astype('int32')
-                    # ds_site['eflx'] = 0.42 * ds_site[hs_name] * ds_site[tp_name]
-                    # stats = [hs_name, tp_name, dir_name, 'eflx']
-                    # if is_wind:
-                    #     stats += ['wsp']
-                    # ds_monthly = ds_site[stats].groupby('time.month')
-                    # self.dsout = xr.merge((
-                    #     self.dsout,
-                    #     ds_monthly.mean().rename({s: s+'-mean' for s in stats}),
-                    #     ds_monthly.max().rename({s: s+'-max' for s in stats}),
-                    #     ds_monthly.min().rename({s: s+'-min' for s in stats}),
-                    # ))
-
-                    # self.dsout.attrs.update({'totsum': np.int32(self.dsout.msum.sum())})
-
-                    # # Save to disk if memory_safe (only option available atm)
-                    # if memory_safe:
-                    #     site_string = str(isite).zfill(len(str(nsites)))
-                    #     tmpfile = os.path.join(tmpdir, 'diststats_s{}.nc'.format(site_string))
-                    #     self.logger.debug('Saving temporary distribution: {}'.format(site_string))
-                    #     self.dsout.to_netcdf(
-                    #         path=tmpfile,
-                    #         encoding={v: {'zlib': True, '_FillValue': maskval} for v in self.dsout.data_vars},
-                    #     )
-                    #     tmpfiles.append(tmpfile)
-
-                    # isite += 1
-                    # pbar.update(1)
-
-        # # Set global attributes
-        # self.dsout.attrs = attrs
-
-        # # Saving output
-        # self.encoding = {
-        #     v: {"zlib": True, "_FillValue": maskval, "dtype": np.int16}
-        #     for v in self.dsout.data_vars
-        # }
-        # self.to_netcdf(outfile)
-
-        # # # Eliminate site from msum to support API (this makes it not valid for time-varying masks)
-        # # self.logger.info(' {}'.format(outfile))
-        # # dset = xr.open_dataset(outfile)
-
-        # # # Concatenate output
-        # # self.logger.info('Merging individual sites into {}'.format(outfile))
-        # # tmpfile = self.nco.ncecat(
-        # #     input=tmpfiles,
-        # #     output=outfile,
-        # #     options=['-h'],
-        # #     ulm_nm='site'
-        # # )
-
-        # # shutil.rmtree(tmpdir)
+        )
+        dsout
