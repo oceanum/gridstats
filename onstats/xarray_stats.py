@@ -110,6 +110,9 @@ def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
     nvar = len(data_vars)
     ax = [i - nvar for i in range(nvar)]
 
+    label = "_".join(data_vars) + "_dist"
+    ds0 = ds[[data_vars[0]]].rename({data_vars[0]: label})
+
     # Combinations of bins to loop over
     interval_ranges = [pd.interval_range(**kwargs) for kwargs in ranges.values()]
     ranges_iterator = product(*iter(interval_ranges))
@@ -120,10 +123,10 @@ def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
         logger.debug(f"Data Ranges: {data_ranges}")
         coords = {}
         mask = True
-        for data_var, data_range in zip(data_vars, data_ranges):
-            coords.update({f"{data_var}_bin": [data_range.mid]})
-            mask *= (ds[data_var] >= data_range.left) & (ds[data_var] < data_range.right)
-        dsout.append(ds.where(mask).count(dim).expand_dims(dim=coords, axis=ax))
+        for datavar, datarange in zip(data_vars, data_ranges):
+            coords.update({f"{datavar}_bin": [datarange.mid]})
+            mask *= (ds[datavar] >= datarange.left) & (ds[datavar] < datarange.right)
+        dsout.append(ds0.where(mask).count(dim).expand_dims(dim=coords, axis=ax))
     dsout = xr.combine_by_coords(dsout)
 
     # Total count based on first variable in ranges dict
@@ -133,27 +136,23 @@ def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
     if mask_var is not None:
         mask = dset[mask_var]
         if dim in mask.dims:
-            mask = mask.isel(**{dim: 0})
+            mask = mask.isel(**{dim: 0}, drop=True)
         mask = mask.notnull()
         logger.debug(f"Masking output from {mask}")
         dsout = dsout.where(mask)
 
     # Attributes
+    dsout[label].attrs = {
+        "standard_name": "data_count",
+        "long_name": "number of valid data points",
+        "units": "",
+    }
+    dsout["data_count"].attrs = {
+        "standard_name": "data_count",
+        "long_name": "number of valid data points",
+        "units": "",
+    }
     for data_var in data_vars:
-        # Data variable
-        dsout[f"{data_var}"].attrs["standard_name"] = (
-            ds[f"{data_var}"].attrs.get("standard_name", data_var) + "_count"
-        )
-        dsout[f"{data_var}"].attrs["long_name"] = (
-            ds[f"{data_var}"].attrs.get("long_name", data_var) + " count"
-        )
-        dsout[f"{data_var}"].attrs["units"] = ""
-        dsout["data_count"].attrs = {
-            "standard_name": "data_count",
-            "long_name": "number of valid data points",
-            "units": "",
-        }
-        # Coordinate
         dsout[f"{data_var}_bin"].attrs["standard_name"] = (
             ds[f"{data_var}"].attrs.get("standard_name", data_var) + "_bin"
         )
