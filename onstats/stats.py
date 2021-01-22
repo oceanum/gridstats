@@ -176,6 +176,7 @@ class Stats(DerivedVar):
         namespace="hindcast",
         chunk=None,
         mask=None,
+        mapping={},
         slice_dict={},
         chunks=None,
         persist=False,
@@ -194,6 +195,7 @@ class Stats(DerivedVar):
             mask (str): either a variable name or an expression to evaluate on one or
                 more variables to define a mask array for masking output dataset. e.g.,
                 `self.dset.hs==0`.
+            mapping (dict): Dictionary for renaming dataset variables.
             slice_dict (dict): Dictionary specifying slicing arg.
             chunks (dict): Chunking dict to rechunk dataset after opening.
             persist (bool): If True, persist output dataset before saving as netcdf.
@@ -214,6 +216,7 @@ class Stats(DerivedVar):
         self.namespace = namespace
         self.chunk = chunk
         self.mask = mask
+        self.mapping = mapping
         self.slice_dict = slice_dict
         self.chunks = chunks
         self.persist = persist
@@ -337,6 +340,8 @@ class Stats(DerivedVar):
                 "dataset must be either a string specifying an ontake "
                 "dataset id or bucket URI, or an xarray dataset."
             )
+        # Renaming
+        self.dset = self.dset.rename(self.mapping)
         # Slicing
         self._slice_dset()
         # Rechunking
@@ -402,7 +407,7 @@ class Stats(DerivedVar):
     def _is_derived_variable(self, name):
         """Check that derived variable has been properly prescribed."""
         if getattr(DerivedVar, name, None) is None:
-            raise AttributeError(f"Derived var {name} must be defined in DerivedVar")
+            raise AttributeError(f"Variable {name} not in dataset nor in DerivedVar")
         if not isinstance(getattr(DerivedVar, name), property):
             raise TypeError(f"Derived var {name} must be a property in DerivedVar")
         if not isinstance(getattr(self, name), xr.DataArray):
@@ -761,7 +766,6 @@ class Stats(DerivedVar):
         ranges,
         dim="time",
         mask_var=None,
-        mapping={},
         group="month",
         **kwargs,
     ):
@@ -773,7 +777,6 @@ class Stats(DerivedVar):
                 ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
             dim (str): Dimension to calculate distribution along.
             mask_var (str): Name of variable to use for masking land.
-            mapping (dict): Mapping to rename distribution variables.
             group (str): Time grouping type, any valid time_{group} such month, season.
 
         """
@@ -785,11 +788,11 @@ class Stats(DerivedVar):
             logger.info(f"Grouping by {group}")
             groups = dset.groupby(f"time.{group}")
             self.dsout = groups.map(
-                distribution, ranges=ranges, dim=dim, mask_var=mask_var, mapping=mapping
+                distribution, ranges=ranges, dim=dim, mask_var=mask_var
             )
         else:
             self.dsout = distribution(
-                dset=dset, ranges=ranges, dim=dim, mask_var=mask_var, mapping=mapping
+                dset=dset, ranges=ranges, dim=dim, mask_var=mask_var
             )
 
         return self.dsout
