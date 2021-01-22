@@ -682,7 +682,7 @@ class Stats(DerivedVar):
 
         dset = self.dset[data_vars]
 
-        if group is not None:
+        if group:
             logger.info(f"Grouping by {group}")
             suffix += f"_{group}"
             dset = dset.groupby(f"time.{group}")
@@ -762,7 +762,7 @@ class Stats(DerivedVar):
         dim="time",
         mask_var=None,
         mapping={},
-        suffix="_dist",
+        group="month",
         **kwargs,
     ):
         """Distribution statistics.
@@ -774,23 +774,25 @@ class Stats(DerivedVar):
             dim (str): Dimension to calculate distribution along.
             mask_var (str): Name of variable to use for masking land.
             mapping (dict): Mapping to rename distribution variables.
-            suffix (str): String to append to each variable name in output dataset.
+            group (str): Time grouping type, any valid time_{group} such month, season.
 
         """
-
         data_vars = list(ranges.keys())
         self._update_dset(data_vars)
 
-        dsout = distribution(
-            dset=self.dset, ranges=ranges, dim=dim, mask_var=mask_var, mapping=mapping
-        )
-
-        self.dsout = self.dsout.merge(
-            dsout.rename(
-                {v: f"{v}{suffix}" for v in dsout.data_vars if v != "data_count"}
+        dset = self.dset[data_vars]
+        if group:
+            logger.info(f"Grouping by {group}")
+            groups = dset.groupby(f"time.{group}")
+            self.dsout = groups.map(
+                distribution, ranges=ranges, dim=dim, mask_var=mask_var, mapping=mapping
             )
-        )
-        dsout
+        else:
+            self.dsout = distribution(
+                dset=dset, ranges=ranges, dim=dim, mask_var=mask_var, mapping=mapping
+            )
+
+        return self.dsout
 
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
         """Save output dataset as netcdf.
