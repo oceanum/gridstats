@@ -33,6 +33,22 @@ DOUGLAS_SWELL_INTERVALS = {
 }
 
 
+def tp(fp):
+    """Peak wave period from the peak wave frequency.
+
+    Args:
+        fp (xr.DataArray): Total peak wave frequency.
+
+    """
+    dsout = 1 / fp
+    dsout.attrs = {
+        "long_name": "peak wave period of sea and swell waves",
+        "standard_name": "sea_surface_wave_period_at_variance_spectral_density_maximum",
+        "units": "s",
+    }
+    return dsout
+
+
 def douglas_sea(hs_sea, **kwargs):
     """Douglas sea scale.
 

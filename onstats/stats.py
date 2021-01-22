@@ -49,6 +49,7 @@ class DerivedVar:
         var_vwnd="vwnd",
         var_ucur="ucur",
         var_vcur="vcur",
+        var_fp="fp",
         var_fp_sw1="pfp1",
         var_tp_sw1="ptp1",
         var_cloud_cover="tcc",
@@ -81,11 +82,17 @@ class DerivedVar:
         self.var_vwnd = var_vwnd
         self.var_ucur = var_ucur
         self.var_vcur = var_vcur
+        self.var_fp = var_fp
         self.var_fp_sw1 = var_fp_sw1
         self.var_tp_sw1 = var_tp_sw1
         self.var_cloud_cover = var_cloud_cover
         self.var_uwnd150 = var_uwnd150
         self.var_vwnd150 = var_vwnd150
+
+    @property
+    def tp(self):
+        """Peak wave period data_var."""
+        return dv.tp(fp=self.dset[self.var_fp])
 
     @property
     def winpow(self):
@@ -407,11 +414,11 @@ class Stats(DerivedVar):
     def _is_derived_variable(self, name):
         """Check that derived variable has been properly prescribed."""
         if getattr(DerivedVar, name, None) is None:
-            raise AttributeError(f"Variable {name} not in dataset nor in DerivedVar")
+            raise AttributeError(f"Variable '{name}' not in dataset nor in DerivedVar")
         if not isinstance(getattr(DerivedVar, name), property):
-            raise TypeError(f"Derived var {name} must be a property in DerivedVar")
+            raise TypeError(f"Derived var '{name}' must be a property in DerivedVar")
         if not isinstance(getattr(self, name), xr.DataArray):
-            raise TypeError(f"Property {name} in DerivedVar must return a DataArray.")
+            raise TypeError(f"Property '{name}' in DerivedVar must return DataArray.")
 
     def range_probability(self, data_ranges, dim="time", **kwargs):
         """Calculate probability of specific ranges.
@@ -780,20 +787,19 @@ class Stats(DerivedVar):
         """
         data_vars = list(ranges.keys())
         self._update_dset(data_vars)
-
         dset = self.dset[data_vars]
         if group:
             logger.info(f"Grouping by {group}")
             groups = dset.groupby(f"time.{group}")
-            self.dsout = groups.map(
+            dsout = groups.map(
                 distribution, ranges=ranges, dim=dim, mask_var=mask_var
             )
         else:
-            self.dsout = distribution(
+            dsout = distribution(
                 dset=dset, ranges=ranges, dim=dim, mask_var=mask_var
             )
-
-        return self.dsout
+        self.dsout = self.dsout.merge(dsout)
+        return dsout
 
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
         """Save output dataset as netcdf.
