@@ -99,6 +99,9 @@ def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
         mask_var (str): Name of variable to use for masking land.
         mapping (dict): Mapping to rename distribution variables.
 
+    Note: groupby dimensions can be included by calling groupby.map, e.g.
+        dset.groupby("time.month").map(distribution, **distribution_kwargs).
+
     """
     data_vars = list(ranges.keys())
     missing_vars = list(set(data_vars) - set(dset.data_vars))
@@ -180,17 +183,15 @@ if __name__ == "__main__":
         "tps": {"start": 0, "end": 20, "freq": 5},
         "dpm": {"start": 0, "end": 360, "freq": 90},
     }
+    mapping = {"tps": "tp", "dpm": "dp"}
     dsout = distribution(
         dset=dset,
-        ranges={
-            "hs": {"start": 0, "end": 5, "freq": 1},
-            "tps": {"start": 0, "end": 20, "freq": 5},
-            "dpm": {"start": 0, "end": 360, "freq": 90},
-        },
+        ranges=ranges,
         mask_var="hs",
-        mapping={"tps": "tp", "dpm": "dp"},
+        mapping=mapping,
     )
 
+    dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
     # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
     # darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
     # then = datetime.datetime.now()
