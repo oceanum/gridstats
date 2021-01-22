@@ -29,6 +29,8 @@ def _timestep(df, dim="time"):
         tdiff = np.diff(df.index)
     elif isinstance(df, xr.core.groupby.DatasetGroupBy):
         tdiff = np.diff(list(df)[0][1][dim])
+        # Ignore extra times in grouped for now because they jump from year to year
+        tdiff = tdiff[[0]]
     if tdiff.min() != tdiff.max():
         raise ValueError("Times are not regularly-spaced in time")
     return pd.to_timedelta(tdiff[0])
