@@ -13,7 +13,7 @@ init:
     latitude: 50
     longitude: 50
   persist: False
-  updir: gs://oceanum-tmp/test-stats
+  # updir: gs://oceanum-tmp/test-stats
   # From DerivedVar
   var_uwnd: u10
   var_vwnd: v10
@@ -126,9 +126,9 @@ calls:
 
   - method: to_netcdf
     kwargs:
-      outfile: /source/onstats/tests/gridstat.nc
+      outfile: /source/onstats/tests/gridstat1.nc
       format: NETCDF4
 
-  - method: to_zarr
-    kwargs:
-      outfile: /source/onstats/tests/gridstat.zarr
+  # - method: to_zarr
+  #   kwargs:
+  #     outfile: /source/onstats/tests/gridstat.zarr

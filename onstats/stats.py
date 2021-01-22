@@ -413,16 +413,6 @@ class Stats(DerivedVar):
         if not isinstance(getattr(self, name), xr.DataArray):
             raise TypeError(f"Property {name} in DerivedVar must return a DataArray.")
 
-    def _count(self, data_var, dim="time"):
-        """Returns the count array over dimension dim accounting for missing values."""
-        logger.debug(f"Calculating {data_var} count over {dim}")
-        if isinstance(data_var, str):
-            dvar = self.dset[data_var]
-        else:
-            dvar = data_var
-        count = (0 * dvar + 1).sum(dim=dim, skipna=True)
-        return count.where(count > 0)
-
     def range_probability(self, data_ranges, dim="time", **kwargs):
         """Calculate probability of specific ranges.
 
@@ -434,7 +424,7 @@ class Stats(DerivedVar):
                 - stop (float); Maximum value for interval.
                 - left (closed | open): Define if minimum value should be included.
                 - right (closed | open): Define if maximum value should be included.
-            dim (str): Dimension name to calculate probabilities over.
+            dim (str): Dimension name to calculate probabilities along.
             kwargs: Not used here, ignored.
 
         """
@@ -444,13 +434,15 @@ class Stats(DerivedVar):
 
         logger.debug(f"Calculating time-probability for vars: {data_vars}")
 
+        dset = self.dset[data_vars]
+        counts = dset.count(dim)
+
         # Probability for each range
-        counts = {}
         for data_range in data_ranges:
 
             # Data variable to compute
             dvar = data_range["var"]
-            darray = self.dset[dvar]
+            darray = dset[dvar]
 
             # Data range values
             start = data_range["start"] if data_range["start"] is not None else -np.inf
@@ -473,15 +465,12 @@ class Stats(DerivedVar):
             rlabel = f"{stop:g}" if data_range["stop"] is not None else "max"
             varname = data_range.get("label", f"{dvar}_p_{llabel}-{rlabel}")
 
-            # Count array
-            if dvar not in counts:
-                counts[dvar] = self._count(data_var=dvar, dim=dim)
-
             # Probability
             in_range = lfunc(darray, start) & rfunc(darray, stop)
             self.dsout[varname] = in_range.sum(dim=dim) / counts[dvar]
 
-        self.dset = self.dset.where(self.dset.mask)
+        # self.dsout = self.dsout.where(self.dset.mask)
+        return self.dsout
 
     def data_count(
         self, dim="time", data_vars=[], derived_vars=[], suffix="_pcount", **kwargs
@@ -525,6 +514,7 @@ class Stats(DerivedVar):
         This function is useful for integer-type data, use range_probability for float.
 
         Args:
+            dim (str): Dimension name to calculate probabilities along.
             data_vars (list): Data vars to apply stats over.
             derived_vars (list): Derived_vars to calculate before applying stats.
             bins (list): List of values for binning the data to calculate probability.
@@ -545,12 +535,15 @@ class Stats(DerivedVar):
         bins = list(bins)
         self._update_dset(derived_vars)
         data_vars = list(data_vars) + list(derived_vars)
-        logger.debug(f"Calculating time-probability for vars: {data_vars}")
+        logger.debug(f"Calculating {dim}-probability for vars: {data_vars}")
+
+        dset = self.dset[data_vars]
+        counts = dset.count(dim)
 
         # Probability for each variable
         for data_var in data_vars:
-            dvar = self.dset[data_var]
-            count = self._count(data_var=data_var, dim=dim)
+            dvar = dset[data_var]
+            count = counts[data_var]
             darrays = []
             for bin_value in bins:
                 in_bin = dvar == bin_value
@@ -564,6 +557,7 @@ class Stats(DerivedVar):
                 )
         if len(bins) > 1:
             self.dsout[bin_name] = bins
+        return self.dsout
 
     def time_probability_hour_of_day(
         self, derived_var, bin_value, suffix="_hprob", **kwargs
@@ -583,6 +577,9 @@ class Stats(DerivedVar):
         data_var = derived_var
         logger.debug(f"Calculating hourly time-probability for var: {data_var}")
 
+        dset = self.dset[data_vars]
+        counts = dset.count("time")
+
         darrays = []
         hours = range(24)
         for hour in hours:
@@ -591,7 +588,7 @@ class Stats(DerivedVar):
 
             # Probability for each variable
             dvar = dset_hour[data_var]
-            count = self._count(data_var=dvar, dim="time")
+            count = counts[data_var]
             in_bin = dvar == bin_value
             # Persist it here because code is blowing memory up.
             prob = in_bin.sum(dim="time") / count
@@ -599,6 +596,7 @@ class Stats(DerivedVar):
 
         self.dsout[f"{data_var}{suffix}"] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
+        return self.dsout
 
     def rpv(
         self,
