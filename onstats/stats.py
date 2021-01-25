@@ -10,6 +10,7 @@ import xarray as xr
 import dask.array as da
 from fsspec import get_mapper
 
+import dask
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client, progress
 from distributed.diagnostics.progressbar import get_scheduler
@@ -26,6 +27,8 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+dask.config.set({"array.slicing.split_large_chunks": False})
 
 
 class DerivedVar:
