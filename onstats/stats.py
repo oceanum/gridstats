@@ -17,7 +17,7 @@ from distributed.diagnostics.progressbar import get_scheduler
 from ontake.ontake import Ontake
 from oncore.dataio import put, isdir, exists, rm
 
-from onstats.utils import uv_to_spddir
+from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
 from onstats.xarray_stats import rpv, distribution
 
@@ -768,36 +768,49 @@ class Stats(DerivedVar):
 
     def distribution(
         self,
-        ranges,
+        hs_range,
+        tp_range,
+        dp_range,
         dim="time",
-        mask_var=None,
         group="month",
+        hs_name="hs",
+        tp_name="tp",
+        dp_name="dp",
+        label="hs_tp_dp_dist",
         **kwargs,
     ):
         """Distribution statistics.
 
         Args:
-            ranges (dict): Bins definition, keys are the variable names, values
-                are the kwargs for pandas.interval_range function to define bins, e.g.
-                ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
+            hs_range (dict): Numpy arange kwargs defining Hs bins.
+            tp_range (dict): Numpy arange kwargs defining Tp bins.
+            dp_range (dict): Numpy arange kwargs defining Dp bins.
             dim (str): Dimension to calculate distribution along.
-            mask_var (str): Name of variable to use for masking land.
             group (str): Time grouping type, any valid time_{group} such month, season.
+            hs_name (str): Name for Hs variable to use in dataset.
+            tp_name (str): Name for Tp variable to use in dataset.
+            dp_name (str): Name for Dp variable to use in dataset.
+            label (str): Name for joint distribution variable.
 
         """
-        data_vars = list(ranges.keys())
+        data_vars = [hs_name, tp_name, dp_name]
         self._update_dset(data_vars)
         dset = self.dset[data_vars]
         if group:
             logger.info(f"Grouping by {group}")
-            groups = dset.groupby(f"time.{group}")
-            dsout = groups.map(
-                distribution, ranges=ranges, dim=dim, mask_var=mask_var
-            )
-        else:
-            dsout = distribution(
-                dset=dset, ranges=ranges, dim=dim, mask_var=mask_var
-            )
+            dset = expand_time_group(dset, group)
+
+        dsout = distribution(
+            hs=dset[hs_name],
+            tp=dset[tp_name],
+            dp=dset[dp_name],
+            hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
+            tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
+            dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
+            dim=dim,
+            label="hs_tp_dp_dist",
+        )
+
         self.dsout = self.dsout.merge(dsout)
         return dsout
 
