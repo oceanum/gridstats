@@ -89,35 +89,38 @@ def rpv(
     return dsout.transpose("period", ...).chunk({"period": 1})
 
 
-def wave_histogram(hs, tp, dp, bins):#, hs_bin, tp_bin, dp_bin):
-    """Multidimension histogram.
-
-    This function is a wrapper around numpy.histogramdd that returns only the first
-        output to use with xarray.apply_ufunc.
+def wave_histogram(hs, tp, dp, hs_bins, tp_bins, dp_bins):
+    """Multidimension wave histogram.
 
     Args:
-        sample (list): One-dimensional arrays to apply histogram for.
-        bins (list): Bin edges corresponding to each array in sample.
+        hs (1d array): Significant wave height array.
+        Tp (1d array): Peak wave period array.
+        Dp (1d array): Peak wave direction array.
+        hs_bins (1d array): Bin edges for Hs.
+        tp_bins (1d array): Bin edges for Tp.
+        dp_bins (1d array): Bin edges for Dp.
 
     Returns:
-        The multidimensional histogram of sample.
+        The multidimensional histogram of (Hs, Tp, Dp).
 
     """
-    # bins = (
-    #     np.array((0, 1, 2, 3, 4, 5)),
-    #     np.array((0, 5, 10, 15, 20)),
-    #     np.array((0, 90, 180, 270, 360))
-    # )
-    # bins = (hs_bins, tp_bins, dp_bins)
-    # import ipdb; ipdb.set_trace()
-    dist, __ = np.histogramdd(sample=(hs, tp, dp), bins=bins, normed=False)
+    dist, __ = np.histogramdd(
+        sample=(hs, tp, dp),
+        bins=(hs_bins, tp_bins, dp_bins),
+        normed=False
+    )
     return dist
 
 
 def fastdist(
-    dset,
-    ranges,
+    hs,
+    tp,
+    dp,
+    hs_bins,
+    tp_bins,
+    dp_bins,
     dim="time",
+    label="hs_tp_dp_dist",
 ):
     """Fast distribution statistics.
 
@@ -128,38 +131,77 @@ def fastdist(
         dim (str): Dimension to calculate distribution along.
 
     """
-    data_vars = list(ranges.keys())
-    missing_vars = list(set(data_vars) - set(dset.data_vars))
-    if missing_vars:
-        raise KeyError(f"Vars {missing_vars} from ranges not in dataset {dset}")
+    hs_bins = np.array(hs_bins)
+    tp_bins = np.array(tp_bins)
+    dp_bins = np.array(dp_bins)
 
-    bins = np.array(
-        [np.hstack((np.arange(**k), k["stop"])) for k in ranges.values()],
-        dtype=object
-    )
+    # Bin coordinates at cell centre
+    coords = {
+        "hs_bin": hs_bins[:-1] + (hs_bins[1] - hs_bins[0]) / 2,
+        "tp_bin": tp_bins[:-1] + (tp_bins[1] - tp_bins[0]) / 2,
+        "dp_bin": dp_bins[:-1] + (dp_bins[1] - dp_bins[0]) / 2,
+    }
+
+    # data_vars = list(ranges.keys())
+    # missing_vars = list(set(data_vars) - set(dset.data_vars))
+    # if missing_vars:
+    #     raise KeyError(f"Vars {missing_vars} from ranges not in dataset {dset}")
+
+    # bins = [np.hstack((np.arange(**k), k["stop"])) for k in ranges.values()]
 
     dsout = xr.apply_ufunc(
         wave_histogram,
-        dset.hs,
-        dset.tps,
-        dset.dpm,
-        bins,
-        input_core_dims=[[dim], [dim], [dim], ["dummy1"]],
-        output_core_dims=[["hs_bins", "tp_bins", "dp_bins"]],
-        dask_gufunc_kwargs={"output_sizes": {"hs_bins": 5, "tp_bins": 4, "dp_bins": 4}, "allow_rechunking": True},
+        hs,
+        tp,
+        dp,
+        hs_bins,
+        tp_bins,
+        dp_bins,
+        input_core_dims=[[dim], [dim], [dim], ["dummy1"], ["dummy2"], ["dummy3"]],
+        output_core_dims=[["hs_bin", "tp_bin", "dp_bin"]],
         exclude_dims=set((dim,)),
         vectorize=True,
         dask="parallelized",
         output_dtypes=["int32"],
-    )
+        dask_gufunc_kwargs={
+            # "allow_rechunking": True,
+            "output_sizes": {
+                "hs_bin": hs_bins.size - 1,
+                "tp_bin": tp_bins.size - 1,
+                "dp_bin": dp_bins.size - 1
+            },
+        },
+    ).assign_coords(coords).to_dataset(name=label)
 
-    # Coordinates have one value less than bins at cell centre
-    coords = {
-        "hs_bins": bins[0][:-1] + (bins[0][1] - bins[0][0]) / 2,
-        "tp_bins": bins[1][:-1] + (bins[1][1] - bins[1][0]) / 2,
-        "dp_bins": bins[2][:-1] + (bins[2][1] - bins[2][0]) / 2,
+    # Total count based on Hs
+    dsout["data_count"] = hs.count(dim)
+
+    # Attributes
+    dsout[label].attrs = {
+        "standard_name": "data_count",
+        "long_name": "number of valid data points",
+        "units": "",
     }
-    dsout = dsout.assign_coords(coords)
+    dsout["data_count"].attrs = {
+        "standard_name": "data_count",
+        "long_name": "number of valid data points",
+        "units": "",
+    }
+    dsout.hs_bin.attrs = {
+        "standard_name": f"{hs.attrs.get('standard_name', 'hs')}_bin",
+        "long_name": f"{hs.attrs.get('long_name', 'hs')} bin",
+        "units": "m"
+    }
+    dsout.tp_bin.attrs = {
+        "standard_name": f"{tp.attrs.get('standard_name', 'tp')}_bin",
+        "long_name": f"{tp.attrs.get('long_name', 'tp')} bin",
+        "units": "m"
+    }
+    dsout.dp_bin.attrs = {
+        "standard_name": f"{dp.attrs.get('standard_name', 'dp')}_bin",
+        "long_name": f"{dp.attrs.get('long_name', 'dp')} bin",
+        "units": "m"
+    }
 
     return dsout
 
@@ -255,30 +297,53 @@ if __name__ == "__main__":
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
     ).chunk()
 
+
     # # Where masking approach
+    # print("Old method")
     # ranges = {
-    #     "hs": {"start": 0, "end": 5, "freq": 1},
-    #     "tps": {"start": 0, "end": 20, "freq": 5},
-    #     "dpm": {"start": 0, "end": 360, "freq": 90},
+    #     "hs": {"start": 0, "end": 5, "freq": 0.5},
+    #     "tps": {"start": 0, "end": 20, "freq": 1},
+    #     "dpm": {"start": 0, "end": 360, "freq": 45},
     # }
     # mapping = {"tps": "tp", "dpm": "dp"}
-    # dsout = distribution(
+    # dsout0 = distribution(
     #     dset=dset,
     #     ranges=ranges,
     #     mask_var="hs",
     #     mapping=mapping,
     # )
 
-    # dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
+    # # dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
 
+    # with ProgressBar():
+    #     dsout0 = dsout0.load()
+
+
+    #====================
     # Histogram approach
-    ranges = {
-        "hs": {"start": 0, "stop": 5, "step": 1},
-        "tps": {"start": 0, "stop": 20, "step": 5},
-        "dpm": {"start": 0, "stop": 360, "step": 90},
-    }
+    #====================
+    print("New method")
     ds = dset[["hs","tps","dpm"]]#.load()
-    dsout = fastdist(ds, ranges)
+    hs_bins = np.arange(
+        ranges["hs"]["start"],
+        ranges["hs"]["end"]+ranges["hs"]["freq"],
+        ranges["hs"]["freq"]
+    )
+    tp_bins = np.arange(
+        ranges["tps"]["start"],
+        ranges["tps"]["end"]+ranges["tps"]["freq"],
+        ranges["tps"]["freq"]
+    )
+    dp_bins = np.arange(
+        ranges["dpm"]["start"],
+        ranges["dpm"]["end"]+ranges["dpm"]["freq"],
+        ranges["dpm"]["freq"]
+    )
+    dsout1 = fastdist(ds.hs, ds.tps, ds.dpm, hs_bins, tp_bins, dp_bins)
+
+    with ProgressBar():
+        dsout1 = dsout1.load()
+
 
     # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
     # darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
