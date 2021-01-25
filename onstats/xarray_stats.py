@@ -176,6 +176,10 @@ def fastdist(
     # Total count based on Hs
     dsout["data_count"] = hs.count(dim)
 
+    # Masking based on Hs
+    logger.debug(f"Masking land from output")
+    dsout = dsout.where(hs.isel(**{dim: 0}, drop=True).notnull())
+
     # Attributes
     dsout[label].attrs = {
         "standard_name": "data_count",
@@ -298,25 +302,25 @@ if __name__ == "__main__":
     ).chunk()
 
 
-    # # Where masking approach
-    # print("Old method")
-    # ranges = {
-    #     "hs": {"start": 0, "end": 5, "freq": 0.5},
-    #     "tps": {"start": 0, "end": 20, "freq": 1},
-    #     "dpm": {"start": 0, "end": 360, "freq": 45},
-    # }
-    # mapping = {"tps": "tp", "dpm": "dp"}
-    # dsout0 = distribution(
-    #     dset=dset,
-    #     ranges=ranges,
-    #     mask_var="hs",
-    #     mapping=mapping,
-    # )
+    # Where masking approach
+    print("Old method")
+    ranges = {
+        "hs": {"start": 0, "end": 5, "freq": 0.5},
+        "tps": {"start": 0, "end": 20, "freq": 1},
+        "dpm": {"start": 0, "end": 360, "freq": 45},
+    }
+    mapping = {"tps": "tp", "dpm": "dp"}
+    dsout0 = distribution(
+        dset=dset,
+        ranges=ranges,
+        mask_var="hs",
+        mapping=mapping,
+    )
 
-    # # dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
+    # dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
 
-    # with ProgressBar():
-    #     dsout0 = dsout0.load()
+    with ProgressBar():
+        dsout0 = dsout0.load()
 
 
     #====================
