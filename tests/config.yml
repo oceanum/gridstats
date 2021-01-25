@@ -45,6 +45,7 @@ calls:
       distribution: gumbel_r
       duration: 120
       derived_vars: [wspd]
+      compute: True
 
   - method: rpv
     kwargs:
@@ -54,6 +55,7 @@ calls:
       distribution: gumbel_r
       duration: 120
       derived_vars: [wspd]
+      compute: True
 
   - method: data_count
     kwargs:
@@ -95,7 +97,7 @@ calls:
 
   - method: value_probability
     kwargs:
-      derived_vars:
+      data_vars:
         - wspd
       bins: [0., 1.]
       bin_name: cover

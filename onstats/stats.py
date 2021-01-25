@@ -20,13 +20,15 @@ from oncore.dataio import put, isdir, exists, rm
 
 from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
-from onstats.xarray_stats import rpv, distribution
+from onstats.xarray_stats import rpv, distribution, directional_stat
 
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+np.seterr(divide='ignore', invalid='ignore')
 
 
 class DerivedVar:
@@ -249,6 +251,12 @@ class Stats(DerivedVar):
         self.encoding = {}
 
     @property
+    def dsout_dask(self):
+        """Output dataset with only dask variables."""
+        dask_vars = [v for v in self.dsout.data_vars if self.dsout[v].chunks]
+        return self.dsout[dask_vars]
+
+    @property
     def hour_of_day(self):
         """The time of the day data array accounting for time offset.
 
@@ -427,7 +435,7 @@ class Stats(DerivedVar):
         if not isinstance(getattr(self, name), xr.DataArray):
             raise TypeError(f"Property '{name}' in DerivedVar must return DataArray.")
 
-    def range_probability(self, data_ranges, dim="time", **kwargs):
+    def range_probability(self, data_ranges, dim="time", compute=False, **kwargs):
         """Calculate probability of specific ranges.
 
         Args:
@@ -439,7 +447,7 @@ class Stats(DerivedVar):
                 - left (closed | open): Define if minimum value should be included.
                 - right (closed | open): Define if maximum value should be included.
             dim (str): Dimension name to calculate probabilities along.
-            kwargs: Not used here, ignored.
+            compute (bool): Compute dask variables from output dataset before returning.
 
         """
         data_vars = list(set([data_range["var"] for data_range in data_ranges]))
@@ -483,11 +491,14 @@ class Stats(DerivedVar):
             in_range = lfunc(darray, start) & rfunc(darray, stop)
             self.dsout[varname] = in_range.sum(dim=dim) / counts[dvar]
 
-        # self.dsout = self.dsout.where(self.dset.mask)
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return self.dsout
 
     def data_count(
-        self, dim="time", data_vars=[], derived_vars=[], suffix="_pcount", **kwargs
+        self, dim="time", data_vars=[], derived_vars=[], suffix="_pcount", compute=False, **kwargs
     ):
         """Calculate the percentage of valid data along dimension.
 
@@ -497,6 +508,7 @@ class Stats(DerivedVar):
             derived_vars (list): Derived_vars to calculate before applying stats,
                 useful if data_vars=="all" and you also want derived vars.
             suffix (str): String to append to each variable name in output dataset.
+            compute (bool): Compute dask variables from output dataset before returning.
 
         """
         if data_vars == "all":
@@ -512,6 +524,11 @@ class Stats(DerivedVar):
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
+
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return dsout
 
     def value_probability(
@@ -521,6 +538,7 @@ class Stats(DerivedVar):
         bins=[],
         bin_name="bin",
         suffix="_prob",
+        compute=False,
         **kwargs,
     ):
         """Calculate the probability of specific values.
@@ -534,6 +552,7 @@ class Stats(DerivedVar):
             bin_name (str): Name of bin coordinate in output probability dataset. Note
                 that the bin coordinate is only created if there is more than one bin.
             suffix (str): String to append to each variable name in output dataset.
+            compute (bool): Compute dask variables from output dataset before returning.
 
         """
         if not data_vars:
@@ -563,10 +582,15 @@ class Stats(DerivedVar):
                 )
         if len(bins) > 1:
             self.dsout[bin_name] = bins
+
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return self.dsout
 
     def time_probability_hour_of_day(
-        self, derived_var, bin_value, suffix="_hprob", **kwargs
+        self, derived_var, bin_value, suffix="_hprob", compute=False, **kwargs
     ):
         """Calculate the time probability for each hour with time offset accounted.
 
@@ -574,6 +598,7 @@ class Stats(DerivedVar):
             derived_var (str): Derived_vars to calculate before applying stats.
             bin (value): List of values for binning the data to calculate probability.
             suffix (str): String to append to each variable name in output dataset.
+            compute (bool): Compute dask variables from output dataset before returning.
 
         Note:
             Only implemented atm for one single derived variable and one matching bin.
@@ -602,6 +627,11 @@ class Stats(DerivedVar):
 
         self.dsout[f"{data_var}{suffix}"] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
+
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return self.dsout
 
     def rpv(
@@ -615,6 +645,7 @@ class Stats(DerivedVar):
         derived_vars=[],
         group=None,
         suffix="_rpv",
+        compute=False,
     ):
         """Return period values.
 
@@ -630,6 +661,7 @@ class Stats(DerivedVar):
                 useful if data_vars=="all" and you also want derived vars.
             group (str): Time grouping type, any valid time_{group} such month, season.
             suffix (str): String to append to each variable name in output dataset.
+            compute (bool): Compute dask variables from output dataset before returning.
 
         """
         if data_vars == "all":
@@ -657,6 +689,11 @@ class Stats(DerivedVar):
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
+
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return dsout
 
     def apply_func(
@@ -667,6 +704,7 @@ class Stats(DerivedVar):
         derived_vars=[],
         group=None,
         suffix=None,
+        compute=False,
         **kwargs,
     ):
         """apply xarray function.
@@ -680,6 +718,8 @@ class Stats(DerivedVar):
             group (str): Time grouping type, any valid time_{group} such month, season.
             suffix (str): String to append to each variable name in output dataset,
                 defined as `f"_{func}"` if `suffix==None`.
+            compute (bool): Compute dask variables from output dataset before returning.
+            kwargs: kwargs for function func.
 
         """
         if suffix is None:
@@ -705,6 +745,11 @@ class Stats(DerivedVar):
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
+
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return dsout
 
     def apply_func_sector(
@@ -715,57 +760,49 @@ class Stats(DerivedVar):
         nsector=4,
         dim="time",
         suffix=None,
+        compute=False,
         **kwargs,
     ):
         """apply xarray function.
 
         Args:
-            data_vars (list): Data vars to apply stats over, includes derived vars.
             func (str): Name of valid xarray function to apply.
+            data_vars (list): Data vars to apply stats over, includes derived vars.
+            dir_var (str): Directional data var to bin data over.
+            nsector (int): Number of directional sectors.
             dim (str): Dimension to apply function over.
             suffix (str): String to append to each variable name in output dataset,
                 defined as `f"_{func}"` if `suffix==None`.
+            compute (bool): Compute dask variables from output dataset before returning.
+            kwargs: kwargs for function func.
 
         """
         logger.debug(f"Calculating time-{func} for vars: {data_vars}")
 
-        derived_vars = [
-            v for v in data_vars + [dir_var] if v not in self.dset.data_vars
-        ]
-        self._update_dset(list(set(derived_vars)))
+        data_vars += [dir_var]
+        self._update_dset(data_vars)
 
         if suffix is None:
             suffix = f"_{func}"
         suffix += "_dir"
 
-        dset = self.dset[data_vars]
-        dirs = self.dset[dir_var]
-
-        ds = 360 / nsector
-        sectors = np.linspace(0, 360 - ds, nsector)
-        starts = (sectors - ds / 2) % 360
-        stops = (sectors + ds / 2) % 360
-        dsout = []
-        for start, stop in zip(starts, stops):
-            if stop > start:
-                mask = (dirs >= start) & (dirs < stop)
-            else:
-                mask = (dirs >= start) | (dirs < stop)
-            dsout.append(dset.where(mask))
-        dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
-        dsout["direction"].attrs = {
-            "standard_name": dirs.attrs.get("standard_name", "direction"),
-            "long_name": dirs.attrs.get("standard_name", "direction sector"),
-            "units": dirs.attrs.get("units", "degree"),
-            "variable_name": dir_var,
-        }
-
-        # Calculate dask stats
-        dsout = getattr(dsout, func)(dim=dim, **kwargs)
+        dsout = directional_stat(
+            dset=self.dset[data_vars],
+            func=func,
+            dir_var=dir_var,
+            nsector=nsector,
+            dim=dim,
+            **kwargs
+        )
 
         self.dsout = self.dsout.merge(
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars})
         )
+
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return dsout
 
     def distribution(
@@ -779,6 +816,7 @@ class Stats(DerivedVar):
         tp_name="tp",
         dp_name="dp",
         label="hs_tp_dp_dist",
+        compute=False,
         **kwargs,
     ):
         """Distribution statistics.
@@ -793,6 +831,7 @@ class Stats(DerivedVar):
             tp_name (str): Name for Tp variable to use in dataset.
             dp_name (str): Name for Dp variable to use in dataset.
             label (str): Name for joint distribution variable.
+            compute (bool): Compute dask variables from output dataset before returning.
 
         """
         data_vars = [hs_name, tp_name, dp_name]
@@ -814,6 +853,10 @@ class Stats(DerivedVar):
         )
 
         self.dsout = self.dsout.merge(dsout)
+        if compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+
         return dsout
 
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):

@@ -190,6 +190,54 @@ def distribution(
     return dsout
 
 
+def directional_stat(
+    dset,
+    func,
+    dir_var,
+    nsector=4,
+    dim="time",
+    **kwargs,
+):
+    """Bin per directional sectors and apply xarray function.
+
+    Args:
+        dset (xr.Dataset): Xarray dataset to calculate stats over.
+        func (str): Name of valid xarray function to apply.
+        dir_var (str): Directional data var to bin data over.
+        nsector (int): Number of directional sectors.
+        dim (str): Dimension to apply function over.
+        kwargs: Kwargs for function func.
+
+    """
+    # Binning data per directional sector
+    dirs = dset[dir_var]
+    dsector = 360 / nsector
+    sectors = np.linspace(0, 360 - dsector, nsector)
+    starts = (sectors - dsector / 2) % 360
+    stops = (sectors + dsector / 2) % 360
+    dsout = []
+    for start, stop in zip(starts, stops):
+        if stop > start:
+            mask = (dirs >= start) & (dirs < stop)
+        else:
+            mask = (dirs >= start) | (dirs < stop)
+        dsout.append(dset.where(mask))
+
+    # Concat directional bins into new dimension
+    dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
+    dsout["direction"].attrs = {
+        "standard_name": dirs.attrs.get("standard_name", "direction"),
+        "long_name": dirs.attrs.get("standard_name", "direction sector"),
+        "units": dirs.attrs.get("units", "degree"),
+        "variable_name": dir_var,
+    }
+
+    # Calculate dask stats
+    dsout = getattr(dsout, func)(dim=dim, **kwargs)
+
+    return dsout
+
+
 if __name__ == "__main__":
 
     import datetime
