@@ -184,6 +184,9 @@ def distribution(
         "units": "m"
     }
 
+    dsout[label].encoding = {"dtype": "int32", "_FillValue": -32767}
+    dsout["data_count"].encoding = {"dtype": "int32", "_FillValue": -32767}
+
     return dsout
 
 

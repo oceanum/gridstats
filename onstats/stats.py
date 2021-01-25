@@ -241,6 +241,9 @@ class Stats(DerivedVar):
         # Define mask
         self._set_mask(mask)
 
+        # Encoding for output
+        self.encoding = {}
+
     @property
     def hour_of_day(self):
         """The time of the day data array accounting for time offset.
@@ -826,7 +829,8 @@ class Stats(DerivedVar):
         logger.debug(f"Saving stats dataset into file: {outfile}")
         encoding = {}
         for data_var in self.dsout.data_vars:
-            encoding.update({data_var: {"zlib": True, "_FillValue": _FillValue}})
+            encoding[data_var] = {"zlib": True, "_FillValue": _FillValue}
+            encoding[data_var].update(self.dsout[data_var].encoding)
         # Loading into memory before saving to disk. We may want to reassess this.
         self._load()
         self._sortby()
@@ -844,12 +848,12 @@ class Stats(DerivedVar):
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
+        for data_var in self.dsout.data_vars:
+            self.dsout[data_var].encoding.update({"_FillValue": _FillValue})
+            self.dsout[data_var].encoding.pop("zlib", None)
         self._sortby()
         self._setattrs()
-        encoding = {}
-        for data_var in self.dsout.data_vars:
-            encoding.update({data_var: {"_FillValue": _FillValue}})
         fsmap = get_mapper(outfile)
-        self.dsout.to_zarr(fsmap, consolidated=True, encoding=encoding, mode="w")
+        self.dsout.to_zarr(fsmap, consolidated=True, mode="w")
         if self.updir:
             self._upload(outfile)
