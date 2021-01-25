@@ -28,8 +28,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-dask.config.set({"array.slicing.split_large_chunks": False})
-
 
 class DerivedVar:
     def __init__(
@@ -191,7 +189,7 @@ class Stats(DerivedVar):
         chunks=None,
         persist=False,
         updir=None,
-        logger=logging,
+        allow_split_large_chunks=False,
         **kwargs,
     ):
         """Gridded stats using dask arrays.
@@ -210,6 +208,7 @@ class Stats(DerivedVar):
             chunks (dict): Chunking dict to rechunk dataset after opening.
             persist (bool): If True, persist output dataset before saving as netcdf.
             updir (str): Upload direction to upload netcdf and zarr stats files to.
+            allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
 
         Tips:
             Run the calculations on a dask distributed cluster. This optimise
@@ -221,6 +220,8 @@ class Stats(DerivedVar):
                 this will be slower but will avoid blowing up memory resources.
 
         """
+        dask.config.set({"array.slicing.split_large_chunks": allow_split_large_chunks})
+
         self.dataset = dataset
         self.master_url = master_url
         self.namespace = namespace
@@ -492,8 +493,9 @@ class Stats(DerivedVar):
 
         Args:
             dim (str): Dimension to calculate percentage count over.
-            data_vars (list): Data vars to apply stats over.
-            derived_vars (list): Derived_vars to calculate before applying stats.
+            data_vars (list): Data vars to apply stats over, "all" for all variables.
+            derived_vars (list): Derived_vars to calculate before applying stats,
+                useful if data_vars=="all" and you also want derived vars.
             suffix (str): String to append to each variable name in output dataset.
 
         """
@@ -503,7 +505,7 @@ class Stats(DerivedVar):
         if not data_vars:
             raise ValueError("At least one data_var or derived_var should be provided")
 
-        self._update_dset(derived_vars)
+        self._update_dset(data_vars)
         logger.debug(f"Calculating count percentage for vars: {data_vars}")
 
         dsout = 100 * self.dset[data_vars].count(dim) / self.dset[dim].size
@@ -516,7 +518,6 @@ class Stats(DerivedVar):
         self,
         dim="time",
         data_vars=[],
-        derived_vars=[],
         bins=[],
         bin_name="bin",
         suffix="_prob",
@@ -528,26 +529,18 @@ class Stats(DerivedVar):
 
         Args:
             dim (str): Dimension name to calculate probabilities along.
-            data_vars (list): Data vars to apply stats over.
-            derived_vars (list): Derived_vars to calculate before applying stats.
+            data_vars (list): Data vars to apply stats over, includes derived vars.
             bins (list): List of values for binning the data to calculate probability.
             bin_name (str): Name of bin coordinate in output probability dataset. Note
                 that the bin coordinate is only created if there is more than one bin.
             suffix (str): String to append to each variable name in output dataset.
 
-        Note:
-            At least one `data_var` or `derived_var` should be provided.
-            The output dataset has an extra coordinate with name defaulting to `bin`,
-                representing the bin values over which probabilities are calculated.
-
         """
-        assert list(data_vars) + list(
-            derived_vars
-        ), "At least one data_var or derived_var should be provided."
+        if not data_vars:
+            raise ValueError("At least one data_var or derived_var should be provided")
 
+        self._update_dset(data_vars)
         bins = list(bins)
-        self._update_dset(derived_vars)
-        data_vars = list(data_vars) + list(derived_vars)
         logger.debug(f"Calculating {dim}-probability for vars: {data_vars}")
 
         dset = self.dset[data_vars]
@@ -633,15 +626,16 @@ class Stats(DerivedVar):
             duration (float): Hours in storm below which extra peaks are discarded.
             dim (str): Dimension to calculate rpv along.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
-            derived_vars (list): Derived_vars to calculate before applying stats.
+            derived_vars (list): Derived_vars to calculate before applying stats,
+                useful if data_vars=="all" and you also want derived vars.
             group (str): Time grouping type, any valid time_{group} such month, season.
             suffix (str): String to append to each variable name in output dataset.
 
         """
-        self._update_dset(derived_vars)
         if data_vars == "all":
             data_vars = self.data_vars
         data_vars += derived_vars
+        self._update_dset(data_vars)
 
         logger.debug(f"Calculating rpv for vars: {data_vars}")
 
@@ -681,19 +675,21 @@ class Stats(DerivedVar):
             func (str): Name of valid xarray function to apply.
             dim (str): Dimension to apply function over.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
-            derived_vars (list): Derived_vars to calculate before applying stats.
+            derived_vars (list): Derived_vars to calculate before applying stats,
+                useful if data_vars=="all" and you also want derived vars.
             group (str): Time grouping type, any valid time_{group} such month, season.
             suffix (str): String to append to each variable name in output dataset,
                 defined as `f"_{func}"` if `suffix==None`.
 
         """
-        self._update_dset(derived_vars)
         if suffix is None:
             suffix = f"_{func}"
 
         if data_vars == "all":
             data_vars = self.data_vars
         data_vars += derived_vars
+        self._update_dset(data_vars)
+
         logger.debug(f"Calculating {dim}-{func} for vars: {data_vars}")
 
         dset = self.dset[data_vars]
@@ -842,12 +838,13 @@ class Stats(DerivedVar):
         if self.updir:
             self._upload(outfile)
 
-    def to_zarr(self, outfile, _FillValue=-32767, **kwargs):
+    def to_zarr(self, outfile, _FillValue=-32767, mode="w", **kwargs):
         """Save output dataset as zarr.
 
         Args:
             outfile (str): Name of output zarr file.
             _FillValue (int): Fill Value.
+            mode (str): Zarr write mode.
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
@@ -857,6 +854,6 @@ class Stats(DerivedVar):
         self._sortby()
         self._setattrs()
         fsmap = get_mapper(outfile)
-        self.dsout.to_zarr(fsmap, consolidated=True, mode="w")
+        self.dsout.to_zarr(fsmap, consolidated=True, mode=mode)
         if self.updir:
             self._upload(outfile)

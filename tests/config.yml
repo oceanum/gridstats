@@ -81,7 +81,6 @@ calls:
       q: [0.5, 0.9]
       data_vars:
         - u10
-      derived_vars:
         - wspd
 
   - method: apply_func
@@ -126,7 +125,7 @@ calls:
 
   - method: to_netcdf
     kwargs:
-      outfile: /source/onstats/tests/gridstat1.nc
+      outfile: /source/onstats/tests/gridstat2.nc
       format: NETCDF4
 
   # - method: to_zarr
