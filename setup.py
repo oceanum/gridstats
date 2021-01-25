@@ -15,7 +15,7 @@ requirements = [
     "click",
     "cmocean",
     "dask",
-    # "distributed",
+    "distributed",
     "fsspec",
     "intake",
     "intake_xarray",
