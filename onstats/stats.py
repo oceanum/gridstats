@@ -11,8 +11,6 @@ import dask.array as da
 from fsspec import get_mapper
 
 from dask.diagnostics import ProgressBar
-from dask.distributed import Client, progress
-from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
 from oncore.dataio import put, isdir, exists, rm
@@ -370,6 +368,8 @@ class Stats(DerivedVar):
         """
         if self.persist:
             try:
+                from dask.distributed import Client, progress
+                from distributed.diagnostics.progressbar import get_scheduler
                 get_scheduler(None)
             except ValueError as err:
                 raise ValueError(

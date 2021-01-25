@@ -14,8 +14,8 @@ with open("HISTORY.rst") as history_file:
 requirements = [
     "click",
     "cmocean",
-    "dask<=2.25.0",
-    "distributed",
+    "dask",
+    # "distributed",
     "fsspec",
     "intake",
     "intake_xarray",
