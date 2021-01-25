@@ -9,6 +9,22 @@ from scipy import stats, signal
 logger = logging.getLogger(__name__)
 
 
+def np_distribution():
+    """Multidimensional distribution from numpy array.
+
+    sample (list): timeseries to be processed
+    """
+    hdd = np.histogramdd(
+        sample=(
+            ds[hs_name].values,
+            ds[tp_name].values,
+            ds[dir_name].values,
+        ),
+        normed=False,
+        bins=wave_bins,
+    )
+
+
 def _pov(data, dt_hour, percentile=95, duration=24):
     """Peaks over threshold.
 
@@ -87,3 +103,26 @@ def np_rpv(
         p = ntimes * dt_year / (return_period * npeaks)
         rpvs.append(func.isf(p, *fits))
     return da.from_array(rpvs, chunks=(1,))
+
+
+def wave_histogram(hs, tp, dp, hs_bins, tp_bins, dp_bins):
+    """Multidimension wave histogram.
+
+    Args:
+        hs (1d array): Significant wave height array.
+        Tp (1d array): Peak wave period array.
+        Dp (1d array): Peak wave direction array.
+        hs_bins (1d array): Bin edges for Hs.
+        tp_bins (1d array): Bin edges for Tp.
+        dp_bins (1d array): Bin edges for Dp.
+
+    Returns:
+        The multidimensional histogram of (Hs, Tp, Dp).
+
+    """
+    dist, __ = np.histogramdd(
+        sample=(hs, tp, dp),
+        bins=(hs_bins, tp_bins, dp_bins),
+        normed=False
+    )
+    return dist

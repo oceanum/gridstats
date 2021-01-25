@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 from itertools import product
 
-from onstats.numpy_stats import np_rpv
+from onstats.numpy_stats import np_rpv, wave_histogram
 
 
 logger = logging.getLogger(__name__)
@@ -89,30 +89,7 @@ def rpv(
     return dsout.transpose("period", ...).chunk({"period": 1})
 
 
-def wave_histogram(hs, tp, dp, hs_bins, tp_bins, dp_bins):
-    """Multidimension wave histogram.
-
-    Args:
-        hs (1d array): Significant wave height array.
-        Tp (1d array): Peak wave period array.
-        Dp (1d array): Peak wave direction array.
-        hs_bins (1d array): Bin edges for Hs.
-        tp_bins (1d array): Bin edges for Tp.
-        dp_bins (1d array): Bin edges for Dp.
-
-    Returns:
-        The multidimensional histogram of (Hs, Tp, Dp).
-
-    """
-    dist, __ = np.histogramdd(
-        sample=(hs, tp, dp),
-        bins=(hs_bins, tp_bins, dp_bins),
-        normed=False
-    )
-    return dist
-
-
-def fastdist(
+def distribution(
     hs,
     tp,
     dp,
@@ -125,10 +102,17 @@ def fastdist(
     """Fast distribution statistics.
 
     Args:
-        ranges (dict): Bins definition, keys are the variable names, values
-            are the kwargs for pandas.interval_range function to define bins,
-            e.g. ranges={"hs": {"start": 0, "stop": 3, "step": 0.5}, "tp": ...}.
+        hs (xr.DataArray): Significant wave height data.
+        tp (xr.DataArray): Peak wave period data.
+        dp (xr.DataArray): Peak wave direction data.
+        hs_bins (1d array): Bin edges for Hs.
+        tp_bins (1d array): Bin edges for Tp.
+        dp_bins (1d array): Bin edges for Dp.
         dim (str): Dimension to calculate distribution along.
+        label (str): Name for joint distribution variable.
+
+    Returns:
+        Dataset with Hs, Tp, Dp joint distribution and total count along dim.
 
     """
     hs_bins = np.array(hs_bins)
@@ -141,13 +125,6 @@ def fastdist(
         "tp_bin": tp_bins[:-1] + (tp_bins[1] - tp_bins[0]) / 2,
         "dp_bin": dp_bins[:-1] + (dp_bins[1] - dp_bins[0]) / 2,
     }
-
-    # data_vars = list(ranges.keys())
-    # missing_vars = list(set(data_vars) - set(dset.data_vars))
-    # if missing_vars:
-    #     raise KeyError(f"Vars {missing_vars} from ranges not in dataset {dset}")
-
-    # bins = [np.hstack((np.arange(**k), k["stop"])) for k in ranges.values()]
 
     dsout = xr.apply_ufunc(
         wave_histogram,
@@ -210,88 +187,6 @@ def fastdist(
     return dsout
 
 
-def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
-    """Distribution statistics.
-
-    Args:
-        dset (xr.Dataset): Dataset to calculate distribution from.
-        ranges (dict): Bins definition, keys are the variable names, values
-            are the kwargs for pandas.interval_range function to define bins,
-            e.g. ranges={"hs": {"start": 0, "end": 3, "freq": 0.5}, "tp": {"start": 0, "end": 20, "freq": 5}}.
-        dim (str): Dimension to calculate distribution along.
-        mask_var (str): Name of variable to use for masking land.
-        mapping (dict): Mapping to rename distribution variables.
-
-    Note: groupby dimensions can be included by calling groupby.map, e.g.
-        dset.groupby("time.month").map(distribution, **distribution_kwargs).
-
-    """
-    data_vars = list(ranges.keys())
-    missing_vars = list(set(data_vars) - set(dset.data_vars))
-    if missing_vars:
-        raise KeyError(f"Vars {missing_vars} defined in ranges not in dset {dset}")
-
-    ds = dset[data_vars].rename(mapping)
-    data_vars = list(ds.data_vars)
-    nvar = len(data_vars)
-    ax = [i - nvar for i in range(nvar)]
-
-    label = "_".join(data_vars) + "_dist"
-    ds0 = ds[[data_vars[0]]].rename({data_vars[0]: label})
-
-    # Combinations of bins to loop over
-    interval_ranges = [pd.interval_range(**kwargs) for kwargs in ranges.values()]
-    ranges_iterator = product(*iter(interval_ranges))
-
-    # Summing data along dim within each bin combination
-    dsout = []
-    for data_ranges in ranges_iterator:
-        logger.debug(f"Data Ranges: {data_ranges}")
-        coords = {}
-        mask = True
-        for datavar, datarange in zip(data_vars, data_ranges):
-            coords.update({f"{datavar}_bin": [datarange.mid]})
-            mask *= (ds[datavar] >= datarange.left) & (ds[datavar] < datarange.right)
-        dsout.append(ds0.where(mask).count(dim).expand_dims(dim=coords, axis=ax))
-    dsout = xr.combine_by_coords(dsout)
-
-    # Total count based on first variable in ranges dict
-    dsout["data_count"] = ds[data_vars[0]].count(dim)
-
-    # Masking
-    if mask_var is not None:
-        mask = dset[mask_var]
-        if dim in mask.dims:
-            mask = mask.isel(**{dim: 0}, drop=True)
-        mask = mask.notnull()
-        logger.debug(f"Masking output from {mask}")
-        dsout = dsout.where(mask)
-
-    # Attributes
-    dsout[label].attrs = {
-        "standard_name": "data_count",
-        "long_name": "number of valid data points",
-        "units": "",
-    }
-    dsout["data_count"].attrs = {
-        "standard_name": "data_count",
-        "long_name": "number of valid data points",
-        "units": "",
-    }
-    for data_var in data_vars:
-        dsout[f"{data_var}_bin"].attrs["standard_name"] = (
-            ds[f"{data_var}"].attrs.get("standard_name", data_var) + "_bin"
-        )
-        dsout[f"{data_var}_bin"].attrs["long_name"] = (
-            ds[f"{data_var}"].attrs.get("long_name", data_var) + " bin"
-        )
-        dsout[f"{data_var}_bin"].attrs["units"] = ds[f"{data_var}"].attrs.get(
-            "units", data_var
-        )
-
-    return dsout
-
-
 if __name__ == "__main__":
 
     import datetime
@@ -302,30 +197,15 @@ if __name__ == "__main__":
     ).chunk()
 
 
-    # Where masking approach
-    print("Old method")
+    #====================
+    # Histogram approach
+    #====================
     ranges = {
         "hs": {"start": 0, "end": 5, "freq": 0.5},
         "tps": {"start": 0, "end": 20, "freq": 1},
         "dpm": {"start": 0, "end": 360, "freq": 45},
     }
-    mapping = {"tps": "tp", "dpm": "dp"}
-    dsout0 = distribution(
-        dset=dset,
-        ranges=ranges,
-        mask_var="hs",
-        mapping=mapping,
-    )
 
-    # dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
-
-    with ProgressBar():
-        dsout0 = dsout0.load()
-
-
-    #====================
-    # Histogram approach
-    #====================
     print("New method")
     ds = dset[["hs","tps","dpm"]]#.load()
     hs_bins = np.arange(
@@ -343,10 +223,9 @@ if __name__ == "__main__":
         ranges["dpm"]["end"]+ranges["dpm"]["freq"],
         ranges["dpm"]["freq"]
     )
-    dsout1 = fastdist(ds.hs, ds.tps, ds.dpm, hs_bins, tp_bins, dp_bins)
 
     with ProgressBar():
-        dsout1 = dsout1.load()
+        dsout = dsout.load()
 
 
     # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)

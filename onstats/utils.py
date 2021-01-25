@@ -7,6 +7,25 @@ from scipy import stats, signal
 from subprocess import run, PIPE, STDOUT
 
 
+def expand_time_group(dset, time_group):
+    """Concatenate time grouped dataset into new dimension.
+
+    Args:
+        dset (xr.Dataset): Dataset to groupby for.
+        time_group (str): Name of time group to apply, e.g. "month", "season".
+
+    """
+    groups = dset.groupby(f"time.{time_group}")
+    dsout = xr.concat([g[1] for g in groups], dim=time_group)
+    dsout[time_group] = [g[0] for g in groups]
+    dsout[time_group].attrs = {
+        "standard_name": time_group,
+        "long_name": time_group,
+        "units": "",
+    }
+    return dsout
+
+
 def run_command(cmd):
     process = run(cmd, shell=True, stdout=PIPE, stderr=STDOUT)
     process.check_returncode()
