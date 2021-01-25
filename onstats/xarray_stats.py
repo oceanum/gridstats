@@ -89,6 +89,81 @@ def rpv(
     return dsout.transpose("period", ...).chunk({"period": 1})
 
 
+def wave_histogram(hs, tp, dp, bins):#, hs_bin, tp_bin, dp_bin):
+    """Multidimension histogram.
+
+    This function is a wrapper around numpy.histogramdd that returns only the first
+        output to use with xarray.apply_ufunc.
+
+    Args:
+        sample (list): One-dimensional arrays to apply histogram for.
+        bins (list): Bin edges corresponding to each array in sample.
+
+    Returns:
+        The multidimensional histogram of sample.
+
+    """
+    # bins = (
+    #     np.array((0, 1, 2, 3, 4, 5)),
+    #     np.array((0, 5, 10, 15, 20)),
+    #     np.array((0, 90, 180, 270, 360))
+    # )
+    # bins = (hs_bins, tp_bins, dp_bins)
+    # import ipdb; ipdb.set_trace()
+    dist, __ = np.histogramdd(sample=(hs, tp, dp), bins=bins, normed=False)
+    return dist
+
+
+def fastdist(
+    dset,
+    ranges,
+    dim="time",
+):
+    """Fast distribution statistics.
+
+    Args:
+        ranges (dict): Bins definition, keys are the variable names, values
+            are the kwargs for pandas.interval_range function to define bins,
+            e.g. ranges={"hs": {"start": 0, "stop": 3, "step": 0.5}, "tp": ...}.
+        dim (str): Dimension to calculate distribution along.
+
+    """
+    data_vars = list(ranges.keys())
+    missing_vars = list(set(data_vars) - set(dset.data_vars))
+    if missing_vars:
+        raise KeyError(f"Vars {missing_vars} from ranges not in dataset {dset}")
+
+    bins = np.array(
+        [np.hstack((np.arange(**k), k["stop"])) for k in ranges.values()],
+        dtype=object
+    )
+
+    dsout = xr.apply_ufunc(
+        wave_histogram,
+        dset.hs,
+        dset.tps,
+        dset.dpm,
+        bins,
+        input_core_dims=[[dim], [dim], [dim], ["dummy1"]],
+        output_core_dims=[["hs_bins", "tp_bins", "dp_bins"]],
+        dask_gufunc_kwargs={"output_sizes": {"hs_bins": 5, "tp_bins": 4, "dp_bins": 4}, "allow_rechunking": True},
+        exclude_dims=set((dim,)),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=["int32"],
+    )
+
+    # Coordinates have one value less than bins at cell centre
+    coords = {
+        "hs_bins": bins[0][:-1] + (bins[0][1] - bins[0][0]) / 2,
+        "tp_bins": bins[1][:-1] + (bins[1][1] - bins[1][0]) / 2,
+        "dp_bins": bins[2][:-1] + (bins[2][1] - bins[2][0]) / 2,
+    }
+    dsout = dsout.assign_coords(coords)
+
+    return dsout
+
+
 def distribution(dset, ranges, dim="time", mask_var=None, mapping={}):
     """Distribution statistics.
 
@@ -180,20 +255,31 @@ if __name__ == "__main__":
         "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
     ).chunk()
 
-    ranges = {
-        "hs": {"start": 0, "end": 5, "freq": 1},
-        "tps": {"start": 0, "end": 20, "freq": 5},
-        "dpm": {"start": 0, "end": 360, "freq": 90},
-    }
-    mapping = {"tps": "tp", "dpm": "dp"}
-    dsout = distribution(
-        dset=dset,
-        ranges=ranges,
-        mask_var="hs",
-        mapping=mapping,
-    )
+    # # Where masking approach
+    # ranges = {
+    #     "hs": {"start": 0, "end": 5, "freq": 1},
+    #     "tps": {"start": 0, "end": 20, "freq": 5},
+    #     "dpm": {"start": 0, "end": 360, "freq": 90},
+    # }
+    # mapping = {"tps": "tp", "dpm": "dp"}
+    # dsout = distribution(
+    #     dset=dset,
+    #     ranges=ranges,
+    #     mask_var="hs",
+    #     mapping=mapping,
+    # )
 
-    dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
+    # dsout_month = dset.groupby("time.month").map(distribution, ranges=ranges, mask_var="hs", mapping=mapping)
+
+    # Histogram approach
+    ranges = {
+        "hs": {"start": 0, "stop": 5, "step": 1},
+        "tps": {"start": 0, "stop": 20, "step": 5},
+        "dpm": {"start": 0, "stop": 360, "step": 90},
+    }
+    ds = dset[["hs","tps","dpm"]]#.load()
+    dsout = fastdist(ds, ranges)
+
     # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
     # darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
     # then = datetime.datetime.now()
