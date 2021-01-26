@@ -227,7 +227,8 @@ class Stats(DerivedVar):
         dask.config.set({"array.slicing.split_large_chunks": allow_split_large_chunks})
 
         if local_cluster:
-            cluster = LocalCluster(local_cluster)
+            cluster = LocalCluster()
+            cluster.scale(local_cluster)
             logger.info(cluster)
 
         self.dataset = dataset
