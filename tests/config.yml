@@ -57,6 +57,12 @@ calls:
       derived_vars: [wspd]
       compute: True
 
+  - method: apply_func
+    kwargs:
+      func: count
+      group: month
+      data_vars: all
+
   - method: data_count
     kwargs:
       data_vars: all

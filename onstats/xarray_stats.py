@@ -150,12 +150,18 @@ def distribution(
         },
     ).assign_coords(coords).to_dataset(name=label)
 
-    # Total count based on Hs
-    dsout["data_count"] = hs.count(dim)
-
     # Masking based on Hs
     logger.debug(f"Masking land from output")
-    dsout = dsout.where(hs.isel(**{dim: 0}, drop=True).notnull())
+    if isinstance(hs, xr.core.groupby.DataArrayGroupBy):
+        for g, hsi in hs:
+            break
+        for g, tpi in tp:
+            break
+        for g, dpi in dp:
+            break
+    else:
+        hsi = hs
+    dsout = dsout.where(hsi.isel(**{dim: 0}, drop=True).notnull())
 
     # Attributes
     dsout[label].attrs = {
@@ -163,29 +169,23 @@ def distribution(
         "long_name": "number of valid data points",
         "units": "",
     }
-    dsout["data_count"].attrs = {
-        "standard_name": "data_count",
-        "long_name": "number of valid data points",
-        "units": "",
-    }
     dsout.hs_bin.attrs = {
-        "standard_name": f"{hs.attrs.get('standard_name', 'hs')}_bin",
-        "long_name": f"{hs.attrs.get('long_name', 'hs')} bin",
+        "standard_name": f"{hsi.attrs.get('standard_name', 'hs')}_bin",
+        "long_name": f"{hsi.attrs.get('long_name', 'hs')} bin",
         "units": "m"
     }
     dsout.tp_bin.attrs = {
-        "standard_name": f"{tp.attrs.get('standard_name', 'tp')}_bin",
-        "long_name": f"{tp.attrs.get('long_name', 'tp')} bin",
-        "units": "m"
+        "standard_name": f"{tpi.attrs.get('standard_name', 'tp')}_bin",
+        "long_name": f"{tpi.attrs.get('long_name', 'tp')} bin",
+        "units": "s"
     }
     dsout.dp_bin.attrs = {
-        "standard_name": f"{dp.attrs.get('standard_name', 'dp')}_bin",
-        "long_name": f"{dp.attrs.get('long_name', 'dp')} bin",
-        "units": "m"
+        "standard_name": f"{dpi.attrs.get('standard_name', 'dp')}_bin",
+        "long_name": f"{dpi.attrs.get('long_name', 'dp')} bin",
+        "units": "degree"
     }
 
     dsout[label].encoding = {"dtype": "int32", "_FillValue": -32767}
-    dsout["data_count"].encoding = {"dtype": "int32", "_FillValue": -32767}
 
     return dsout
 
@@ -275,6 +275,11 @@ if __name__ == "__main__":
         ranges["dpm"]["freq"]
     )
 
+    hs = ds.hs.groupby("time.month")
+    tp = ds.tps.groupby("time.month")
+    dp = ds.dpm.groupby("time.month")
+    dsg = ds.groupby("time.month")
+    dsout = distribution(ds.hs, ds.tps, ds.dpm, hs_bins, tp_bins, dp_bins)
     with ProgressBar():
         dsout = dsout.load()
 

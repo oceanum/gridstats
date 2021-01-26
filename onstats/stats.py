@@ -238,7 +238,13 @@ class Stats(DerivedVar):
         self._hour_of_day = None
 
         # Open dataset
-        self._open_dataset()
+        self._open_dataset(
+            dataset=self.dataset,
+            namespace=self.namespace,
+            chunk=self.chunk,
+            chunks=self.chunks,
+        )
+
         self.dsout = xr.Dataset()
 
         # Instantiating DerivedVar
@@ -326,37 +332,40 @@ class Stats(DerivedVar):
             rm(outfile, recursive=isdir(outfile))
         put(filename, outfile, recursive=isdir(filename))
 
-    def _open_dataset(self):
+    def _open_dataset(self, dataset, namespace, chunk, chunks):
         """Set dset attribute either from ontake dataset of from xarray dataset itself.
 
-        If self.dataset is a string, it should be a valid ontake dataset and the
-            ontake master_url and namespace arguments must be provided at initialisation.
-            If self.dataset is an xarray dataset then it is just assigned to self.dset attribute.
+        Args:
+            dataset (str, xr.Dataset): Dataset ontake id, URI or an xarray dataset.
+            namespace (str): Ontake namespace in case dataset is an ontake id.
+            chunk (str): Ontake chunk optimisation strategy in case dataset is an ontake id.
+            chunks (dict): coordinates and sizes for chunking dataset after opening.
 
-        Note: there is a point of failure here is the dataset string is a substring of
-            more than one intake dataset in catalog. This should be fixed in the future.
+        Note:
+            The arguments are provided from class attributes but can be provided from
+                inside methods as well when a different dataset chunk strategy is to
+                be used for a certain stat for instance.
 
         """
         logger.info("Open dataset")
-        if isinstance(self.dataset, str) and self.dataset.endswith(".nc"):
-            logger.debug(f"Opening netcdf file: {self.dataset}")
-            self.dset = xr.open_dataset(self.dataset, chunks=self.chunks)
-        elif isinstance(self.dataset, str):
+        if isinstance(dataset, str) and dataset.endswith(".nc"):
+            logger.debug(f"Opening netcdf file: {dataset}")
+            self.dset = xr.open_dataset(dataset, chunks=chunks)
+        elif isinstance(dataset, str):
             try:
-                logger.debug(f"Try opening zarr store from URI: {self.dataset}")
-                self.dset = xr.open_zarr(get_mapper(self.dataset), consolidated=True)
+                logger.debug(f"Try opening zarr store from URI: {dataset}")
+                self.dset = xr.open_zarr(get_mapper(dataset), consolidated=True)
             except KeyError:
-                logger.debug(
-                    f"Ontake dataset {self.dataset} {self.master_url} {self.namespace}"
-                )
+                logger.debug(f"Ontake dataset {dataset} {self.master_url} {namespace}")
                 # Open catalog and ensure dataset is a substring of a catalog entry
-                ot = Ontake(master_url=self.master_url, namespace=self.namespace)
+                ot = Ontake(master_url=self.master_url, namespace=namespace)
                 kwargs = {}
-                if self.chunk is not None:
-                    kwargs.update({"chunk": self.chunk})
-                self.dset = ot.dataset(self.dataset, **kwargs)
-        elif isinstance(self.dataset, xr.Dataset):
-            self.dset = self.dataset
+                if chunk is not None:
+                    logger.debug(f"Chunk stragegy: {chunk}")
+                    kwargs.update({"chunk": chunk})
+                self.dset = ot.dataset(dataset, **kwargs)
+        elif isinstance(dataset, xr.Dataset):
+            self.dset = dataset
         else:
             raise ValueError(
                 "dataset must be either a string specifying an ontake "
@@ -367,9 +376,9 @@ class Stats(DerivedVar):
         # Slicing
         self._slice_dset()
         # Rechunking
-        if self.chunks:
-            logger.info(f"Re-chunking dataset as {self.chunks}")
-            self.dset = self.dset.chunk(self.chunks)
+        if chunks:
+            logger.info(f"Re-chunking dataset as {chunks}")
+            self.dset = self.dset.chunk(chunks)
         self.data_vars = list(self.dset.data_vars.keys())
 
     def _load(self):
@@ -836,15 +845,21 @@ class Stats(DerivedVar):
         """
         data_vars = [hs_name, tp_name, dp_name]
         self._update_dset(data_vars)
-        dset = self.dset[data_vars]
+
         if group:
             logger.info(f"Grouping by {group}")
-            dset = expand_time_group(dset, group)
+            hs = self.dset[hs_name].groupby(f"time.{group}")
+            tp = self.dset[tp_name].groupby(f"time.{group}")
+            dp = self.dset[dp_name].groupby(f"time.{group}")
+        else:
+            hs = self.dset[hs_name]
+            tp = self.dset[tp_name]
+            dp = self.dset[dp_name]
 
         dsout = distribution(
-            hs=dset[hs_name],
-            tp=dset[tp_name],
-            dp=dset[dp_name],
+            hs=hs,
+            tp=tp,
+            dp=dp,
             hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
             tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
             dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
