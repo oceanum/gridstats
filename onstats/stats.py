@@ -12,7 +12,7 @@ from fsspec import get_mapper
 
 import dask
 from dask.diagnostics import ProgressBar
-from dask.distributed import Client, progress
+from dask.distributed import Client, progress, LocalCluster
 from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
@@ -192,6 +192,7 @@ class Stats(DerivedVar):
         persist=False,
         updir=None,
         allow_split_large_chunks=False,
+        local_cluster=0,
         **kwargs,
     ):
         """Gridded stats using dask arrays.
@@ -211,6 +212,7 @@ class Stats(DerivedVar):
             persist (bool): If True, persist output dataset before saving as netcdf.
             updir (str): Upload direction to upload netcdf and zarr stats files to.
             allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
+            local_cluster (int): Number of cores to scale a Local dask cluster.
 
         Tips:
             Run the calculations on a dask distributed cluster. This optimise
@@ -223,6 +225,10 @@ class Stats(DerivedVar):
 
         """
         dask.config.set({"array.slicing.split_large_chunks": allow_split_large_chunks})
+
+        if local_cluster:
+            cluster = LocalCluster(local_cluster)
+            logger.info(cluster)
 
         self.dataset = dataset
         self.master_url = master_url
