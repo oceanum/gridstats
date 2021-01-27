@@ -4,6 +4,9 @@ init:
   # namespace: hindcast
   # dataset: era5_wind10m
   dataset: /source/onzarr/tests/catalog/era5_wind.zarr
+  updir: gs://oceanum-tmp
+  zarrfile: /source/onstats/tests/gridstat_partial.zarr
+  zarrmode: a
   mask: null
   slice_dict:
     sel:
@@ -69,6 +72,13 @@ calls:
 
   - method: apply_func
     kwargs:
+      func: max
+      data_vars:
+        - wspd
+        - winpow
+
+  - method: apply_func
+    kwargs:
       func: mean
       data_vars: all
       derived_vars:
@@ -110,6 +120,7 @@ calls:
 
   - method: range_probability
     kwargs:
+      compute: True
       dim: time
       data_ranges:
         - var: wspd

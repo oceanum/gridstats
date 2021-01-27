@@ -191,6 +191,9 @@ class Stats(DerivedVar):
         chunks=None,
         persist=False,
         updir=None,
+        localdir="/scratch",
+        zarrfile=None,
+        zarrmode="w",
         allow_split_large_chunks=False,
         local_cluster=0,
         **kwargs,
@@ -210,7 +213,10 @@ class Stats(DerivedVar):
             slice_dict (dict): Dictionary specifying slicing arg.
             chunks (dict): Chunking dict to rechunk dataset after opening.
             persist (bool): If True, persist output dataset before saving as netcdf.
+            localdir (str): Local directory for writing partial zarr archive.
             updir (str): Upload direction to upload netcdf and zarr stats files to.
+            zarrfile (str): Name of zarr file to write after each compute call.
+            zarrmode (str): Write mode for output zarr archive with stats.
             allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
             local_cluster (int): Number of cores to scale a Local dask cluster.
 
@@ -241,6 +247,9 @@ class Stats(DerivedVar):
         self.chunks = chunks
         self.persist = persist
         self.updir = updir
+        self.localdir = localdir
+        self.zarrfile = os.path.join(localdir, zarrfile) if zarrfile else None
+        self.zarrmode = zarrmode
 
         self._hour_of_day = None
 
@@ -451,6 +460,23 @@ class Stats(DerivedVar):
         if not isinstance(getattr(self, name), xr.DataArray):
             raise TypeError(f"Property '{name}' in DerivedVar must return DataArray.")
 
+    def _compute(self, is_compute):
+        """Trigger computation of dask variables and write to partial zarr."""
+        if is_compute:
+            logger.info(f"Computing dask variables: {self.dsout_dask}")
+            self.dsout = self.dsout.compute()
+            if self.zarrfile:
+                if isdir(self.zarrfile):
+                    dstmp = xr.open_zarr(self.zarrfile, consolidated=True)
+                else:
+                    dstmp = xr.Dataset()
+                new_data_vars = list(set(self.dsout.data_vars) - set(dstmp.data_vars))
+                if new_data_vars:
+                    logger.info(f"Writing variables {new_data_vars} to partial archive {self.zarrfile}")
+                    dsout = self.dsout[new_data_vars]
+                    self.to_zarr(self.zarrfile, dsout, mode=self.zarrmode)
+                    self.zarrmode = "a"
+
     def range_probability(self, data_ranges, dim="time", compute=False, **kwargs):
         """Calculate probability of specific ranges.
 
@@ -507,10 +533,7 @@ class Stats(DerivedVar):
             in_range = lfunc(darray, start) & rfunc(darray, stop)
             self.dsout[varname] = in_range.sum(dim=dim) / counts[dvar]
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return self.dsout
 
     def data_count(
@@ -541,10 +564,7 @@ class Stats(DerivedVar):
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return dsout
 
     def value_probability(
@@ -599,10 +619,7 @@ class Stats(DerivedVar):
         if len(bins) > 1:
             self.dsout[bin_name] = bins
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return self.dsout
 
     def time_probability_hour_of_day(
@@ -644,10 +661,7 @@ class Stats(DerivedVar):
         self.dsout[f"{data_var}{suffix}"] = xr.concat(darrays, "hour_of_day")
         self.dsout["hour_of_day"] = hours
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return self.dsout
 
     def rpv(
@@ -706,10 +720,7 @@ class Stats(DerivedVar):
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return dsout
 
     def apply_func(
@@ -762,10 +773,7 @@ class Stats(DerivedVar):
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
         )
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return dsout
 
     def apply_func_sector(
@@ -815,10 +823,7 @@ class Stats(DerivedVar):
             dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars})
         )
 
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
-
+        self._compute(is_compute=compute)
         return dsout
 
     def distribution(
@@ -875,10 +880,8 @@ class Stats(DerivedVar):
         )
 
         self.dsout = self.dsout.merge(dsout)
-        if compute:
-            logger.info(f"Computing dask variables: {self.dsout_dask}")
-            self.dsout = self.dsout.compute()
 
+        self._compute(is_compute=compute)
         return dsout
 
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
@@ -903,22 +906,24 @@ class Stats(DerivedVar):
         if self.updir:
             self._upload(outfile)
 
-    def to_zarr(self, outfile, _FillValue=-32767, mode="w", **kwargs):
+    def to_zarr(self, outfile, dsout=None, _FillValue=-32767, mode="w", **kwargs):
         """Save output dataset as zarr.
 
         Args:
             outfile (str): Name of output zarr file.
+            dsout (str): Output dataset to write, self.dsout by default.
             _FillValue (int): Fill Value.
             mode (str): Zarr write mode.
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
-        for data_var in self.dsout.data_vars:
-            self.dsout[data_var].encoding.update({"_FillValue": _FillValue})
-            self.dsout[data_var].encoding.pop("zlib", None)
+        dsout = dsout or self.dsout
+        for data_var in dsout.data_vars:
+            dsout[data_var].encoding.update({"_FillValue": _FillValue})
+            dsout[data_var].encoding.pop("zlib", None)
         self._sortby()
         self._setattrs()
         fsmap = get_mapper(outfile)
-        self.dsout.to_zarr(fsmap, consolidated=True, mode=mode)
+        dsout.to_zarr(fsmap, consolidated=True, mode=mode)
         if self.updir:
             self._upload(outfile)
