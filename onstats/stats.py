@@ -16,7 +16,7 @@ from dask.distributed import Client, progress, LocalCluster
 from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
-from oncore.dataio import put, isdir, exists, rm
+from oncore.dataio import put, isdir, exists, rm, get
 
 from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
@@ -191,7 +191,6 @@ class Stats(DerivedVar):
         chunks=None,
         persist=False,
         updir=None,
-        localdir="/scratch",
         zarrfile=None,
         zarrmode="w",
         allow_split_large_chunks=False,
@@ -213,7 +212,6 @@ class Stats(DerivedVar):
             slice_dict (dict): Dictionary specifying slicing arg.
             chunks (dict): Chunking dict to rechunk dataset after opening.
             persist (bool): If True, persist output dataset before saving as netcdf.
-            localdir (str): Local directory for writing partial zarr archive.
             updir (str): Upload direction to upload netcdf and zarr stats files to.
             zarrfile (str): Name of zarr file to write after each compute call.
             zarrmode (str): Write mode for output zarr archive with stats.
@@ -247,11 +245,19 @@ class Stats(DerivedVar):
         self.chunks = chunks
         self.persist = persist
         self.updir = updir
-        self.localdir = localdir
-        self.zarrfile = os.path.join(localdir, zarrfile) if zarrfile else None
+        self.zarrfile = zarrfile
         self.zarrmode = zarrmode
 
         self._hour_of_day = None
+
+        # Download partial zarr file to be appended
+        src = os.path.join(self.updir, os.path.basename(zarrfile))
+        if isdir(src) and zarrmode == "a":
+            if isdir(self.zarrfile):
+                logger.warning(f"Removing existing tmp file {self.zarrfile} before pulling")
+                rm(self.zarrfile, recursive=True)
+            logger.info(f"Downloading existing zarr")
+            get(src, os.path.dirname(self.zarrfile), recursive=True)
 
         # Open dataset
         self._open_dataset(
@@ -468,13 +474,15 @@ class Stats(DerivedVar):
             if self.zarrfile:
                 if isdir(self.zarrfile):
                     dstmp = xr.open_zarr(self.zarrfile, consolidated=True)
+                    mode = self.zarrmode
                 else:
                     dstmp = xr.Dataset()
+                    mode = "w"
                 new_data_vars = list(set(self.dsout.data_vars) - set(dstmp.data_vars))
                 if new_data_vars:
                     logger.info(f"Writing variables {new_data_vars} to partial archive {self.zarrfile}")
                     dsout = self.dsout[new_data_vars]
-                    self.to_zarr(self.zarrfile, dsout, mode=self.zarrmode)
+                    self.to_zarr(self.zarrfile, dsout, mode=mode)
                     self.zarrmode = "a"
 
     def range_probability(self, data_ranges, dim="time", compute=False, **kwargs):
