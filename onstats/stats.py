@@ -908,7 +908,7 @@ class Stats(DerivedVar):
 
         tmp = dsout.pop(0)
         for ds in dsout:
-            tmp = xr.concat(xr.align(tmp, ds, join="outer"), "dummy").fillna(0).sum("dummy")
+            tmp = xr.concat(xr.align(tmp, ds, join="outer", fill_value=0), "dummy").sum("dummy", skipna=False)
         mask = dset[hs_name].isel(**{dim: 0}, drop=True).notnull()
         tmp = tmp.where(mask)
         self.dsout = self.dsout.merge(tmp)
