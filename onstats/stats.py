@@ -17,6 +17,7 @@ from distributed.diagnostics.progressbar import get_scheduler
 
 from ontake.ontake import Ontake
 from oncore.dataio import put, isdir, exists, rm, get
+from oncore.date import daterange, _parse, timedelta
 
 from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
@@ -249,13 +250,14 @@ class Stats(DerivedVar):
         self._hour_of_day = None
 
         # Download partial zarr file to be appended
-        src = os.path.join(self.updir, os.path.basename(zarrfile))
-        if isdir(src) and zarrmode == "a":
-            if isdir(self.zarrfile):
-                logger.warning(f"Removing existing tmp file {self.zarrfile} before pulling")
-                rm(self.zarrfile, recursive=True)
-            logger.info(f"Downloading existing zarr")
-            get(src, os.path.dirname(self.zarrfile), recursive=True)
+        if self.updir:
+            src = os.path.join(self.updir, os.path.basename(zarrfile))
+            if isdir(src) and zarrmode == "a":
+                if isdir(self.zarrfile):
+                    logger.warning(f"Removing existing tmp file {self.zarrfile} before pulling")
+                    rm(self.zarrfile, recursive=True)
+                logger.info(f"Downloading existing zarr")
+                get(src, os.path.dirname(self.zarrfile), recursive=True)
 
         # Open dataset
         self._open_dataset(
@@ -832,6 +834,87 @@ class Stats(DerivedVar):
 
         self._compute(is_compute=compute)
         return dsout
+
+    def distribution_new(
+        self,
+        hs_range,
+        tp_range,
+        dp_range,
+        dim="time",
+        group="month",
+        hs_name="hs",
+        tp_name="tp",
+        dp_name="dp",
+        label="hs_tp_dp_dist",
+        compute=False,
+        freq=None,
+        **kwargs,
+    ):
+        """Distribution statistics.
+
+        Args:
+            hs_range (dict): Numpy arange kwargs defining Hs bins.
+            tp_range (dict): Numpy arange kwargs defining Tp bins.
+            dp_range (dict): Numpy arange kwargs defining Dp bins.
+            dim (str): Dimension to calculate distribution along.
+            group (str): Time grouping type, any valid time_{group} such month, season.
+            hs_name (str): Name for Hs variable to use in dataset.
+            tp_name (str): Name for Tp variable to use in dataset.
+            dp_name (str): Name for Dp variable to use in dataset.
+            label (str): Name for joint distribution variable.
+            compute (bool): Compute dask variables from output dataset before returning.
+            freq (str): Time frequency for calculating partial stats for memory efficiency.
+
+        """
+        data_vars = [hs_name, tp_name, dp_name]
+        self._update_dset(data_vars)
+
+        tstart, tend = self.dset[dim][[0, -1]].to_index().to_pydatetime()
+        times = daterange(start=tstart, end=tend, freq=freq)
+        if times[-1] < tend:
+            times.append(tend)
+
+        dsout = []
+        for t0 in times:
+            t1 = t0 + timedelta(freq)
+            logger.info(f"Calculating joint distribution for {dim} slice: {(t0, t1)}")
+            dset = self.dset.sel(**{dim: slice(t0, t1)})
+            if t0 != times[-1]:
+                dset = dset.isel(**{dim: slice(0, -1)})
+            dset = dset.chunk({dim: -1})
+
+            if group:
+                logger.info(f"Grouping by {group}")
+                hs = dset[hs_name].groupby(f"time.{group}")
+                tp = dset[tp_name].groupby(f"time.{group}")
+                dp = dset[dp_name].groupby(f"time.{group}")
+            else:
+                hs = dset[hs_name]
+                tp = dset[tp_name]
+                dp = dset[dp_name]
+
+            dsout.append(
+                distribution(
+                    hs=hs,
+                    tp=tp,
+                    dp=dp,
+                    hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
+                    tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
+                    dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
+                    dim=dim,
+                    label="hs_tp_dp_dist",
+                ).compute()
+            )
+
+        tmp = dsout.pop(0)
+        for ds in dsout:
+            tmp = xr.concat(xr.align(tmp, ds, join="outer"), "dummy").fillna(0).sum("dummy")
+        mask = dset[hs_name].isel(**{dim: 0}, drop=True).notnull()
+        tmp = tmp.where(mask)
+        self.dsout = self.dsout.merge(tmp)
+
+        self._compute(is_compute=compute)
+        return tmp
 
     def distribution(
         self,
