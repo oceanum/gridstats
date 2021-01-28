@@ -218,14 +218,12 @@ class Stats(DerivedVar):
             allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
             local_cluster (int): Number of cores to scale a Local dask cluster.
 
-        Tips:
-            Run the calculations on a dask distributed cluster. This optimise
-                distribution of computation efficiently.
-            Check out computation on dashboard hosted on http://localhost:8787/status.
-            When running with hyperthreading on (i.e., google VMs), limit cluster to
-                half the number of cores if having memory issues.
-            If still having memory issues, trigger computation after each method call,
-                this will be slower but will avoid blowing up memory resources.
+        Note:
+            Set compute=True in the method calls when you want to trigger computation
+                and therefore avoid blowing up memory by computing everything at once.
+            The idea behind zarrfile argument is to allow it to download existing zarr
+                stores and update and upload it back after each compute call, therefore
+                if the workflow breaks one can run only the remaining function calls.
 
         """
         dask.config.set({"array.slicing.split_large_chunks": allow_split_large_chunks})
@@ -402,6 +400,7 @@ class Stats(DerivedVar):
             logger.info(f"Re-chunking dataset as {chunks}")
             self.dset = self.dset.chunk(chunks)
         self.data_vars = list(self.dset.data_vars.keys())
+        logger.info(f"{self.dset}")
 
     def _load(self):
         """Trigger computation and load output dataset in memory.
