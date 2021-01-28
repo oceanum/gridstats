@@ -870,7 +870,7 @@ class Stats(DerivedVar):
         self._update_dset(data_vars)
 
         tstart, tend = self.dset[dim][[0, -1]].to_index().to_pydatetime()
-        times = daterange(start=tstart, end=tend, freq=freq)
+        times = list(daterange(start=tstart, end=tend, freq=freq))
         if times[-1] < tend:
             times.append(tend)
 
@@ -909,7 +909,7 @@ class Stats(DerivedVar):
         tmp = dsout.pop(0)
         for ds in dsout:
             tmp = xr.concat(xr.align(tmp, ds, join="outer", fill_value=0), "dummy").sum("dummy", skipna=False)
-        mask = dset[hs_name].isel(**{dim: 0}, drop=True).notnull()
+        mask = dset[hs_name].isel(**{dim: 0}, drop=True).notnull.fillna(0)()
         tmp = tmp.where(mask)
         self.dsout = self.dsout.merge(tmp)
 
