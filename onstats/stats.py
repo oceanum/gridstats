@@ -1031,14 +1031,16 @@ class Stats(DerivedVar):
         if self.updir:
             self._upload(outfile)
 
-    def to_zarr(self, outfile, dsout=None, _FillValue=-32767, mode="w", **kwargs):
+    def to_zarr(self, outfile, dsout=None, _FillValue=-32767, mode="w", chunksizes={"": {}}, **kwargs):
         """Save output dataset as zarr.
 
         Args:
-            outfile (str): Name of output zarr file.
+            outfile (str): Base name of output zarr file.
             dsout (str): Output dataset to write, self.dsout by default.
             _FillValue (int): Fill Value.
             mode (str): Zarr write mode.
+            chunksizes (dict): Key is a suffix for outfile, values are chunks, one file
+                is saved for each key-value in the dictionary.
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
@@ -1048,7 +1050,14 @@ class Stats(DerivedVar):
             dsout[data_var].encoding.pop("zlib", None)
         self._sortby()
         self._setattrs()
-        fsmap = get_mapper(outfile)
-        dsout.to_zarr(fsmap, consolidated=True, mode=mode)
-        if self.updir:
-            self._upload(outfile)
+
+        basename, ext = os.path.splitext(outfile)
+        for suffix, chunks in chunksizes.items():
+            if not suffix.startswith("_"):
+                suffix = "_" + suffix
+            store = f"{basename}{suffix}{ext}"
+            logger.info(f"Writing zarr file {store} with chunks {chunks}")
+            fsmap = get_mapper(store)
+            dsout.chunk(chunks).to_zarr(fsmap, consolidated=True, mode=mode)
+            if self.updir:
+                self._upload(outfile)
