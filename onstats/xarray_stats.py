@@ -127,7 +127,10 @@ def distribution(
     # Direction wrapping
     dp_bins = dp_bins - ((dp_bins[1] - dp_bins[0]) / 2)
     if isinstance(dp, xr.core.groupby.DataArrayGroupBy):
+        grouping = f"time.{dp._unique_coord.name}"
         dp = dp.map(_wrap_directions, dirmax=dp_bins.max())
+        # When a function is applied the groupby object is stacked
+        dp = dp.groupby(grouping)
     else:
         dp = _wrap_directions(dp, dirmax=dp_bins.max())
 
