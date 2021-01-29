@@ -950,12 +950,14 @@ class Stats(DerivedVar):
 
         # Compute each spatial box slice
         tot = len(lons) * len(lats)
+        nlat = len(lats)
+        nlon = len(lons)
         i = 1
-        dsout = []
-        for lat_interval in lats:
-            for lon_interval in lons:
+        dsets = {}
+        for ilat, lat_interval in enumerate(lats):
+            dsets.update({ilat: {}})
+            for ilon, lon_interval in enumerate(lons):
                 logger.info(f"Compute partial dataset {i}/{tot}")
-                i += 1
                 ds = dset.isel(
                     latitude=slice(lat_interval.left, lat_interval.right),
                     longitude=slice(lon_interval.left, lon_interval.right)
@@ -975,21 +977,33 @@ class Stats(DerivedVar):
                     tp = ds[tp_name]
                     dp = ds[dp_name]
 
-                dsout.append(
-                    distribution(
-                        hs=hs,
-                        tp=tp,
-                        dp=dp,
-                        hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
-                        tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
-                        dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
-                        dim=dim,
-                        label=label,
-                    )
+                dsets[ilat].update(
+                    {
+                        ilon: distribution(
+                            hs=hs,
+                            tp=tp,
+                            dp=dp,
+                            hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
+                            tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
+                            dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
+                            dim=dim,
+                            label=label,
+                        )
+                    }
                 )
+                i += 1
 
-        # Concatenate box slices
-        dsout = xr.combine_by_coords(dsout)
+        # This below is necessary to avoid blowing up memory
+        dsout = xr.Dataset()
+        for ilat in range(nlat):
+            logger.info(f"Combining datasets for latitude {ilat+1}/{nlat}")
+            dslat = dsets.pop(ilat)
+            dsout_lat = xr.Dataset()
+            for ilon in range(nlon):
+                logger.debug(f"Merging longitude {ilon+1}/{nlon}")
+                ds = dslat.pop(ilon)
+                dsout_lat = xr.combine_by_coords([dsout_lat, ds])
+            dsout = xr.combine_by_coords([dsout, dsout_lat])
 
         self.dsout = self.dsout.merge(dsout)
         self._compute(is_compute=compute)
