@@ -250,7 +250,7 @@ class Stats(DerivedVar):
         self._hour_of_day = None
 
         # Download partial zarr file to be appended
-        if self.updir:
+        if self.updir and self.zarrfile:
             src = os.path.join(self.updir, os.path.basename(zarrfile))
             if isdir(src) and zarrmode == "a":
                 if isdir(self.zarrfile):
