@@ -947,17 +947,21 @@ class Stats(DerivedVar):
         lons = pd.interval_range(start=0, end=xend, freq=step_longitude)
 
         # Compute each spatial box slice
+        tot = len(lons) * len(lats)
+        i = 1
         dsout = []
         for lat_interval in lats:
             for lon_interval in lons:
+                logger.info(f"Compute partial dataset {i}/{tot}")
+                i += 1
                 ds = dset.isel(
                     latitude=slice(lat_interval.left, lat_interval.right),
                     longitude=slice(lon_interval.left, lon_interval.right)
                 ).load()
-                logger.info(f"\n\nCompute partial dataset: {ds.coords}\n\n")
+                logger.debug(f"\n\nCompute partial dataset: {ds.coords}\n\n")
 
                 if group:
-                    logger.info(f"Grouping by {group}")
+                    logger.debug(f"Grouping by {group}")
                     hs = ds[hs_name].groupby(f"time.{group}")
                     tp = ds[tp_name].groupby(f"time.{group}")
                     dp = ds[dp_name].groupby(f"time.{group}")
