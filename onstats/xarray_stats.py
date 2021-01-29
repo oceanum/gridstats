@@ -36,6 +36,11 @@ def _timestep(df, dim="time"):
     return pd.to_timedelta(tdiff[0])
 
 
+def _wrap_directions(darr, dirmax):
+    """Wrap directions DataArray."""
+    return xr.where(darr <= dirmax, darr, darr - 360)
+
+
 def rpv(
     darr,
     return_periods=[1, 5, 10, 20, 50, 100, 1000, 10000],
@@ -112,12 +117,19 @@ def distribution(
         label (str): Name for joint distribution variable.
 
     Returns:
-        Dataset with Hs, Tp, Dp joint distribution and total count along dim.
+        Dataset with Hs, Tp, Dp joint distributio along dim.
 
     """
     hs_bins = np.array(hs_bins)
     tp_bins = np.array(tp_bins)
     dp_bins = np.array(dp_bins)
+
+    # Direction wrapping
+    dp_bins = dp_bins - ((dp_bins[1] - dp_bins[0]) / 2)
+    if isinstance(dp, xr.core.groupby.DataArrayGroupBy):
+        dp = dp.map(_wrap_directions, dirmax=dp_bins.max())
+    else:
+        dp = _wrap_directions(dp, dirmax=dp_bins.max())
 
     # Bin coordinates at cell centre
     coords = {
@@ -161,6 +173,8 @@ def distribution(
             break
     else:
         hsi = hs
+        tpi = tp
+        dpi = dp
     dsout = dsout.where(hsi.isel(**{dim: 0}, drop=True).notnull())
 
     # Attributes
