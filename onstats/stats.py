@@ -907,9 +907,10 @@ class Stats(DerivedVar):
         dp_name="dp",
         label="hs_tp_dp_dist",
         compute=False,
+        eager: True,
         **kwargs,
     ):
-        """Stepwise distribution statistics.
+        """Stepwise distribution statistics over spatial windows.
 
         Optimal to use with datasets chunked for timeseries reading.
 
@@ -926,6 +927,7 @@ class Stats(DerivedVar):
             dp_name (str): Name for Dp variable to use in dataset.
             label (str): Name for joint distribution variable.
             compute (bool): Compute and save to partial output dataset.
+            eager (bool): Load each box slice before calculating distributions.
 
         Note:
             Best to choose spatial steps so that dataset to load is large while fitting
@@ -957,8 +959,11 @@ class Stats(DerivedVar):
                 ds = dset.isel(
                     latitude=slice(lat_interval.left, lat_interval.right),
                     longitude=slice(lon_interval.left, lon_interval.right)
-                ).load()
+                )
                 logger.debug(f"\n\nCompute partial dataset: {ds.coords}\n\n")
+                if eager:
+                    logger.debug(f"Loading sliced dataset into memory")
+                    ds = ds.load()
 
                 if group:
                     logger.debug(f"Grouping by {group}")
