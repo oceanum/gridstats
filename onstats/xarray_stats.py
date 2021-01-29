@@ -243,43 +243,44 @@ if __name__ == "__main__":
     import datetime
     from dask.diagnostics.progress import ProgressBar
 
-    dset = xr.open_dataset(
-        "/source/onhindcast/implementation/swan/jogchum/useast/model/grid/useast-20000501T00-grid.nc"
-    ).chunk()
-
+    dset = xr.open_zarr("/data/ww3/ww3_grid_sample.zarr", consolidated=True)
+    dset["tp"] = 1 / dset.fp
 
     #====================
     # Histogram approach
     #====================
     ranges = {
-        "hs": {"start": 0, "end": 5, "freq": 0.5},
-        "tps": {"start": 0, "end": 20, "freq": 1},
-        "dpm": {"start": 0, "end": 360, "freq": 45},
+        "hs": {"start": 0, "end": 20, "freq": 0.5},
+        "tp": {"start": 0, "end": 20, "freq": 1},
+        "dp": {"start": 0, "end": 360, "freq": 45},
     }
 
-    print("New method")
-    ds = dset[["hs","tps","dpm"]]#.load()
+    # ds = dset[["hs","tp","dp"]].isel(latitude=0, longitude=0).load()
+    ds = dset[["hs","tp","dp"]].load()
+
     hs_bins = np.arange(
         ranges["hs"]["start"],
         ranges["hs"]["end"]+ranges["hs"]["freq"],
         ranges["hs"]["freq"]
     )
     tp_bins = np.arange(
-        ranges["tps"]["start"],
-        ranges["tps"]["end"]+ranges["tps"]["freq"],
-        ranges["tps"]["freq"]
+        ranges["tp"]["start"],
+        ranges["tp"]["end"]+ranges["tp"]["freq"],
+        ranges["tp"]["freq"]
     )
     dp_bins = np.arange(
-        ranges["dpm"]["start"],
-        ranges["dpm"]["end"]+ranges["dpm"]["freq"],
-        ranges["dpm"]["freq"]
+        ranges["dp"]["start"],
+        ranges["dp"]["end"]+ranges["dp"]["freq"],
+        ranges["dp"]["freq"]
     )
 
     hs = ds.hs.groupby("time.month")
-    tp = ds.tps.groupby("time.month")
-    dp = ds.dpm.groupby("time.month")
-    dsg = ds.groupby("time.month")
-    dsout = distribution(ds.hs, ds.tps, ds.dpm, hs_bins, tp_bins, dp_bins)
+    tp = ds.tp.groupby("time.month")
+    dp = ds.dp.groupby("time.month")
+    # dsg = ds.groupby("time.month")
+
+    dsout = distribution(hs, tp, dp, hs_bins, tp_bins, dp_bins)
+
     with ProgressBar():
         dsout = dsout.load()
 
