@@ -907,7 +907,7 @@ class Stats(DerivedVar):
         dp_name="dp",
         label="hs_tp_dp_dist",
         compute=False,
-        eager: True,
+        eager=True,
         **kwargs,
     ):
         """Stepwise distribution statistics over spatial windows.
