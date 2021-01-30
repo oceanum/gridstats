@@ -1060,4 +1060,4 @@ class Stats(DerivedVar):
             fsmap = get_mapper(store)
             dsout.chunk(chunks).to_zarr(fsmap, consolidated=True, mode=mode)
             if self.updir:
-                self._upload(outfile)
+                self._upload(store)
