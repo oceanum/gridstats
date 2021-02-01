@@ -192,6 +192,7 @@ class Stats(DerivedVar):
         chunks=None,
         persist=False,
         updir=None,
+        localdir="/scratch",
         zarrfile=None,
         zarrmode="w",
         allow_split_large_chunks=False,
@@ -244,6 +245,7 @@ class Stats(DerivedVar):
         self.chunks = chunks
         self.persist = persist
         self.updir = updir
+        self.localdir = localdir
         self.zarrfile = zarrfile
         self.zarrmode = zarrmode
 
@@ -912,7 +914,9 @@ class Stats(DerivedVar):
     ):
         """Stepwise distribution statistics over spatial windows.
 
-        Optimal to use with datasets chunked for timeseries reading.
+        This method is a workaround to avoid memory issues when calculating joint
+            distributions over too many bins and is optimal to use with datasets
+            chunked for timeseries reading.
 
         Args:
             hs_range (dict): Numpy arange kwargs defining Hs bins.
@@ -948,62 +952,48 @@ class Stats(DerivedVar):
         lats = pd.interval_range(start=0, end=yend, freq=step_latitude)
         lons = pd.interval_range(start=0, end=xend, freq=step_longitude)
 
-        # Compute each spatial box slice
-        tot = len(lons) * len(lats)
-        nlat = len(lats)
-        nlon = len(lons)
+        # Compute each spatial box slice dumping each full latitude slice
+        tmp_store = os.path.join(self.localdir, "tmpdist.zarr")
         i = 1
-        dsets = {}
         for ilat, lat_interval in enumerate(lats):
-            dsets.update({ilat: {}})
-            for ilon, lon_interval in enumerate(lons):
-                logger.info(f"Compute partial dataset {i}/{tot}")
+            dslat = xr.Dataset()
+            for lon_interval in lons:
+                logger.info(f"Compute partial dataset {i}/{len(lons) * len(lats)}")
                 ds = dset.isel(
                     latitude=slice(lat_interval.left, lat_interval.right),
                     longitude=slice(lon_interval.left, lon_interval.right),
                 )
-                logger.debug(f"\n\nCompute partial dataset: {ds.coords}\n\n")
                 if eager:
                     logger.debug(f"Loading sliced dataset into memory")
                     ds = ds.load()
 
-                dsets[ilat].update(
-                    {
-                        ilon: distribution(
-                            hs=ds[hs_name],
-                            tp=ds[tp_name],
-                            dp=ds[dp_name],
-                            hs_bins=np.hstack(
-                                (np.arange(**hs_range), hs_range["stop"])
-                            ),
-                            tp_bins=np.hstack(
-                                (np.arange(**tp_range), tp_range["stop"])
-                            ),
-                            dp_bins=np.hstack(
-                                (np.arange(**dp_range), dp_range["stop"])
-                            ),
-                            dim=dim,
-                            group=group,
-                            label=label,
-                        )
-                    }
+                dist = distribution(
+                    hs=ds[hs_name],
+                    tp=ds[tp_name],
+                    dp=ds[dp_name],
+                    hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
+                    tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
+                    dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
+                    dim=dim,
+                    group=group,
+                    label=label,
                 )
+                dslat = xr.combine_by_coords([dslat, dist])
                 i += 1
+            # Dump to temporary archive
+            logger.info(f"Writing latitude slice {ilat + 1}/{len(lats)} to tmp archive")
+            if ilat == 0:
+                dslat.to_zarr(tmp_store, mode="w", consolidated=True)
+            else:
+                dslat.to_zarr(tmp_store, mode="a", append_dim="latitude", consolidated=True)
+            del dslat
 
-        # This below is necessary to avoid blowing up memory
-        dsout = xr.Dataset()
-        for ilat in range(nlat):
-            logger.info(f"Combining datasets for latitude {ilat+1}/{nlat}")
-            dslat = dsets.pop(ilat)
-            dsout_lat = xr.Dataset()
-            for ilon in range(nlon):
-                logger.debug(f"Merging longitude {ilon+1}/{nlon}")
-                ds = dslat.pop(ilon)
-                dsout_lat = xr.combine_by_coords([dsout_lat, ds])
-            dsout = xr.combine_by_coords([dsout, dsout_lat])
+        dsout = xr.open_zarr(tmp_store, consolidated=True)
+        dsout[label].encoding.pop("chunks", None)
 
         self.dsout = self.dsout.merge(dsout)
         self._compute(is_compute=compute)
+        # rm(tmp_store, recursive=True)
         return dsout
 
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
