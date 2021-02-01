@@ -29,7 +29,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-np.seterr(divide='ignore', invalid='ignore')
+np.seterr(divide="ignore", invalid="ignore")
 
 
 class DerivedVar:
@@ -254,7 +254,9 @@ class Stats(DerivedVar):
             src = os.path.join(self.updir, os.path.basename(zarrfile))
             if isdir(src) and zarrmode == "a":
                 if isdir(self.zarrfile):
-                    logger.warning(f"Removing existing tmp file {self.zarrfile} before pulling")
+                    logger.warning(
+                        f"Removing existing tmp file {self.zarrfile} before pulling"
+                    )
                     rm(self.zarrfile, recursive=True)
                 logger.info(f"Downloading existing zarr")
                 get(src, os.path.dirname(self.zarrfile), recursive=True)
@@ -481,7 +483,9 @@ class Stats(DerivedVar):
                     mode = "w"
                 new_data_vars = list(set(self.dsout.data_vars) - set(dstmp.data_vars))
                 if new_data_vars:
-                    logger.info(f"Writing variables {new_data_vars} to partial archive {self.zarrfile}")
+                    logger.info(
+                        f"Writing variables {new_data_vars} to partial archive {self.zarrfile}"
+                    )
                     dsout = self.dsout[new_data_vars]
                     self.to_zarr(self.zarrfile, dsout, mode=mode)
                     self.zarrmode = "a"
@@ -546,7 +550,13 @@ class Stats(DerivedVar):
         return self.dsout
 
     def data_count(
-        self, dim="time", data_vars=[], derived_vars=[], suffix="_pcount", compute=False, **kwargs
+        self,
+        dim="time",
+        data_vars=[],
+        derived_vars=[],
+        suffix="_pcount",
+        compute=False,
+        **kwargs,
     ):
         """Calculate the percentage of valid data along dimension.
 
@@ -825,7 +835,7 @@ class Stats(DerivedVar):
             dir_var=dir_var,
             nsector=nsector,
             dim=dim,
-            **kwargs
+            **kwargs,
         )
 
         self.dsout = self.dsout.merge(
@@ -950,7 +960,7 @@ class Stats(DerivedVar):
                 logger.info(f"Compute partial dataset {i}/{tot}")
                 ds = dset.isel(
                     latitude=slice(lat_interval.left, lat_interval.right),
-                    longitude=slice(lon_interval.left, lon_interval.right)
+                    longitude=slice(lon_interval.left, lon_interval.right),
                 )
                 logger.debug(f"\n\nCompute partial dataset: {ds.coords}\n\n")
                 if eager:
@@ -963,9 +973,15 @@ class Stats(DerivedVar):
                             hs=ds[hs_name],
                             tp=ds[tp_name],
                             dp=ds[dp_name],
-                            hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
-                            tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
-                            dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
+                            hs_bins=np.hstack(
+                                (np.arange(**hs_range), hs_range["stop"])
+                            ),
+                            tp_bins=np.hstack(
+                                (np.arange(**tp_range), tp_range["stop"])
+                            ),
+                            dp_bins=np.hstack(
+                                (np.arange(**dp_range), dp_range["stop"])
+                            ),
                             dim=dim,
                             group=group,
                             label=label,
@@ -1012,7 +1028,15 @@ class Stats(DerivedVar):
         if self.updir:
             self._upload(outfile)
 
-    def to_zarr(self, outfile, dsout=None, _FillValue=-32767, mode="w", chunksizes={"": {}}, **kwargs):
+    def to_zarr(
+        self,
+        outfile,
+        dsout=None,
+        _FillValue=-32767,
+        mode="w",
+        chunksizes={"": {}},
+        **kwargs,
+    ):
         """Save output dataset as zarr.
 
         Args:

@@ -121,8 +121,6 @@ def wave_histogram(hs, tp, dp, hs_bins, tp_bins, dp_bins):
 
     """
     dist, __ = np.histogramdd(
-        sample=(hs, tp, dp),
-        bins=(hs_bins, tp_bins, dp_bins),
-        normed=False
+        sample=(hs, tp, dp), bins=(hs_bins, tp_bins, dp_bins), normed=False
     )
     return dist

@@ -142,24 +142,21 @@ def distribution(
 
     # Coordinates attributes
     attrs = {
-        "hs_bin":
-            {
-                "standard_name": f"{hs.attrs.get('standard_name', 'hs')}_bin",
-                "long_name": f"{hs.attrs.get('long_name', 'hs')} bin",
-                "units": "m"
-            },
-        "tp_bin":
-            {
-                "standard_name": f"{tp.attrs.get('standard_name', 'tp')}_bin",
-                "long_name": f"{tp.attrs.get('long_name', 'tp')} bin",
-                "units": "s"
-            },
-        "dp_bin":
-            {
-                "standard_name": f"{dp.attrs.get('standard_name', 'dp')}_bin",
-                "long_name": f"{dp.attrs.get('long_name', 'dp')} bin",
-                "units": "degree"
-            }
+        "hs_bin": {
+            "standard_name": f"{hs.attrs.get('standard_name', 'hs')}_bin",
+            "long_name": f"{hs.attrs.get('long_name', 'hs')} bin",
+            "units": "m",
+        },
+        "tp_bin": {
+            "standard_name": f"{tp.attrs.get('standard_name', 'tp')}_bin",
+            "long_name": f"{tp.attrs.get('long_name', 'tp')} bin",
+            "units": "s",
+        },
+        "dp_bin": {
+            "standard_name": f"{dp.attrs.get('standard_name', 'dp')}_bin",
+            "long_name": f"{dp.attrs.get('long_name', 'dp')} bin",
+            "units": "degree",
+        },
     }
 
     # Grouping before computing
@@ -170,28 +167,33 @@ def distribution(
         dp = dp.groupby(f"time.{group}")
 
     # Computing
-    dsout = xr.apply_ufunc(
-        wave_histogram,
-        hs,
-        tp,
-        dp,
-        hs_bins,
-        tp_bins,
-        dp_bins,
-        input_core_dims=[[dim], [dim], [dim], ["dummy1"], ["dummy2"], ["dummy3"]],
-        output_core_dims=[["hs_bin", "tp_bin", "dp_bin"]],
-        exclude_dims=set((dim,)),
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=["int32"],
-        dask_gufunc_kwargs={
-            "output_sizes": {
-                "hs_bin": hs_bins.size - 1,
-                "tp_bin": tp_bins.size - 1,
-                "dp_bin": dp_bins.size - 1
+    dsout = (
+        xr.apply_ufunc(
+            wave_histogram,
+            hs,
+            tp,
+            dp,
+            hs_bins,
+            tp_bins,
+            dp_bins,
+            input_core_dims=[[dim], [dim], [dim], ["dummy1"], ["dummy2"], ["dummy3"]],
+            output_core_dims=[["hs_bin", "tp_bin", "dp_bin"]],
+            exclude_dims=set((dim,)),
+            vectorize=True,
+            dask="parallelized",
+            output_dtypes=["int32"],
+            dask_gufunc_kwargs={
+                "output_sizes": {
+                    "hs_bin": hs_bins.size - 1,
+                    "tp_bin": tp_bins.size - 1,
+                    "dp_bin": dp_bins.size - 1,
+                },
             },
-        },
-    ).assign_coords(coords).where(mask).to_dataset(name=label)
+        )
+        .assign_coords(coords)
+        .where(mask)
+        .to_dataset(name=label)
+    )
 
     # Attributes
     dsout[label].attrs = {
@@ -270,29 +272,28 @@ if __name__ == "__main__":
     }
 
     # ds = dset[["hs","tp","dp"]].isel(latitude=0, longitude=0).load()
-    ds = dset[["hs","tp","dp"]].load()
+    ds = dset[["hs", "tp", "dp"]].load()
 
     hs_bins = np.arange(
         ranges["hs"]["start"],
-        ranges["hs"]["end"]+ranges["hs"]["freq"],
-        ranges["hs"]["freq"]
+        ranges["hs"]["end"] + ranges["hs"]["freq"],
+        ranges["hs"]["freq"],
     )
     tp_bins = np.arange(
         ranges["tp"]["start"],
-        ranges["tp"]["end"]+ranges["tp"]["freq"],
-        ranges["tp"]["freq"]
+        ranges["tp"]["end"] + ranges["tp"]["freq"],
+        ranges["tp"]["freq"],
     )
     dp_bins = np.arange(
         ranges["dp"]["start"],
-        ranges["dp"]["end"]+ranges["dp"]["freq"],
-        ranges["dp"]["freq"]
+        ranges["dp"]["end"] + ranges["dp"]["freq"],
+        ranges["dp"]["freq"],
     )
 
     dsout = distribution(ds.hs, ds.tp, ds.dp, hs_bins, tp_bins, dp_bins)
 
     with ProgressBar():
         dsout = dsout.load()
-
 
     # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
     # darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
