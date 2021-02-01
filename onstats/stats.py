@@ -867,29 +867,19 @@ class Stats(DerivedVar):
         data_vars = [hs_name, tp_name, dp_name]
         self._update_dset(data_vars)
 
-        if group:
-            logger.info(f"Grouping by {group}")
-            hs = self.dset[hs_name].groupby(f"time.{group}")
-            tp = self.dset[tp_name].groupby(f"time.{group}")
-            dp = self.dset[dp_name].groupby(f"time.{group}")
-        else:
-            hs = self.dset[hs_name]
-            tp = self.dset[tp_name]
-            dp = self.dset[dp_name]
-
         dsout = distribution(
-            hs=hs,
-            tp=tp,
-            dp=dp,
+            hs=self.dset[hs_name],
+            tp=self.dset[tp_name],
+            dp=self.dset[dp_name],
             hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
             tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
             dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
             dim=dim,
+            group=group,
             label=label,
         )
 
         self.dsout = self.dsout.merge(dsout)
-
         self._compute(is_compute=compute)
         return dsout
 
@@ -967,26 +957,17 @@ class Stats(DerivedVar):
                     logger.debug(f"Loading sliced dataset into memory")
                     ds = ds.load()
 
-                if group:
-                    logger.debug(f"Grouping by {group}")
-                    hs = ds[hs_name].groupby(f"time.{group}")
-                    tp = ds[tp_name].groupby(f"time.{group}")
-                    dp = ds[dp_name].groupby(f"time.{group}")
-                else:
-                    hs = ds[hs_name]
-                    tp = ds[tp_name]
-                    dp = ds[dp_name]
-
                 dsets[ilat].update(
                     {
                         ilon: distribution(
-                            hs=hs,
-                            tp=tp,
-                            dp=dp,
+                            hs=ds[hs_name],
+                            tp=ds[tp_name],
+                            dp=ds[dp_name],
                             hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
                             tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
                             dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
                             dim=dim,
+                            group=group,
                             label=label,
                         )
                     }

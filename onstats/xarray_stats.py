@@ -102,9 +102,10 @@ def distribution(
     tp_bins,
     dp_bins,
     dim="time",
+    group="month",
     label="hs_tp_dp_dist",
 ):
-    """Fast distribution statistics.
+    """Joint wave distribution (Hs, Tp, Dp).
 
     Args:
         hs (xr.DataArray): Significant wave height data.
@@ -114,6 +115,7 @@ def distribution(
         tp_bins (1d array): Bin edges for Tp.
         dp_bins (1d array): Bin edges for Dp.
         dim (str): Dimension to calculate distribution along.
+        group (str): Time grouping type, any valid time_{group} such as month, season.
         label (str): Name for joint distribution variable.
 
     Returns:
@@ -126,13 +128,7 @@ def distribution(
 
     # Direction wrapping
     dp_bins = dp_bins - ((dp_bins[1] - dp_bins[0]) / 2)
-    if isinstance(dp, xr.core.groupby.DataArrayGroupBy):
-        grouping = f"time.{dp._unique_coord.name}"
-        dp = dp.map(_wrap_directions, dirmax=dp_bins.max())
-        # When a function is applied the groupby object is stacked
-        dp = dp.groupby(grouping)
-    else:
-        dp = _wrap_directions(dp, dirmax=dp_bins.max())
+    dp = _wrap_directions(dp, dirmax=dp_bins.max())
 
     # Bin coordinates at cell centre
     coords = {
@@ -141,6 +137,39 @@ def distribution(
         "dp_bin": dp_bins[:-1] + (dp_bins[1] - dp_bins[0]) / 2,
     }
 
+    # Mask based on Hs
+    mask = hs.isel(**{dim: 0}, drop=True).notnull()
+
+    # Coordinates attributes
+    attrs = {
+        "hs_bin":
+            {
+                "standard_name": f"{hs.attrs.get('standard_name', 'hs')}_bin",
+                "long_name": f"{hs.attrs.get('long_name', 'hs')} bin",
+                "units": "m"
+            },
+        "tp_bin":
+            {
+                "standard_name": f"{tp.attrs.get('standard_name', 'tp')}_bin",
+                "long_name": f"{tp.attrs.get('long_name', 'tp')} bin",
+                "units": "s"
+            },
+        "dp_bin":
+            {
+                "standard_name": f"{dp.attrs.get('standard_name', 'dp')}_bin",
+                "long_name": f"{dp.attrs.get('long_name', 'dp')} bin",
+                "units": "degree"
+            }
+    }
+
+    # Grouping before computing
+    if group:
+        logger.debug(f"Grouping by {group}")
+        hs = hs.groupby(f"time.{group}")
+        tp = tp.groupby(f"time.{group}")
+        dp = dp.groupby(f"time.{group}")
+
+    # Computing
     dsout = xr.apply_ufunc(
         wave_histogram,
         hs,
@@ -156,29 +185,13 @@ def distribution(
         dask="parallelized",
         output_dtypes=["int32"],
         dask_gufunc_kwargs={
-            # "allow_rechunking": True,
             "output_sizes": {
                 "hs_bin": hs_bins.size - 1,
                 "tp_bin": tp_bins.size - 1,
                 "dp_bin": dp_bins.size - 1
             },
         },
-    ).assign_coords(coords).to_dataset(name=label)
-
-    # Masking based on Hs
-    logger.debug(f"Masking land from output")
-    if isinstance(hs, xr.core.groupby.DataArrayGroupBy):
-        for g, hsi in hs:
-            break
-        for g, tpi in tp:
-            break
-        for g, dpi in dp:
-            break
-    else:
-        hsi = hs
-        tpi = tp
-        dpi = dp
-    dsout = dsout.where(hsi.isel(**{dim: 0}, drop=True).notnull())
+    ).assign_coords(coords).where(mask).to_dataset(name=label)
 
     # Attributes
     dsout[label].attrs = {
@@ -186,22 +199,9 @@ def distribution(
         "long_name": "number of valid data points",
         "units": "",
     }
-    dsout.hs_bin.attrs = {
-        "standard_name": f"{hsi.attrs.get('standard_name', 'hs')}_bin",
-        "long_name": f"{hsi.attrs.get('long_name', 'hs')} bin",
-        "units": "m"
-    }
-    dsout.tp_bin.attrs = {
-        "standard_name": f"{tpi.attrs.get('standard_name', 'tp')}_bin",
-        "long_name": f"{tpi.attrs.get('long_name', 'tp')} bin",
-        "units": "s"
-    }
-    dsout.dp_bin.attrs = {
-        "standard_name": f"{dpi.attrs.get('standard_name', 'dp')}_bin",
-        "long_name": f"{dpi.attrs.get('long_name', 'dp')} bin",
-        "units": "degree"
-    }
-
+    dsout.hs_bin.attrs = attrs["hs_bin"]
+    dsout.tp_bin.attrs = attrs["tp_bin"]
+    dsout.dp_bin.attrs = attrs["dp_bin"]
     dsout[label].encoding = {"dtype": "int32", "_FillValue": -32767}
 
     return dsout
@@ -263,9 +263,6 @@ if __name__ == "__main__":
     dset = xr.open_zarr("/data/ww3/ww3_grid_sample.zarr", consolidated=True)
     dset["tp"] = 1 / dset.fp
 
-    #====================
-    # Histogram approach
-    #====================
     ranges = {
         "hs": {"start": 0, "end": 20, "freq": 0.5},
         "tp": {"start": 0, "end": 20, "freq": 1},
@@ -291,12 +288,7 @@ if __name__ == "__main__":
         ranges["dp"]["freq"]
     )
 
-    hs = ds.hs.groupby("time.month")
-    tp = ds.tp.groupby("time.month")
-    dp = ds.dp.groupby("time.month")
-    # dsg = ds.groupby("time.month")
-
-    dsout = distribution(hs, tp, dp, hs_bins, tp_bins, dp_bins)
+    dsout = distribution(ds.hs, ds.tp, ds.dp, hs_bins, tp_bins, dp_bins)
 
     with ProgressBar():
         dsout = dsout.load()
