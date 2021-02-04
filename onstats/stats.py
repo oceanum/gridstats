@@ -21,7 +21,7 @@ from oncore.date import daterange, _parse, timedelta
 
 from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
-from onstats.xarray_stats import rpv, distribution, directional_stat
+from onstats.xarray_stats import rpv, distribution, directional_stat, distribution_spddir
 
 
 logging.basicConfig(
@@ -907,12 +907,13 @@ class Stats(DerivedVar):
         hs_name="hs",
         tp_name="tp",
         dp_name="dp",
+        range_from_data=True,
         label="hs_tp_dp_dist",
         compute=False,
         eager=True,
         **kwargs,
     ):
-        """Stepwise distribution statistics over spatial windows.
+        """Stepwise Hs/Tp/Dp distribution statistics over spatial windows.
 
         This method is a workaround to avoid memory issues when calculating joint
             distributions over too many bins and is optimal to use with datasets
@@ -929,6 +930,7 @@ class Stats(DerivedVar):
             hs_name (str): Name for Hs variable to use in dataset.
             tp_name (str): Name for Tp variable to use in dataset.
             dp_name (str): Name for Dp variable to use in dataset.
+            range_from_data (bool): Use max Hs, Tp to define last data bin.
             label (str): Name for joint distribution variable.
             compute (bool): Compute and save to partial output dataset.
             eager (bool): Load each box slice before calculating distributions.
@@ -941,6 +943,35 @@ class Stats(DerivedVar):
         data_vars = [hs_name, tp_name, dp_name]
         self._update_dset(data_vars)
         dset = self.dset[data_vars]
+
+        # Bins
+        hs_bins = np.hstack((np.arange(**hs_range), hs_range["stop"]))
+        tp_bins = np.hstack((np.arange(**tp_range), tp_range["stop"]))
+        dp_bins = np.hstack((np.arange(**dp_range), dp_range["stop"]))
+
+        # Compute upper bins for Hs, Tp from data
+        if range_from_data:
+            logger.info(f"Computing Hs, Tp bin edges from data")
+
+            # Hs
+            if f"{hs_name}_max" in self.dsout:
+                hsmax = float(self.dsout[f"{hs_name}_max"].compute().max())
+            else:
+                hsmax = float(self.dset[hs_name].max())
+            logger.debug(f"Max Hs: {hsmax} m")
+            idmax = np.argmax(hs_bins >= hsmax) or len(hs_bins) - 1
+            hs_bins = hs_bins[:idmax+1]
+
+            # Tp
+            if f"{tp_name}_max" in self.dsout:
+                tpmax = float(self.dsout[f"{tp_name}_max"].compute().max())
+            else:
+                tpmax = float(self.dset[tp_name].max().compute())
+            logger.debug(f"Max Tp: {tpmax} s")
+            idmax = np.argmax(tp_bins >= tpmax) or len(tp_bins) - 1
+            tp_bins = tp_bins[:idmax+1]
+
+        logger.info(f"Hs bins: {hs_bins}, Tp bins: {tp_bins}, Dp bins: {dp_bins}")
 
         # Box slices for looping over grid
         yend = dset.latitude.size
@@ -971,9 +1002,9 @@ class Stats(DerivedVar):
                     hs=ds[hs_name],
                     tp=ds[tp_name],
                     dp=ds[dp_name],
-                    hs_bins=np.hstack((np.arange(**hs_range), hs_range["stop"])),
-                    tp_bins=np.hstack((np.arange(**tp_range), tp_range["stop"])),
-                    dp_bins=np.hstack((np.arange(**dp_range), dp_range["stop"])),
+                    hs_bins=hs_bins,
+                    tp_bins=tp_bins,
+                    dp_bins=dp_bins,
                     dim=dim,
                     group=group,
                     label=label,
@@ -993,7 +1024,120 @@ class Stats(DerivedVar):
 
         self.dsout = self.dsout.merge(dsout)
         self._compute(is_compute=compute)
-        # rm(tmp_store, recursive=True)
+        return dsout
+
+    def distribution_spddir_stepwise(
+        self,
+        spd_range,
+        dir_range,
+        step_longitude,
+        step_latitude,
+        dim="time",
+        group="month",
+        spd_name="wspd",
+        dir_name="wdir",
+        range_from_data=True,
+        label="spd_dir_dist",
+        compute=False,
+        eager=True,
+        **kwargs,
+    ):
+        """Stepwise speed/direction distribution statistics over spatial windows.
+
+        This method is a workaround to avoid memory issues when calculating joint
+            distributions over too many bins and is optimal to use with datasets
+            chunked for timeseries reading.
+
+        Args:
+            spd_range (dict): Numpy arange kwargs defining spd bins.
+            dir_range (dict): Numpy arange kwargs defining dir bins.
+            step_longitude (int): Longitude step size for loading slices in memory.
+            step_latitude (int): Longitude step size for loading slices in memory.
+            dim (str): Dimension to calculate distribution along.
+            group (str): Time grouping type, any valid time_{group} such month, season.
+            spd_name (str): Name for spd variable to use in dataset.
+            dir_name (str): Name for dir variable to use in dataset.
+            range_from_data (bool): Use max Spd to define last data bin.
+            label (str): Name for joint distribution variable.
+            compute (bool): Compute and save to partial output dataset.
+            eager (bool): Load each box slice before calculating distributions.
+
+        Note:
+            Best to choose spatial steps so that dataset to load is large while fitting
+                into memory, optimal performance if they match file chunking on disk.
+
+        """
+        data_vars = [spd_name, dir_name]
+        self._update_dset(data_vars)
+        dset = self.dset[data_vars]
+
+        # Bins
+        spd_bins = np.hstack((np.arange(**spd_range), spd_range["stop"]))
+        dir_bins = np.hstack((np.arange(**dir_range), dir_range["stop"]))
+
+        # Compute upper bins for Spd from data
+        if range_from_data:
+            logger.info(f"Computing Spd bin edges from data")
+
+            if f"{spd_name}_max" in self.dsout:
+                spdmax = float(self.dsout[f"{spd_name}_max"].compute().max())
+            else:
+                spdmax = float(self.dset[spd_name].max())
+            logger.debug(f"Max spd: {spdmax} m/s")
+            idmax = np.argmax(spd_bins >= spdmax) or len(spd_bins) - 1
+            spd_bins = spd_bins[:idmax+1]
+
+        logger.info(f"Spd bins: {spd_bins}, Dir bins: {dir_bins}")
+
+        # Box slices for looping over grid
+        yend = dset.latitude.size
+        xend = dset.longitude.size
+        if yend % step_latitude != 0:
+            yend += step_latitude
+        if xend % step_longitude != 0:
+            xend += step_longitude
+        lats = pd.interval_range(start=0, end=yend, freq=step_latitude)
+        lons = pd.interval_range(start=0, end=xend, freq=step_longitude)
+
+        # Compute each spatial box slice dumping each full latitude slice
+        tmp_store = os.path.join(self.localdir, "tmp_spddir_dist.zarr")
+        i = 1
+        for ilat, lat_interval in enumerate(lats):
+            dslat = xr.Dataset()
+            for lon_interval in lons:
+                logger.info(f"Compute partial dataset {i}/{len(lons) * len(lats)}")
+                ds = dset.isel(
+                    latitude=slice(lat_interval.left, lat_interval.right),
+                    longitude=slice(lon_interval.left, lon_interval.right),
+                )
+                if eager:
+                    logger.debug(f"Loading sliced dataset into memory")
+                    ds = ds.load()
+
+                dist = distribution_spddir(
+                    spd=ds[spd_name],
+                    dir=ds[dir_name],
+                    spd_bins=spd_bins,
+                    dir_bins=dir_bins,
+                    dim=dim,
+                    group=group,
+                    label=label,
+                )
+                dslat = xr.combine_by_coords([dslat, dist])
+                i += 1
+            # Dump to temporary archive
+            logger.info(f"Writing latitude slice {ilat + 1}/{len(lats)} to tmp archive")
+            if ilat == 0:
+                dslat.to_zarr(tmp_store, mode="w", consolidated=True)
+            else:
+                dslat.to_zarr(tmp_store, mode="a", append_dim="latitude", consolidated=True)
+            del dslat
+
+        dsout = xr.open_zarr(tmp_store, consolidated=True)
+        dsout[label].encoding.pop("chunks", None)
+
+        self.dsout = self.dsout.merge(dsout)
+        self._compute(is_compute=compute)
         return dsout
 
     def to_netcdf(self, outfile, format="NETCDF4", _FillValue=-32767):
@@ -1048,7 +1192,7 @@ class Stats(DerivedVar):
 
         basename, ext = os.path.splitext(outfile)
         for suffix, chunks in chunksizes.items():
-            if not suffix.startswith("_"):
+            if suffix and not suffix.startswith("_"):
                 suffix = "_" + suffix
             store = f"{basename}{suffix}{ext}"
             logger.info(f"Writing zarr file {store} with chunks {chunks}")
