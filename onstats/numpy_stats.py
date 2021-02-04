@@ -1,4 +1,4 @@
-"""Core stats functions operating on numpy arrays."""
+"""Core stats functions operating on numpy arrays to use with xarray.apply_ufuncs."""
 import logging
 import numpy as np
 import dask.array as da
@@ -7,22 +7,6 @@ from scipy import stats, signal
 
 
 logger = logging.getLogger(__name__)
-
-
-def np_distribution():
-    """Multidimensional distribution from numpy array.
-
-    sample (list): timeseries to be processed
-    """
-    hdd = np.histogramdd(
-        sample=(
-            ds[hs_name].values,
-            ds[tp_name].values,
-            ds[dir_name].values,
-        ),
-        normed=False,
-        bins=wave_bins,
-    )
 
 
 def _pov(data, dt_hour, percentile=95, duration=24):
@@ -105,22 +89,39 @@ def np_rpv(
     return da.from_array(rpvs, chunks=(1,))
 
 
-def wave_histogram(hs, tp, dp, hs_bins, tp_bins, dp_bins):
-    """Multidimension wave histogram.
+def np_histogram_2d(arr1, arr2, bins1, bins2):
+    """Histogram 2D.
 
     Args:
-        hs (1d array): Significant wave height array.
-        Tp (1d array): Peak wave period array.
-        Dp (1d array): Peak wave direction array.
-        hs_bins (1d array): Bin edges for Hs.
-        tp_bins (1d array): Bin edges for Tp.
-        dp_bins (1d array): Bin edges for Dp.
+        arr1 (1d array): First array to compute histogram from, e.g., Wspd.
+        arr2 (1d array): Second array to compute histogram from, e.g., Wdir.
+        bins1 (1d array): Bin edges for arr1.
+        bins2 (1d array): Bin edges for arr2.
 
     Returns:
-        The multidimensional histogram of (Hs, Tp, Dp).
+        The multidimensional histogram of (arr1, arr2).
+
+    """
+    dist, __, __ = np.histogram2d(x=arr1, y=arr2, bins=(bins1, bins2), normed=False)
+    return dist
+
+
+def np_histogram_3d(arr1, arr2, arr3, bins1, bins2, bins3):
+    """Histogram 3D.
+
+    Args:
+        arr1 (1d array): First array to compute histogram from, e.g., Hs.
+        arr2 (1d array): Second array to compute histogram from, e.g., Tp.
+        arr3 (1d array): Third array to compute histogram from, e.g., Dp.
+        bins1 (1d array): Bin edges for arr1.
+        bins2 (1d array): Bin edges for arr2.
+        bins3 (1d array): Bin edges for arr3.
+
+    Returns:
+        The multidimensional histogram of (arr1, arr2, arr3).
 
     """
     dist, __ = np.histogramdd(
-        sample=(hs, tp, dp), bins=(hs_bins, tp_bins, dp_bins), normed=False
+        sample=(arr1, arr2, arr3), bins=(bins1, bins2, bins3), normed=False
     )
     return dist
