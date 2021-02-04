@@ -70,6 +70,10 @@ def np_rpv(
         logger.debug("Missing values not allowed, returning nan")
         return da.from_array([np.nan] * len(return_periods), chunks=(1,))
 
+    # Little hack to try and avoid ValueError: buffer source array is read-only
+    # https://github.com/pydata/xarray/issues/3715
+    data = data.copy()
+
     peaks, height = _pov(data, dt_hour, percentile, duration)
 
     if peaks.size == 0:
