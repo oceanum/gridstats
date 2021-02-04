@@ -1197,6 +1197,7 @@ class Stats(DerivedVar):
             store = f"{basename}{suffix}{ext}"
             logger.info(f"Writing zarr file {store} with chunks {chunks}")
             fsmap = get_mapper(store)
-            dsout.chunk(chunks).to_zarr(fsmap, consolidated=True, mode=mode)
+            included_chunks = {c: v for c, v in chunks.items() if c in dsout.dims}
+            dsout.chunk(included_chunks).to_zarr(fsmap, consolidated=True, mode=mode)
             if self.updir:
                 self._upload(store)
