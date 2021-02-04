@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 from itertools import product
 
-from onstats.numpy_stats import np_rpv, wave_histogram
+from onstats.numpy_stats import np_rpv, np_histogram_2d, np_histogram_3d
 
 
 logger = logging.getLogger(__name__)
@@ -169,7 +169,7 @@ def distribution(
     # Computing
     dsout = (
         xr.apply_ufunc(
-            wave_histogram,
+            np_histogram_3d,
             hs,
             tp,
             dp,
@@ -204,6 +204,105 @@ def distribution(
     dsout.hs_bin.attrs = attrs["hs_bin"]
     dsout.tp_bin.attrs = attrs["tp_bin"]
     dsout.dp_bin.attrs = attrs["dp_bin"]
+    dsout[label].encoding = {"dtype": "int32", "_FillValue": -32767}
+
+    return dsout
+
+
+def distribution_spddir(
+    spd,
+    dir,
+    spd_bins,
+    dir_bins,
+    dim="time",
+    group="month",
+    label="spd_dir_dist",
+):
+    """Joint wind distribution (spd, dir).
+
+    Args:
+        spd (xr.DataArray): Wind / current speed.
+        dir (xr.DataArray): Wind / current direction.
+        spd_bins (1d array): Bin edges for spd.
+        dir_bins (1d array): Bin edges for dir.
+        dim (str): Dimension to calculate distribution along.
+        group (str): Time grouping type, any valid time_{group} such as month, season.
+        label (str): Name for joint distribution variable.
+
+    Returns:
+        Dataset with Wspd, Wdir joint distributio along dim.
+
+    """
+    spd_bins = np.array(spd_bins)
+    dir_bins = np.array(dir_bins)
+
+    # Direction wrapping
+    dir_bins = dir_bins - ((dir_bins[1] - dir_bins[0]) / 2)
+    dir = _wrap_directions(dir, dirmax=dir_bins.max())
+
+    # Bin coordinates at cell centre
+    coords = {
+        "spd_bin": spd_bins[:-1] + (spd_bins[1] - spd_bins[0]) / 2,
+        "dir_bin": dir_bins[:-1] + (dir_bins[1] - dir_bins[0]) / 2,
+    }
+
+    # Mask based on spd
+    mask = spd.isel(**{dim: 0}, drop=True).notnull()
+
+    # Coordinates attributes
+    attrs = {
+        "spd_bin": {
+            "standard_name": f"{spd.attrs.get('standard_name', 'speed')}_bin",
+            "long_name": f"{spd.attrs.get('long_name', 'speed')} bin",
+            "units": "m s-1",
+        },
+        "dir_bin": {
+            "standard_name": f"{dir.attrs.get('standard_name', 'direction')}_bin",
+            "long_name": f"{dir.attrs.get('long_name', 'direction')} bin",
+            "units": "degree",
+        },
+    }
+
+    # Grouping before computing
+    if group:
+        logger.debug(f"Grouping by {group}")
+        spd = spd.groupby(f"time.{group}")
+        dir = dir.groupby(f"time.{group}")
+
+    # Computing
+    dsout = (
+        xr.apply_ufunc(
+            np_histogram_2d,
+            spd,
+            dir,
+            spd_bins,
+            dir_bins,
+            input_core_dims=[[dim], [dim], ["dummy1"], ["dummy2"]],
+            output_core_dims=[["spd_bin", "dir_bin"]],
+            exclude_dims=set((dim,)),
+            vectorize=True,
+            dask="parallelized",
+            output_dtypes=["int32"],
+            dask_gufunc_kwargs={
+                "output_sizes": {
+                    "spd_bin": spd_bins.size - 1,
+                    "dir_bin": dir_bins.size - 1,
+                },
+            },
+        )
+        .assign_coords(coords)
+        .where(mask)
+        .to_dataset(name=label)
+    )
+
+    # Attributes
+    dsout[label].attrs = {
+        "standard_name": "data_count",
+        "long_name": "number of valid data points",
+        "units": "",
+    }
+    dsout.spd_bin.attrs = attrs["spd_bin"]
+    dsout.dir_bin.attrs = attrs["dir_bin"]
     dsout[label].encoding = {"dtype": "int32", "_FillValue": -32767}
 
     return dsout
@@ -260,40 +359,57 @@ def directional_stat(
 if __name__ == "__main__":
 
     import datetime
+    import xarray as xr
     from dask.diagnostics.progress import ProgressBar
+    from onstats.derived_variable import wspd, wdir
 
-    dset = xr.open_zarr("/data/ww3/ww3_grid_sample.zarr", consolidated=True)
-    dset["tp"] = 1 / dset.fp
+    dset = xr.open_zarr("/data/ww3/ww3_grid_sample.zarr", consolidated=True).chunk({"time": None})
 
-    ranges = {
-        "hs": {"start": 0, "end": 20, "freq": 0.5},
-        "tp": {"start": 0, "end": 20, "freq": 1},
-        "dp": {"start": 0, "end": 360, "freq": 45},
-    }
+    dset["wspd"] = wspd(dset.uwnd, dset.vwnd)
+    dset["wdir"] = wdir(dset.uwnd, dset.vwnd, coming_from=True)
 
-    # ds = dset[["hs","tp","dp"]].isel(latitude=0, longitude=0).load()
-    ds = dset[["hs", "tp", "dp"]].load()
+    ds = dset[["wspd","wdir"]]
 
-    hs_bins = np.arange(
-        ranges["hs"]["start"],
-        ranges["hs"]["end"] + ranges["hs"]["freq"],
-        ranges["hs"]["freq"],
-    )
-    tp_bins = np.arange(
-        ranges["tp"]["start"],
-        ranges["tp"]["end"] + ranges["tp"]["freq"],
-        ranges["tp"]["freq"],
-    )
-    dp_bins = np.arange(
-        ranges["dp"]["start"],
-        ranges["dp"]["end"] + ranges["dp"]["freq"],
-        ranges["dp"]["freq"],
-    )
+    spd_bins = np.arange(0, 20+1, 1)
+    dir_bins = np.arange(0, 360+45, 45)
 
-    dsout = distribution(ds.hs, ds.tp, ds.dp, hs_bins, tp_bins, dp_bins)
+    dsout = distribution_spddir(ds.wspd, ds.wdir, spd_bins, dir_bins)
 
     with ProgressBar():
         dsout = dsout.load()
+
+
+    # dset["tp"] = 1 / dset.fp
+
+    # ranges = {
+    #     "hs": {"start": 0, "end": 20, "freq": 0.5},
+    #     "tp": {"start": 0, "end": 20, "freq": 1},
+    #     "dp": {"start": 0, "end": 360, "freq": 45},
+    # }
+
+    # # ds = dset[["hs","tp","dp"]].isel(latitude=0, longitude=0).load()
+    # ds = dset[["hs", "tp", "dp"]].load()
+
+    # hs_bins = np.arange(
+    #     ranges["hs"]["start"],
+    #     ranges["hs"]["end"] + ranges["hs"]["freq"],
+    #     ranges["hs"]["freq"],
+    # )
+    # tp_bins = np.arange(
+    #     ranges["tp"]["start"],
+    #     ranges["tp"]["end"] + ranges["tp"]["freq"],
+    #     ranges["tp"]["freq"],
+    # )
+    # dp_bins = np.arange(
+    #     ranges["dp"]["start"],
+    #     ranges["dp"]["end"] + ranges["dp"]["freq"],
+    #     ranges["dp"]["freq"],
+    # )
+
+    # dsout = distribution(ds.hs, ds.tp, ds.dp, hs_bins, tp_bins, dp_bins)
+
+    # with ProgressBar():
+    #     dsout = dsout.load()
 
     # darr = dset[["hs", "tps"]]  # .isel(latitude=[0,1,2])#, longitude=-1)
     # darr = darr.chunk({"longitude": None, "latitude": None, "time": None})
