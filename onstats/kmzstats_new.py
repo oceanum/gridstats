@@ -6,6 +6,7 @@ import copy
 import yaml
 import argparse
 import logging
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
@@ -49,6 +50,7 @@ class KMZ:
         self.kmls = {}
         self.outdir = kwargs.pop("outdir", "./tmp")
         self.kmzfile = kwargs.pop("kmzfile", "southernocean.kmz")
+        self.resolution = self._read_config(config, "resolution")
         if not os.path.isdir(self.outdir):
             os.makedirs(self.outdir)
         self.kml = Kml()
@@ -483,19 +485,24 @@ class KMZ:
         x1 = self.layer_val.get("x1", None)
         y0 = self.layer_val.get("y0", None)
         y1 = self.layer_val.get("y1", None)
-        self.ds = xr.open_dataset(self.layer_val["filename"]).squeeze(drop=True)
+        filename = self.layer_val["filename"]
+        if filename.endswith(".nc"):
+            self.ds = xr.open_dataset(self.layer_val["filename"]).squeeze(drop=True)
+        elif filename.endswith(".zarr"):
+            self.ds = xr.open_zarr(self.layer_val["filename"], consolidated=True).squeeze(drop=True)
+        else:
+            raise ValueError(f"File {filename} not recognised, only .nc and .zarr are supported")
         if "longitude" in self.ds and "latitude" in self.ds:
             self.ds = self.ds.rename({"longitude": "lon", "latitude": "lat"})
         self.ds = self.ds.sortby("lat").sortby("lon")
-        self.ds = self.ds.sel(lon=slice(x0, x1), lat=slice(y0, y1))
         self._to_180()
+        self.ds = self.ds.sel(lon=slice(x0, x1), lat=slice(y0, y1))
 
         # Hacked for now, interpolating to improve land mask
-        newres = 0.005
         res = np.float(np.diff(self.ds.lon[[0, 1]]))
-        if res > newres:
-            lons = np.arange(self.ds.lon[0], self.ds.lon[-1] + newres, newres)
-            lats = np.arange(self.ds.lat[0], self.ds.lat[-1] + newres, newres)
+        if self.resolution is not None and res > self.resolution:
+            lons = np.arange(self.ds.lon[0], self.ds.lon[-1] + self.resolution, self.resolution)
+            lats = np.arange(self.ds.lat[0], self.ds.lat[-1] + self.resolution, self.resolution)
             self.ds = self.ds.interp(lon=lons, lat=lats)
 
         if self.mask_file is not None:
@@ -505,7 +512,7 @@ class KMZ:
 
     def _read_config(self, filename, what):
         with open(filename, "r") as stream:
-            return yaml.load(stream)[what]
+            return yaml.load(stream, Loader=yaml.Loader)[what]
 
     def gearth_fig(self, x0=None, x1=None, y0=None, y1=None, dpi=None):
         """Return a Matplotlib `fig` and `ax` handles for a Google-Earth Image.
