@@ -53,7 +53,7 @@ class KMZ:
         self.resolution = self._read_config(config, "resolution")
         if not os.path.isdir(self.outdir):
             os.makedirs(self.outdir)
-        self.kml = Kml()
+        self.kml = Kml(open=1)
 
         try:
             self.mask_file = self._read_config(config, "mask_file")
@@ -152,7 +152,7 @@ class KMZ:
             )
 
         for group0, layers in self.layers.items():
-            self.group0 = self.kml.newfolder(name=group0)
+            self.group0 = self.kml.newfolder(name=group0, open=1)
             for self.layer_id, self.layer_val in layers.items():
                 subgroups = [c.name for c in self.group0.containers]
                 subgroup = self.layer_val.get("subgroup", None)
