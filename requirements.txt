@@ -1,2 +1,3 @@
-git+ssh://git@gitlab.com/oceanum/oncore@v0.1.15
-git+ssh://git@gitlab.com/oceanum/ontake@v0.1.11
+git+ssh://git@gitlab.com/oceanum/oncore@v0.1.23
+git+ssh://git@gitlab.com/oceanum/ontake@v0.2.6
+git+ssh://git@gitlab.com/oceanum/intake/intake-oceanum@rafg
