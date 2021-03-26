@@ -10,6 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
+import pandas as pd
 import xarray as xr
 import cmocean
 from dateutil.parser import parse
@@ -186,7 +187,13 @@ class KMZ:
         import rioxarray
         from shapely.geometry import mapping
 
-        gdf = gpd.read_file(self.mask_file).to_crs("EPSG:4326")
+        if isinstance(self.mask_file, str):
+            gdf = gpd.read_file(self.mask_file)
+        elif isinstance(self.mask_file, list):
+            gdf = pd.concat([gpd.read_file(file) for file in self.mask_file]).pipe(gpd.GeoDataFrame)
+        else:
+            raise ValueError(f"mask_file must be string or list")
+        gdf = gdf.to_crs("EPSG:4326")
         tmp = dset.copy(deep=True)
         tmp.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=True)
         tmp.rio.write_crs(gdf.crs, inplace=True)
@@ -251,6 +258,20 @@ class KMZ:
         cs = getattr(ax, self.chart["type"])(
             self.darr.lon, self.darr.lat, self.darr, **self.plot_kwargs
         )
+        # # Watermark
+        # ax.text(
+        #     x=0.05,
+        #     y=0.95,
+        #     s="www.moanaproject.org",
+        #     transform=ax.transAxes,
+        #     fontsize=15,
+        #     fontweight="bold",
+        #     color="black",
+        #     alpha=0.5,
+        #     ha="left",
+        #     va="center",
+        #     rotation="0"
+        # )
         if self.chart["type"] == "contour":
             cs.clabel(fontsize=10, fmt=f"%i{self.layer_val.get('units', 'm')}")
         fig.savefig(self.figname, transparent=True, format="png")
@@ -512,7 +533,7 @@ class KMZ:
 
     def _read_config(self, filename, what):
         with open(filename, "r") as stream:
-            return yaml.load(stream, Loader=yaml.Loader)[what]
+            return yaml.load(stream, Loader=yaml.Loader).get(what, None)
 
     def gearth_fig(self, x0=None, x1=None, y0=None, y1=None, dpi=None):
         """Return a Matplotlib `fig` and `ax` handles for a Google-Earth Image.
