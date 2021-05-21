@@ -1,4 +1,0 @@
-git+ssh://git@gitlab.com/oceanum/oncore@v0.1.25
-git+ssh://git@gitlab.com/oceanum/ontake@v0.2.6
-git+ssh://git@gitlab.com/oceanum/intake-ncdap@0.1
-git+ssh://git@gitlab.com/oceanum/intake/intake-oceanum@master

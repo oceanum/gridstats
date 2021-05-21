@@ -7,9 +7,8 @@ RUN echo "--------------- System packages ---------------" && \
     apt update && apt upgrade -y
 
 RUN echo "--------------- Installing onstats ---------------"
-COPY setup.py requirements.txt README.rst HISTORY.rst $REPOS/onstats/
+COPY setup.py README.rst HISTORY.rst $REPOS/onstats/
 COPY onstats $REPOS/onstats/onstats
 COPY tests $REPOS/onstats/tests
 RUN cd $REPOS/onstats && \
-    pip install -U -r requirements.txt --no-cache-dir && \
     pip install -e . --no-cache-dir
