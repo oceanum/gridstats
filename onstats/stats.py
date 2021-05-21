@@ -797,6 +797,35 @@ class Stats(DerivedVar):
         self._compute(is_compute=compute)
         return dsout
 
+    def hsig(
+        self,
+        data_var,
+        dim,
+        compute=False,
+        **kwargs,
+    ):
+        """Time-domain significant wave height.
+
+        Args:
+            data_var (str): Data vars to calculate Hsig over.
+            dim (str): Name of time dimension to calculate Hsig over.
+            compute (bool): Compute dask variables from output dataset before returning.
+
+        """
+        logger.debug(f"Calculating Hsig from {data_var}")
+
+        dsout = 4 * self.dset[data_var].std(dim)
+        dsout.name = "hsig"
+        dsout.attrs = {
+            "standard_name": "sea_surface_wave_significant_height",
+            "long_name": "time-domain significant wave height of sea and swell waves",
+            "units": "m"
+        }
+
+        self.dsout = self.dsout.merge(dsout)
+        self._compute(is_compute=compute)
+        return dsout
+
     def apply_func_sector(
         self,
         func,
