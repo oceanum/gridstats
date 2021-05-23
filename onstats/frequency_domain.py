@@ -91,11 +91,11 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="second"):
     }
     if isinstance(darr, xr.DataArray):
         dsout = dsout.to_dataset()
-    for dvar in dsout.data_vars.values():
+    for varname, dvar in dsout.data_vars.items():
         dvar.attrs = {
             "standard_name": "sea_surface_wave_significant_height",
             "long_name": "frequency-domain significant wave height of frequency bands",
-            "units": "m",
+            "units": darr[varname].attrs.get("units", "m"),
         }
     dsout = dsout.rename({v: f"hs_{v}" for v in dsout.data_vars})
     if isinstance(darr, xr.DataArray):
