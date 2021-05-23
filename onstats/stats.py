@@ -22,6 +22,7 @@ from oncore.date import daterange, _parse, timedelta
 from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
 from onstats.xarray_stats import rpv, distribution, directional_stat, distribution_spddir
+from onstats.frequency_domain import hmo, BANDS
 
 
 logging.basicConfig(
@@ -799,29 +800,82 @@ class Stats(DerivedVar):
 
     def hsig(
         self,
-        data_var,
         dim,
+        data_vars=[],
+        derived_vars=[],
         compute=False,
         **kwargs,
     ):
         """Time-domain significant wave height.
 
         Args:
-            data_var (str): Data vars to calculate Hsig over.
+            data_var (str): Data var to calculate Hsig over.
             dim (str): Name of time dimension to calculate Hsig over.
+            data_vars (list): Data vars to apply stats over, "all" for all variables.
+            derived_vars (list): Derived_vars to calculate before applying stats,
+                useful if data_vars=="all" and you also want derived vars.
             compute (bool): Compute dask variables from output dataset before returning.
 
         """
-        logger.debug(f"Calculating Hsig from {data_var}")
+        if data_vars == "all":
+            data_vars = self.data_vars
+        data_vars += derived_vars
+        self._update_dset(data_vars)
 
-        dsout = 4 * self.dset[data_var].std(dim)
-        dsout.name = "hsig"
+        logger.debug(f"Calculating hsig for vars: {data_vars}")
+
+        dset = self.dset[data_vars]
+
+        dsout = 4 * dset.std(dim)
+        dsout = dsout.rename({v: f"hsig_{v}" for v in dsout.data_vars})
         dsout.attrs = {
             "standard_name": "sea_surface_wave_significant_height",
             "long_name": "time-domain significant wave height of sea and swell waves",
             "units": "m"
         }
 
+        self.dsout = self.dsout.merge(dsout)
+        self._compute(is_compute=compute)
+        return dsout
+
+    def hmo(
+        self,
+        dim,
+        fs,
+        segsec,
+        bands=BANDS,
+        data_vars=[],
+        derived_vars=[],
+        compute=False,
+        **kwargs,
+    ):
+        """Frequency domain significant wave height for frequency bands.
+
+        Args:
+            dim (str): Name of time dimension to calculate Hsig over.
+            fs (float): Sampling frequency of data.
+            segsec (int): Size of overlapping segments (s).
+            bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax].
+            data_vars (list): Data vars to apply stats over, "all" for all variables.
+            derived_vars (list): Derived_vars to calculate before applying stats,
+                useful if data_vars=="all" and you also want derived vars.
+            compute (bool): Compute dask variables from output dataset before returning.
+
+        """
+        if data_vars == "all":
+            data_vars = self.data_vars
+        data_vars += derived_vars
+        self._update_dset(data_vars)
+
+        logger.debug(f"Calculating hmo for vars: {data_vars}")
+
+        dsout = hmo(
+            self.dset[data_vars],
+            fs=fs,
+            segsec=segsec,
+            bands=bands,
+            dim=dim
+        )
         self.dsout = self.dsout.merge(dsout)
         self._compute(is_compute=compute)
         return dsout

@@ -1,0 +1,51 @@
+init:
+  dataset: /source/onfunwave/tests/data/funwave.nc
+  # updir: ./
+  slice_dict:
+    isel:
+      second: !!python/object/apply:slice [10, 61]
+  # chunks:
+  #   latitude: 50
+  #   longitude: 50
+  attrs:
+    title: test stats
+    history: ""
+    institution: Oceanum
+    source: Fuwave
+    comment: Some stats
+    references: A reference
+
+calls:
+
+  - method: hsig
+    kwargs:
+      dim: second
+      data_vars:
+        - eta
+        - u
+        - v
+
+  - method: hmo
+    kwargs:
+      dim: second
+      fs: 1
+      segsec: 256
+      data_vars:
+        - eta
+        - u
+        - v
+      bands:
+        "0_25": [0.04, 0]
+        "8_25": [0.04, 0.125]
+        "25_120": [0.00833, 0.04]
+        "25_300": [0.00333, 0.04]
+        tot: [null, null]
+
+  - method: to_netcdf
+    kwargs:
+      outfile: /source/onstats/tests/hsig.nc
+      format: NETCDF4
+
+  # - method: to_zarr
+  #   kwargs:
+  #     outfile: /source/onstats/tests/gridstat.zarr
