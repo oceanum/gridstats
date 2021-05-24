@@ -30,7 +30,7 @@ requirements = [
     "xarray",
     "zarr",
     "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.25",
-    "ontake @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/ontake@v1.0.0",
+    "ontake @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/ontake@v1.0.1",
     "intake-ncdap @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-ncdap@0.1",
     "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@v1.0.0",
 ]
