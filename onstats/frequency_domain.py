@@ -1,5 +1,6 @@
 """Frequency domain processing."""
 import numpy as np
+import dask.array as da
 import xarray as xr
 from scipy.signal import welch
 from scipy.interpolate import interp1d
@@ -7,11 +8,11 @@ from scipy.integrate import simps
 
 
 BANDS = {
-    "0_25": (1 / 25, 0),
+    "0_25": (1 / 25, None),
     "8_25": (1 / 25, 1 / 8),
     "25_120": (1 / 120, 1 / 25),
     "25_300": (1 / 300, 1 / 25),
-    "0_300": (1 / 300, 0),
+    "tot": (None, None),
 }
 
 
@@ -19,10 +20,10 @@ def np_hs(x, fs, segsec, bands):
     """Frequency domain significant wave height for frequency bands.
 
     Args:
-        x (1darr): Time series of measurement values
-        fs (float): Sampling frequency of x
+        x (1darr): Time series of measurement values.
+        fs (float): Sampling frequency of x (Hz).
         segsec (int): Size of overlapping segments (s).
-        bands (list): Frequency bands with [fmin, fmax] for each band to calculate.
+        bands (2darr): Frequency bands with [fmin, fmax] for each band in a row (Hz).
 
     Note:
         Default hann window is used with default overlapping of 50%.
@@ -40,17 +41,15 @@ def np_hs(x, fs, segsec, bands):
     f = interp1d(freq, efth)
 
     # Calculate Hs for each band
-    f0 = freq[0]
-    f1 = freq[-1]
+    fmins = np.nan_to_num(bands[:, 0], nan=freq[0])
+    fmaxs = np.nan_to_num(bands[:, 1], nan=freq[-1])
     hs = []
-    for band in bands:
-        fmin = band[0] or f0
-        fmax = band[1] or f1
+    for fmin, fmax in zip(fmins, fmaxs):
         ifreq = (freq > fmin) & (freq < fmax)
         freq_band = np.hstack((fmin, freq[ifreq], fmax))
         efth_band = f(freq_band)
-        hs.append(4 * np.sqrt(simps(efth_band, freq_band)))
-    return np.array(hs)
+        hs.append(float(4 * np.sqrt(simps(efth_band, freq_band))))
+    return da.from_array(hs, chunks=(1,))
 
 
 def hmo(darr, fs, segsec=256, bands=BANDS, dim="second"):
@@ -58,23 +57,26 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="second"):
 
     Args:
         darr (DataArray): Time series data to calculate Hs from.
-        fs (float): Sampling frequency of x
+        fs (float): Sampling frequency of x (Hz).
         segsec (int): Size of overlapping segments (s).
-        bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax].
+        bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax] (Hz).
         dim (str): Dimension to calculate fft along.
 
     Returns:
         hs (DataArray): 
 
+    Note:
+        None or nan band values are interpreted as the min or max frequency available.
+
     """
     # Apply function
-    bands_list = np.array(list(bands.values()))
+    bands_array = np.array(list(bands.values()), dtype=float)
     dsout = xr.apply_ufunc(
         np_hs,
         darr,
         fs,
         segsec,
-        bands_list,
+        bands_array,
         input_core_dims=[[dim], [], [], ["band", "fbounds"]],
         output_core_dims=[["band"]],
         exclude_dims=set((dim,)),
@@ -95,7 +97,7 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="second"):
         dvar.attrs = {
             "standard_name": "sea_surface_wave_significant_height",
             "long_name": "frequency-domain significant wave height of frequency bands",
-            "units": darr[varname].attrs.get("units", "m"),
+            "units": dvar.attrs.get("units", "m"),
         }
     dsout = dsout.rename({v: f"hs_{v}" for v in dsout.data_vars})
     if isinstance(darr, xr.DataArray):
