@@ -838,6 +838,73 @@ class Stats(DerivedVar):
         self._compute(is_compute=compute)
         return dsout
 
+    def hmo_stepwise(
+        self,
+        dim,
+        fs,
+        segsec,
+        step_x,
+        step_y,
+        bands=BANDS,
+        data_vars=[],
+        derived_vars=[],
+        xname="x",
+        yname="y",
+        tname="second",
+        **kwargs,
+    ):
+        """Frequency domain significant wave height for frequency bands.
+
+        Args:
+            dim (str): Name of time dimension to calculate Hsig over.
+            fs (float): Sampling frequency of data.
+            segsec (int): Size of overlapping segments (s).
+            step_x (int): x step size for loading slices in memory.
+            step_y (int): y step size for loading slices in memory.
+            bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax].
+            data_vars (list): Data vars to apply stats over, "all" for all variables.
+            derived_vars (list): Derived_vars to calculate before applying stats,
+                useful if data_vars=="all" and you also want derived vars.
+            xname (str): Name of x-coordinate in dataset.
+            yname (str): Name of y-coordinate in dataset.
+            tname (str): Name of time-coordinate in dataset.
+
+        """
+        if data_vars == "all":
+            data_vars = self.data_vars
+        data_vars += derived_vars
+        self._update_dset(data_vars)
+
+        dset = self.dset[data_vars].rename({xname: "x", yname: "y", tname: "second"})
+
+        logger.debug(f"Calculating hmo for vars: {data_vars}")
+
+        # Box slices for looping over grid
+        yend = dset.y.size
+        xend = dset.x.size
+        if yend % step_y != 0:
+            yend += step_y
+        if xend % step_x != 0:
+            xend += step_x
+        yarr = pd.interval_range(start=0, end=yend, freq=step_y)
+        xarr = pd.interval_range(start=0, end=xend, freq=step_x)
+
+        # Compute each spatial box slice loading before calculating stats
+        i = 1
+        dsout_list = []
+        for iy, yint in enumerate(yarr):
+            for xint in xarr:
+                logger.info(f"Compute partial dataset {i}/{len(xarr) * len(yarr)}")
+                ds = dset.isel(
+                    y=slice(yint.left, yint.right), x=slice(xint.left, xint.right),
+                ).load()
+                dsout = hmo(ds, fs=fs, segsec=segsec, bands=bands, dim=dim)
+                dsout_list.append(dsout)
+                i += 1
+        dsout = xr.combine_by_coords(dsout_list)
+        self.dsout = self.dsout.merge(dsout)
+        return dsout
+
     def hmo(
         self,
         dim,
