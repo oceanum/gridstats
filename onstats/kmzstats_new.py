@@ -226,7 +226,9 @@ class KMZ:
         indices = self.layer_val.get("indices", None)
         self.dim_names = []
         if indices is not None:
+            # Loop through each index to be sliced away
             for self.dim_name, dim_slice in indices.items():
+                # Loop through slicing dictionary defined by 'index'
                 for self.dim_index, self.dim_label in dim_slice.items():
                     self.dim_names.append(str(self.dim_label))
                     if layer_type == "groundoverlay":
@@ -518,6 +520,11 @@ class KMZ:
             self.ds = xr.open_zarr(self.layer_val["filename"], consolidated=True).squeeze(drop=True)
         else:
             raise ValueError(f"File {filename} not recognised, only .nc and .zarr are supported")
+        # Slicing
+        for method, kwarg in self.layer_val.get("slice_dict", {}).items():
+            self.ds = getattr(self.ds, method)(**kwarg)
+
+        # Rename coordinates
         if "longitude" in self.ds and "latitude" in self.ds:
             self.ds = self.ds.rename({"longitude": "lon", "latitude": "lat"})
         self.ds = self.ds.sortby("lat").sortby("lon")
@@ -636,7 +643,14 @@ class KMZ:
         if self.dim_name is not None:
             self.darr = self.darr.isel(**{self.dim_name: self.dim_index})
 
-        group = self.group.newfolder(name=self.layer_name)
+        # group = self.group.newfolder(name=self.layer_name)
+        containers = [c.name for c in self.group.containers]
+        if self.layer_name not in containers:
+            group = self.group.newfolder(name=self.layer_name)
+        else:
+            index = containers.index(self.layer_name)
+            group = self.group.containers[index]
+            group = group.newfolder(name=f"Isoline {self.dim_label}")
 
         rgb = self.plot_kwargs.pop("rgb", [0, 0, 0])
         levels = self.plot_kwargs.pop("levels")
