@@ -303,6 +303,11 @@ class KMZ:
         rgb = int(round(scale * 255))
         return "ff{0:02x}{1:02x}{2:02x}".format(rgb, rgb, rgb)
 
+    def _rgb_to_hex(self, rgb_scaled):
+        """Convert scaled rgb tuple (0-1, 0-1, 0-1) into hex code"""
+        rgb = [int(round(v * 255)) for v in rgb_scaled]
+        return "ff{0:02x}{1:02x}{2:02x}".format(*rgb)
+
     def _make_cyclone_raster(self):
         """Make linestring for cyclone path layers."""
         logger.info("Plotting cyclone for layer: {}".format(self.figname))
@@ -633,13 +638,17 @@ class KMZ:
 
         group = self.group.newfolder(name=self.layer_name)
 
+        rgb = self.plot_kwargs.pop("rgb", [0, 0, 0])
         levels = self.plot_kwargs.pop("levels")
-        # import ipdb; ipdb.set_trace()
         gray_scales = np.linspace(0.2, 0.0, len(levels))
         for level, gray_scale in zip(levels, gray_scales):
             logger.info("Drawing contour level {}".format(level))
             kwargs = self.plot_kwargs.copy()
             kwargs.update({"levels": [level]})
+
+            # Remove kwargs not used by contour
+            kwargs.pop("precision", None)
+            kwargs.pop("rgb", None)
 
             cs = ax.contour(self.darr.lon, self.darr.lat, self.darr, **kwargs)
 
@@ -655,7 +664,8 @@ class KMZ:
                 linestring = multipoint.newlinestring(
                     coords=coords, altitudemode=AltitudeMode.relativetoground
                 )
-                linestring.style.linestyle.color = self._gray_to_hex(gray_scale)
+                # linestring.style.linestyle.color = self._gray_to_hex(gray_scale)
+                linestring.style.linestyle.color = self._rgb_to_hex(rgb)
                 linestring.style.linestyle.width = kwargs.get("linewidths", 2.0)
             multipoint.visibility = self.visibility
 
