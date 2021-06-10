@@ -11,21 +11,21 @@ init:
 
 calls:
 
-  # - method: hsig
-  #   kwargs:
-  #     dim: second
-  #     data_vars:
-  #       - eta
-  #       - u
-  #       - v
+  - method: hsig
+    kwargs:
+      dim: second
+      data_vars:
+        - eta
+        - u
+        - v
 
   - method: hmo_stepwise
     kwargs:
       dim: second
       fs: 1
       segsec: 256
-      step_x: 15
-      step_y: 15
+      step_x: 25
+      step_y: 25
       data_vars:
         - eta
         - u
