@@ -200,6 +200,11 @@ class KMZ:
         tmp = tmp.rio.clip(
             gdf.geometry.apply(mapping), gdf.crs, drop=False, invert=True
         )
+        # Depth not masked in gebco for some reason, quick fix here
+        if "depth" in tmp.data_vars:
+            tmp2 = dset.copy(deep=True)
+            logger.warning(f"Masking depth values below zero because gebco does not mask for some reason")
+            tmp = tmp.assign({"depth": tmp2.depth.where(tmp2.depth >= 0)})
         return tmp
 
     def _get_cmap(self, cmap):
