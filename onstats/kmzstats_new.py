@@ -141,47 +141,6 @@ class KMZ:
         else:
             return False
 
-    def run(self):
-        """Generate KMZ file based on yml config."""
-        if self.logo is not None:
-            self.add_logo(
-                "Oceanum",
-                self.logo,
-                0.0350,
-                0.90,
-                0.20,
-            )
-
-        for group0, layers in self.layers.items():
-            self.group0 = self.kml.newfolder(name=group0, open=1)
-            for self.layer_id, self.layer_val in layers.items():
-                subgroups = [c.name for c in self.group0.containers]
-                subgroup = self.layer_val.get("subgroup", None)
-                if subgroup is not None:
-                    logger.debug(f"Subgroup {subgroup} key defined in layer")
-                    if subgroup in subgroups:
-                        logger.debug(f"Subgroup {subgroup} already created")
-                        self.group = self.group0.containers[subgroups.index(subgroup)]
-                    else:
-                        logger.debug(f"Creating subgroup {subgroup}")
-                        self.group = self.group0.newfolder(name=subgroup)
-                else:
-                    logger.debug("subgroup key not defined in layer or None")
-                    self.group = self.group0
-
-                self.chart = self.charts[self.layer_val["chart"]]
-                logger.info("Creating layer: {}".format(self.layer_id))
-                logger.debug("Chart config: \n{}".format(self.chart))
-                if self.chart.get("type", None) == "isoline":
-                    layer_type = "linestring"
-                elif self.chart.get("type", None) == "cyclone":
-                    layer_type = "cyclone"
-                else:
-                    layer_type = "groundoverlay"
-                self._plot_layer_figures(layer_type=layer_type)
-        self.add_camera(**self.camera)
-        self.save_kmz()
-
     def _set_mask(self, dset):  # , ncfile, var, vmin=None, vmax=None):
         import geopandas as gpd
         import rioxarray
@@ -551,6 +510,50 @@ class KMZ:
     def _read_config(self, filename, what):
         with open(filename, "r") as stream:
             return yaml.load(stream, Loader=yaml.Loader).get(what, None)
+
+    def run(self):
+        """Generate KMZ file based on yml config."""
+        if self.logo is not None:
+            self.add_logo(
+                "Oceanum",
+                self.logo,
+                0.0350,
+                0.90,
+                0.20,
+            )
+
+        for group0, layers in self.layers.items():
+            self.group0 = self.kml.newfolder(name=group0, open=1)
+            for self.layer_id, self.layer_val in layers.items():
+                if not self.layer_val.get("active", True):
+                    logger.info(f"Layer {self.layer_id} not active, skipping.")
+                    continue
+                subgroups = [c.name for c in self.group0.containers]
+                subgroup = self.layer_val.get("subgroup", None)
+                if subgroup is not None:
+                    logger.debug(f"Subgroup {subgroup} key defined in layer")
+                    if subgroup in subgroups:
+                        logger.debug(f"Subgroup {subgroup} already created")
+                        self.group = self.group0.containers[subgroups.index(subgroup)]
+                    else:
+                        logger.debug(f"Creating subgroup {subgroup}")
+                        self.group = self.group0.newfolder(name=subgroup)
+                else:
+                    logger.debug("subgroup key not defined in layer or None")
+                    self.group = self.group0
+
+                self.chart = self.charts[self.layer_val["chart"]]
+                logger.info("Creating layer: {}".format(self.layer_id))
+                logger.debug("Chart config: \n{}".format(self.chart))
+                if self.chart.get("type", None) == "isoline":
+                    layer_type = "linestring"
+                elif self.chart.get("type", None) == "cyclone":
+                    layer_type = "cyclone"
+                else:
+                    layer_type = "groundoverlay"
+                self._plot_layer_figures(layer_type=layer_type)
+        self.add_camera(**self.camera)
+        self.save_kmz()
 
     def gearth_fig(self, x0=None, x1=None, y0=None, y1=None, dpi=None):
         """Return a Matplotlib `fig` and `ax` handles for a Google-Earth Image.
