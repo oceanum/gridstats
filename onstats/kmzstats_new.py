@@ -204,7 +204,7 @@ class KMZ:
         else:
             self.dim_name = None
             self.dim_index = 0
-            self.dim_label = "Annual"
+            self.dim_label = self.layer_val.get("name", "Annual")
             self.dim_names.append(str(self.dim_label))
             if layer_type == "groundoverlay":
                 self._make_plot()
@@ -319,6 +319,7 @@ class KMZ:
             ax.set_xlim((x0, x1))
             ax.set_ylim((y0, y1))
             fig.savefig(self.figname, transparent=True, format="png")
+            plt.close(fig)
 
             ground = subgroup.newgroundoverlay(name="Cat {:0.0f}".format(cat))
             ground.visibility = 0
@@ -690,6 +691,7 @@ class KMZ:
                 linestring.style.linestyle.color = self._rgb_to_hex(rgb)
                 linestring.style.linestyle.width = kwargs.get("linewidths", 2.0)
             multipoint.visibility = self.visibility
+        plt.close(fig)
 
     def add_logo(self, name, icon_href, x, y, size_x):
         screen = self.kml.newscreenoverlay(name=name)
