@@ -850,7 +850,7 @@ class Stats(DerivedVar):
         derived_vars=[],
         xname="x",
         yname="y",
-        tname="second",
+        tname="time",
         **kwargs,
     ):
         """Frequency domain significant wave height for frequency bands.
@@ -875,7 +875,7 @@ class Stats(DerivedVar):
         data_vars += derived_vars
         self._update_dset(data_vars)
 
-        dset = self.dset[data_vars].rename({xname: "x", yname: "y", tname: "second"})
+        dset = self.dset[data_vars].rename({xname: "x", yname: "y", tname: "time"})
 
         logger.debug(f"Calculating hmo for vars: {data_vars}")
 
