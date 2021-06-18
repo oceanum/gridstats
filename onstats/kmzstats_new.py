@@ -30,6 +30,8 @@ from simplekml import (
 from simplekml.featgeom import GroundOverlay
 
 
+plt.switch_backend('agg')
+
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
 )
