@@ -52,12 +52,12 @@ def np_hs(x, fs, segsec, bands):
     return da.from_array(hs, chunks=(1,))
 
 
-def hmo(darr, fs, segsec=256, bands=BANDS, dim="second"):
+def hmo(darr, fs, segsec=256, bands=BANDS, dim="time"):
     """Frequency domain significant wave height for frequency bands.
 
     Args:
         darr (DataArray): Time series data to calculate Hs from.
-        fs (float): Sampling frequency of x (Hz).
+        fs (float): Sampling frequency of darr (Hz).
         segsec (int): Size of overlapping segments (s).
         bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax] (Hz).
         dim (str): Dimension to calculate fft along.
