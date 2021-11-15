@@ -1,5 +1,5 @@
 """Console script for onstats."""
-import logging
+import logging.config
 import os
 import sys
 
@@ -7,13 +7,25 @@ import click
 import yaml
 
 from oncore.git import fetch_gitlab_file
+from oncore import LOGGING_CONFIG
 from onstats.kmzstats_new import KMZ
 from onstats.stats import Stats
 
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+
+logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
+
+
+def _load_config(config):
+    """Load config from local file, gitlab or env."""
+    if os.path.isfile(config):
+        instance = yaml.load(open(config), Loader=yaml.Loader)
+    elif "gitlab:" in config:
+        config = fetch_gitlab_file(config)
+        instance = yaml.load(config, Loader=yaml.Loader)
+    else:
+        instance = yaml.load(config, Loader=yaml.Loader)
+    return instance
 
 
 @click.group()
@@ -23,35 +35,10 @@ def main():
 
 @main.command()
 @click.argument("config", envvar="CONFIG")
-@click.option(
-    "-l",
-    "--load",
-    help="Load after each stat call, slower but memory-efficient",
-    default=False,
-    type=bool,
-    show_default=True,
-)
-def gridstats(config, load):
+def gridstats(config):
     """Console script for gridstats."""
-    if os.path.isfile(config):
-        conf = yaml.load(open(config), Loader=yaml.Loader)
-    elif "gitlab:" in config:
-        config = fetch_gitlab_file(config)
-        conf = yaml.load(config, Loader=yaml.Loader)
-    else:
-        conf = yaml.load(config, Loader=yaml.Loader)
-
-    stats = Stats(**conf["init"])
-
-    for call in conf.get("calls", []):
-        method = call["method"]
-        kwargs = call.get("kwargs", {})
-        logger.info(f"Stat.{method}({kwargs})")
-        getattr(stats, method)(**kwargs)
-        if load:
-            logger.info(f"Trigerring computation for call: {method}")
-            stats._load()
-    return stats
+    instance = _load_config(config)
+    instance()
 
 
 @main.command()
