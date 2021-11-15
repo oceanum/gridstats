@@ -111,7 +111,7 @@ class Stats:
         """Remove existing dask worker space directory."""
         p = Path("./dask-worker-space")
         if p.is_dir():
-            logger.info("Removing existing dask worker space")
+            logger.debug("Removing existing dask worker space")
             shutil.rmtree(p)
 
     def _open_dataset(self, chunks={}):
@@ -154,7 +154,6 @@ class Stats:
         # Slice dataset
         dset = self._slice(dset)
 
-        logger.info(f"Source dataset:\n{dset}")
         return dset
 
     def _slice(self, dset):
