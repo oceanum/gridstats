@@ -244,7 +244,10 @@ class Stats:
         # Calculate stats
         dsout = getattr(dset, func)(dim=dim, **kwargs)
         if compute:
+            logger.info("Compute dask stats")
             dsout = dsout.load()
+        else:
+            logger.info("Dask stats will be computed when saving dataset to disk")
 
         # Rename
         dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
