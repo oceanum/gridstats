@@ -9,3 +9,4 @@ build_image:
   only:
     - master
     - tags
+    - branches
