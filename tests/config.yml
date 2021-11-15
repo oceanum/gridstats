@@ -1,151 +1,23 @@
-init:
-  # From Stats
-  # master_url: /source/onstats/tests/catalog/oceanum.yml
-  # namespace: hindcast
-  # dataset: era5_wind10m
-  dataset: /source/onzarr/tests/catalog/era5_wind.zarr
-  updir: gs://oceanum-tmp
-  zarrfile: /source/onstats/tests/gridstat_partial.zarr
-  zarrmode: a
-  mask: null
-  slice_dict:
-    sel:
-      latitude: !!python/object/apply:slice [-30, 30]
-      longitude: !!python/object/apply:slice [0, 90]
-  chunks:
-    latitude: 50
-    longitude: 50
-  persist: False
-  # updir: gs://oceanum-tmp/test-stats
-  # From DerivedVar
-  var_uwnd: u10
-  var_vwnd: v10
-  var_uwnd150: u10
-  var_vwnd150: v10
-  # Attributes
-  attrs:
-    title: test stats
-    history: ""
-    institution: Oceanum
-    source: ECMWF ERA5
-    comment: Some stats
-    references: A reference
+!!python/object/apply:onstats.stats.Stats
+kwds:
+  outfile: ./tmp.nc
+  urlpath: /data/era5/sea_ice_cover-202001.nc
+  engine: netcdf4
+  n_workers: 4
+  calls:
+    - method: apply_func
+      kwargs:
+        func: mean
+        # group: month
+        data_vars: all
+        chunks:
+          latitude: 100
+          longitude: 100
 
-
-calls:
-  - method: apply_func_sector
-    kwargs:
-      func: mean
-      data_vars:
-        - wspd
-      dir_var: wdir
-      nsector: 4
-
-  - method: rpv
-    kwargs:
-      return_periods: [1, 5, 10, 20, 50, 100, 1000, 10000]
-      percentile: 95
-      distribution: gumbel_r
-      duration: 120
-      derived_vars: [wspd]
-      compute: True
-
-  - method: rpv
-    kwargs:
-      group: month
-      return_periods: [1, 5, 10, 20, 50, 100, 1000, 10000]
-      percentile: 95
-      distribution: gumbel_r
-      duration: 120
-      derived_vars: [wspd]
-      compute: True
-
-  - method: apply_func
-    kwargs:
-      func: count
-      group: month
-      data_vars: all
-
-  - method: data_count
-    kwargs:
-      data_vars: all
-
-  - method: apply_func
-    kwargs:
-      func: max
-      data_vars:
-        - wspd
-        - winpow
-
-  - method: apply_func
-    kwargs:
-      func: mean
-      data_vars: all
-      derived_vars:
-        - wspd
-        - winpow
-
-  - method: apply_func
-    kwargs:
-      func: mean
-      group: season
-      data_vars: all
-      derived_vars:
-        - wspd
-
-  - method: apply_func
-    kwargs:
-      func: quantile
-      q: [0.5, 0.9]
-      data_vars:
-        - u10
-        - wspd
-
-  - method: apply_func
-    kwargs:
-      func: quantile
-      q: [0.5, 0.9]
-      group: month
-      data_vars:
-        - u10
-      derived_vars:
-        - wspd
-
-  - method: value_probability
-    kwargs:
-      data_vars:
-        - wspd
-      bins: [0., 1.]
-      bin_name: cover
-
-  - method: range_probability
-    kwargs:
-      compute: True
-      dim: time
-      data_ranges:
-        - var: wspd
-          label: wspd_p_lt_5
-          start: null
-          stop: 5
-          left: closed
-          right: open
-        - var: wspd
-          label: wspd_p_5_to_10
-          start: 5
-          stop: 10
-          left: closed
-          right: open
-        - var: wspd
-          label: wspd_p_gt_10
-          start: 10
-          stop: null
-          left: closed
-          right: closed
-
-  - method: to_netcdf
-    kwargs:
-      outfile: /source/onstats/tests/gridstat2.nc
-      format: NETCDF4
+  # - method: to_netcdf
+  #   kwargs:
+  #     outfile: /source/onstats/tests/gridstat2.nc
+  #     format: NETCDF4
 
   # - method: to_zarr
   #   kwargs:
