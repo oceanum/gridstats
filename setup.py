@@ -29,10 +29,10 @@ requirements = [
     "tqdm",
     "xarray",
     "zarr",
-    "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.25",
-    "ontake @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/ontake@v1.0.1",
-    "intake-ncdap @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-ncdap@0.1",
-    "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@v1.0.0",
+    "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.26",
+    # "ontake @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/ontake@v1.0.1",
+    "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@v1.1.9",
+    # "onstats @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/onstats@master",
 ]
 
 setup_requirements = ["pytest-runner"]
