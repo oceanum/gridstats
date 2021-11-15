@@ -30,7 +30,7 @@ from simplekml import (
 from simplekml.featgeom import GroundOverlay
 
 
-plt.switch_backend('agg')
+plt.switch_backend("agg")
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -151,7 +151,9 @@ class KMZ:
         if isinstance(self.mask_file, str):
             gdf = gpd.read_file(self.mask_file)
         elif isinstance(self.mask_file, list):
-            gdf = pd.concat([gpd.read_file(file) for file in self.mask_file]).pipe(gpd.GeoDataFrame)
+            gdf = pd.concat([gpd.read_file(file) for file in self.mask_file]).pipe(
+                gpd.GeoDataFrame
+            )
         else:
             raise ValueError(f"mask_file must be string or list")
         gdf = gdf.to_crs("EPSG:4326")
@@ -164,7 +166,9 @@ class KMZ:
         # Depth not masked in gebco for some reason, quick fix here
         if "depth" in tmp.data_vars:
             tmp2 = dset.copy(deep=True)
-            logger.warning(f"Masking depth values below zero because gebco does not mask for some reason")
+            logger.warning(
+                f"Masking depth values below zero because gebco does not mask for some reason"
+            )
             tmp = tmp.assign({"depth": tmp2.depth.where(tmp2.depth >= 0)})
         return tmp
 
@@ -484,9 +488,13 @@ class KMZ:
         if filename.endswith(".nc"):
             self.ds = xr.open_dataset(self.layer_val["filename"]).squeeze(drop=True)
         elif filename.endswith(".zarr"):
-            self.ds = xr.open_zarr(self.layer_val["filename"], consolidated=True).squeeze(drop=True)
+            self.ds = xr.open_zarr(
+                self.layer_val["filename"], consolidated=True
+            ).squeeze(drop=True)
         else:
-            raise ValueError(f"File {filename} not recognised, only .nc and .zarr are supported")
+            raise ValueError(
+                f"File {filename} not recognised, only .nc and .zarr are supported"
+            )
         # Slicing
         for method, kwarg in self.layer_val.get("slice_dict", {}).items():
             self.ds = getattr(self.ds, method)(**kwarg)
@@ -501,8 +509,12 @@ class KMZ:
         # Hacked for now, interpolating to improve land mask
         res = np.float(np.diff(self.ds.lon[[0, 1]]))
         if self.resolution is not None and res > self.resolution:
-            lons = np.arange(self.ds.lon[0], self.ds.lon[-1] + self.resolution, self.resolution)
-            lats = np.arange(self.ds.lat[0], self.ds.lat[-1] + self.resolution, self.resolution)
+            lons = np.arange(
+                self.ds.lon[0], self.ds.lon[-1] + self.resolution, self.resolution
+            )
+            lats = np.arange(
+                self.ds.lat[0], self.ds.lat[-1] + self.resolution, self.resolution
+            )
             self.ds = self.ds.interp(lon=lons, lat=lats)
 
         if self.mask_file is not None:

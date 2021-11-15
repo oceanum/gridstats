@@ -363,21 +363,22 @@ if __name__ == "__main__":
     from dask.diagnostics.progress import ProgressBar
     from onstats.derived_variable import wspd, wdir
 
-    dset = xr.open_zarr("/data/ww3/ww3_grid_sample.zarr", consolidated=True).chunk({"time": None})
+    dset = xr.open_zarr("/data/ww3/ww3_grid_sample.zarr", consolidated=True).chunk(
+        {"time": None}
+    )
 
     dset["wspd"] = wspd(dset.uwnd, dset.vwnd)
     dset["wdir"] = wdir(dset.uwnd, dset.vwnd, coming_from=True)
 
-    ds = dset[["wspd","wdir"]]
+    ds = dset[["wspd", "wdir"]]
 
-    spd_bins = np.arange(0, 20+1, 1)
-    dir_bins = np.arange(0, 360+45, 45)
+    spd_bins = np.arange(0, 20 + 1, 1)
+    dir_bins = np.arange(0, 360 + 45, 45)
 
     dsout = distribution_spddir(ds.wspd, ds.wdir, spd_bins, dir_bins)
 
     with ProgressBar():
         dsout = dsout.load()
-
 
     # dset["tp"] = 1 / dset.fp
 

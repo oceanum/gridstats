@@ -63,7 +63,7 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="time"):
         dim (str): Dimension to calculate fft along.
 
     Returns:
-        hs (DataArray): 
+        hs (DataArray):
 
     Note:
         None or nan band values are interpreted as the min or max frequency available.

@@ -126,7 +126,13 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "onstats.tex", u"onstats Documentation", u"Oceanum Developers", "manual")
+    (
+        master_doc,
+        "onstats.tex",
+        u"onstats Documentation",
+        u"Oceanum Developers",
+        "manual",
+    )
 ]
 
 

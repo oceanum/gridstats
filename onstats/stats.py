@@ -23,7 +23,12 @@ from oncore.date import daterange, _parse, timedelta
 
 from onstats.utils import uv_to_spddir, expand_time_group
 import onstats.derived_variable as dv
-from onstats.xarray_stats import rpv, distribution, directional_stat, distribution_spddir
+from onstats.xarray_stats import (
+    rpv,
+    distribution,
+    directional_stat,
+    distribution_spddir,
+)
 from onstats.frequency_domain import hmo, BANDS
 
 
@@ -833,7 +838,7 @@ class StatsDeprecated(DerivedVar):
         dsout.attrs = {
             "standard_name": "sea_surface_wave_significant_height",
             "long_name": "time-domain significant wave height of sea and swell waves",
-            "units": "m"
+            "units": "m",
         }
 
         self.dsout = self.dsout.merge(dsout)
@@ -898,7 +903,8 @@ class StatsDeprecated(DerivedVar):
             for xint in xarr:
                 logger.info(f"Compute partial dataset {i}/{len(xarr) * len(yarr)}")
                 ds = dset.isel(
-                    y=slice(yint.left, yint.right), x=slice(xint.left, xint.right),
+                    y=slice(yint.left, yint.right),
+                    x=slice(xint.left, xint.right),
                 ).load()
                 dsout = hmo(ds, fs=fs, segsec=segsec, bands=bands, dim=dim)
                 dsout_list.append(dsout)
@@ -938,13 +944,7 @@ class StatsDeprecated(DerivedVar):
 
         logger.debug(f"Calculating hmo for vars: {data_vars}")
 
-        dsout = hmo(
-            self.dset[data_vars],
-            fs=fs,
-            segsec=segsec,
-            bands=bands,
-            dim=dim
-        )
+        dsout = hmo(self.dset[data_vars], fs=fs, segsec=segsec, bands=bands, dim=dim)
         self.dsout = self.dsout.merge(dsout)
         self._compute(is_compute=compute)
         return dsout
@@ -1112,7 +1112,7 @@ class StatsDeprecated(DerivedVar):
                 hsmax = float(self.dset[hs_name].max())
             logger.debug(f"Max Hs: {hsmax} m")
             idmax = np.argmax(hs_bins >= hsmax) or len(hs_bins) - 1
-            hs_bins = hs_bins[:idmax+1]
+            hs_bins = hs_bins[: idmax + 1]
 
             # Tp
             if f"{tp_name}_max" in self.dsout:
@@ -1121,7 +1121,7 @@ class StatsDeprecated(DerivedVar):
                 tpmax = float(self.dset[tp_name].max().compute())
             logger.debug(f"Max Tp: {tpmax} s")
             idmax = np.argmax(tp_bins >= tpmax) or len(tp_bins) - 1
-            tp_bins = tp_bins[:idmax+1]
+            tp_bins = tp_bins[: idmax + 1]
 
         logger.info(f"Hs bins: {hs_bins}, Tp bins: {tp_bins}, Dp bins: {dp_bins}")
 
@@ -1168,7 +1168,9 @@ class StatsDeprecated(DerivedVar):
             if ilat == 0:
                 dslat.to_zarr(tmp_store, mode="w", consolidated=True)
             else:
-                dslat.to_zarr(tmp_store, mode="a", append_dim="latitude", consolidated=True)
+                dslat.to_zarr(
+                    tmp_store, mode="a", append_dim="latitude", consolidated=True
+                )
             del dslat
 
         dsout = xr.open_zarr(tmp_store, consolidated=True)
@@ -1237,7 +1239,7 @@ class StatsDeprecated(DerivedVar):
                 spdmax = float(self.dset[spd_name].max())
             logger.debug(f"Max spd: {spdmax} m/s")
             idmax = np.argmax(spd_bins >= spdmax) or len(spd_bins) - 1
-            spd_bins = spd_bins[:idmax+1]
+            spd_bins = spd_bins[: idmax + 1]
 
         logger.info(f"Spd bins: {spd_bins}, Dir bins: {dir_bins}")
 
@@ -1282,7 +1284,9 @@ class StatsDeprecated(DerivedVar):
             if ilat == 0:
                 dslat.to_zarr(tmp_store, mode="w", consolidated=True)
             else:
-                dslat.to_zarr(tmp_store, mode="a", append_dim="latitude", consolidated=True)
+                dslat.to_zarr(
+                    tmp_store, mode="a", append_dim="latitude", consolidated=True
+                )
             del dslat
 
         dsout = xr.open_zarr(tmp_store, consolidated=True)
@@ -1353,7 +1357,6 @@ class StatsDeprecated(DerivedVar):
             dsout.chunk(included_chunks).to_zarr(fsmap, consolidated=True, mode=mode)
             if self.updir:
                 self._upload(store)
-
 
 
 class Stats:
@@ -1450,7 +1453,7 @@ class Stats:
         """Open and slice dataset according to the init attributes provided.
 
         Args:
-            chunks (dict): Mapping dim: size for chunking each dimension, 
+            chunks (dict): Mapping dim: size for chunking each dimension,
                 only used if opening dataset from urlpath to avoid rechunking.
 
         """
