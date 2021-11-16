@@ -12,6 +12,3 @@ COPY onstats $REPOS/onstats/onstats
 COPY tests $REPOS/onstats/tests
 RUN cd $REPOS/onstats && \
     pip install -e . --no-cache-dir
-
-RUN echo "--------------- Reinstall conflicting ---------------" && \
-    pip install -U packaging
