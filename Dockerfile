@@ -6,6 +6,9 @@ ENV REPOS="/source"
 RUN echo "--------------- System packages ---------------" && \
     apt update && apt upgrade -y
 
+RUN echo "--------------- Conflicting libs ---------------" && \
+    pip install --no-cache-dir -U packaging
+
 RUN echo "--------------- Installing onstats ---------------"
 COPY setup.py README.rst HISTORY.rst $REPOS/onstats/
 COPY onstats $REPOS/onstats/onstats
