@@ -241,7 +241,8 @@ class Stats(metaclass=Plugin):
             suffix = f"_{func}"
 
         # Open dataset
-        dset = self._open_dataset(chunks=chunks)
+        dset = self._open_dataset(chunks=None)
+        dset = dset.chunk(chunks)
 
         # Selecting variables
         if data_vars == "all":
