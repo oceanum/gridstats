@@ -138,7 +138,7 @@ def rpv(
         dim (str): Dimension to calculate rpv along.
 
     Returns:
-        rpvs (dict): Return period values for years in return_periods.
+        rpvs (xr.Dataset): Return period values dataset.
 
     """
     dt_hour = _timestep(dset, dim).total_seconds() / 3600
