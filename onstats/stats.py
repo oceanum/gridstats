@@ -169,7 +169,7 @@ class Stats(metaclass=Plugin):
         # Slice dataset
         dset = self._slice(dset)
 
-        logger.info(f"Dataset chunks: {dset.chunks}")
+        logger.debug(f"Dataset chunks: {dset.chunks}")
         return dset
 
     def _slice(self, dset):
