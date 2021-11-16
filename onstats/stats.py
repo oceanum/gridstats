@@ -34,7 +34,8 @@ class Plugin(type):
         modules = [import_module(f"onstats.functions.{name}") for name in modules]
         for module in modules:
             for func_name, func in getmembers(module, isfunction):
-                dct[func_name] = func
+                if not func_name.startswith("_"):
+                    dct[func_name] = func
         return type.__new__(cls, name, bases, dct)
 
 

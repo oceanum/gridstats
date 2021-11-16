@@ -14,5 +14,12 @@ with `self` always defined as the first argument. The second argument must be th
 dataset object `dset` to be reduced, followed by additional keyword arguments to be
 passed to the stats functions.
 
+Any support function not intended to be attached to the `Stats`_ class must be defined
+as a hidden function with name starting with an underline, e.g.:
+
+.. code::
+
+    def _support_func(arg)
+
 
 .. _Stats: https://gitlab.com/oceanum/onstats/-/blob/master/onstats/stats.py
