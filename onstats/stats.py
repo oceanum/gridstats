@@ -1,6 +1,8 @@
 """Calculated gridded stats using xarray and dask."""
 import os
 from pathlib import Path
+from importlib import import_module
+from inspect import getmembers, isfunction
 import shutil
 import logging
 import numpy as np
@@ -24,7 +26,19 @@ logger = logging.getLogger(__name__)
 np.seterr(divide="ignore", invalid="ignore")
 
 
-class Stats:
+class Plugin(type):
+    """Add stats functions as bound methods at class creation."""
+
+    def __new__(cls, name, bases, dct):
+        modules = [p.stem for p in (Path(__file__).parent / "functions").glob("*.py")]
+        modules = [import_module(f"onstats.functions.{name}") for name in modules]
+        for module in modules:
+            for func_name, func in getmembers(module, isfunction):
+                dct[func_name] = func
+        return type.__new__(cls, name, bases, dct)
+
+
+class Stats(metaclass=Plugin):
     def __init__(
         self,
         outfile,
@@ -154,6 +168,7 @@ class Stats:
         # Slice dataset
         dset = self._slice(dset)
 
+        logger.info(f"Dataset chunks: {dset.chunks}")
         return dset
 
     def _slice(self, dset):
@@ -202,25 +217,23 @@ class Stats:
     def apply_func(
         self,
         func,
-        dim="time",
-        data_vars=[],
+        data_vars="all",
+        chunks={},
         group=None,
         suffix=None,
         compute=True,
-        chunks={},
         **kwargs,
     ):
         """apply xarray function.
 
         Args:
-            func (str): Name of valid xarray function to apply.
-            dim (str): Dimension to apply function over.
+            func (str): Name of valid function defined in functions package.
             data_vars (list): Data vars to apply stats over, "all" for all variables.
+            chunks (dict): Mapping {dim_name: dim_size} for chunking dataset.
             group (str): Time grouping type, any valid time_{group} such month, season.
-            suffix (str): String to append to each variable name in output dataset,
-                defined as `f"_{func}"` if `suffix==None`.
-            compute (bool): Compute dask variables from output dataset before returning.
-            kwargs: kwargs for function func.
+            suffix (str): String to append to each variable name in output dataset.
+            compute (bool): Compute dask variables in output dataset before returning.
+            kwargs: Aditional keyword arguments for function `func`.
 
         """
         if suffix is None:
@@ -232,7 +245,7 @@ class Stats:
         # Selecting variables
         if data_vars == "all":
             data_vars = [k for k in dset.data_vars]
-        logger.debug(f"Calculating {dim}-{func} for vars: {data_vars}")
+        logger.debug(f"Calculating {func} for vars: {data_vars}")
         dset = dset[data_vars]
 
         # Grouping by
@@ -242,7 +255,7 @@ class Stats:
             dset = dset.groupby(f"time.{group}")
 
         # Calculate stats
-        dsout = getattr(dset, func)(dim=dim, **kwargs)
+        dsout = getattr(self, func)(dset, **kwargs)
         if compute:
             logger.info("Compute dask stats")
             dsout = dsout.load()
