@@ -8,6 +8,7 @@ kwds:
     - method: apply_func
       kwargs:
         func: mean
+        dim: time
         # group: month
         data_vars: all
         chunks:
