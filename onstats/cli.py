@@ -25,8 +25,6 @@ def _load_config(config):
         instance = yaml.load(config, Loader=yaml.Loader)
     else:
         instance = yaml.load(config, Loader=yaml.Loader)
-        if not isinstance(instance, dict) and not os.path.isfile(config):
-            raise ValueError(f"Cannot load config from {config}")
     return instance
 
 
