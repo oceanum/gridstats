@@ -1,25 +1,50 @@
 !!python/object/apply:onstats.stats.Stats
 kwds:
   outfile: ./tmp.nc
-  urlpath: /data/era5/sea_ice_cover-202001.nc
+  urlpath: ./tasman.nc
   engine: netcdf4
   n_workers: 4
   calls:
-    - method: apply_func
-      kwargs:
-        func: mean
-        dim: time
-        # group: month
-        data_vars: all
-        chunks:
-          latitude: 100
-          longitude: 100
 
-  # - method: to_netcdf
-  #   kwargs:
-  #     outfile: /source/onstats/tests/gridstat2.nc
-  #     format: NETCDF4
+    - func: mean
+      dim: time
+      # group: month
+      data_vars: [hs, hsea, hswe]
+      chunks:
+        latitude: 100
+        longitude: 100
 
-  # - method: to_zarr
-  #   kwargs:
-  #     outfile: /source/onstats/tests/gridstat.zarr
+    - func: min
+      dim: time
+      data_vars: [hs, hsea, hswe]
+      chunks:
+        latitude: 100
+        longitude: 100
+
+    - func: max
+      dim: time
+      data_vars: [hs, hsea, hswe]
+      chunks:
+        latitude: 100
+        longitude: 100
+
+    - func: quantile
+      dim: time
+      q: [0.95, 0.99]
+      data_vars: [hs, hsea, hswe]
+      chunks:
+        time: -1
+        latitude: 50
+        longitude: 50
+
+    - func: rpv
+      return_periods: [10, 100]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 24
+      dim: time
+      data_vars: [hs, hsea, hswe]
+      chunks:
+        time: -1
+        latitude: 50
+        longitude: 50

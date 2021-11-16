@@ -106,14 +106,13 @@ class Stats(metaclass=Plugin):
         Local dask clusters are set up for running each stats method.
 
         """
+        self._clean_dask_worker_space()
         # Execute each stats method
         for call in self.calls:
-            method = call["method"]
-            kwargs = call.get("kwargs", {})
-            logger.info(f"Stat.{method}({kwargs})")
             with Client(processes=True, n_workers=self.n_workers) as client:
                 logger.info(client)
-                getattr(self, method)(**kwargs)
+                logger.info(f"Stat.apply_func(**{call})")
+                self.apply_func(**call)
             self._clean_dask_worker_space()
 
         # Save output file
