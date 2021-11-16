@@ -10,6 +10,7 @@ import xarray as xr
 from intake import open_catalog
 import dask
 from dask.distributed import Client
+import multiprocessing as mp
 
 from oncore.dataio import put, isdir, exists, rm, get
 from onstats.xarray_stats import (
@@ -53,27 +54,27 @@ class Stats(metaclass=Plugin):
         updir=None,
         localdir="/scratch",
         allow_split_large_chunks=False,
-        n_workers=None,
+        n_workers="half",
         calls=[],
         **kwargs,
     ):
         """Gridded stats using dask arrays.
 
         Args:
-            outfile (str): Name or URI of output file, must end with ".nc" or ".zarr".
-            dset (xr.Dataset): Source dataset to calculate stats from.
-            urlpath (str): Path or URI of dataset file to calculate stats from.
-            engine (str): Engine to use with xr.open_dataset when using urlpath.
-            catalog (str): Path or URI of intake catalog with datasets to open.
-            dataset_id (str): Intake dataset id to calculate stats from.
-            mapping (dict): Dictionary for renaming dataset variables.
-            slice_dict (dict): Dictionary specifying slicing arg.
-            updir (str): Upload direction to upload netcdf and zarr stats files to.
-            allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
-            n_workers (int): Number of workers for local dask distributed cluster.
-            calls (list): List of dicts defining each stats method to run with keys:
-                method: name of stats method to run.
-                kwargs: kwargs to run the stats method.
+            - outfile (str): Name or URI of output file, must end with '.nc' or '.zarr'.
+            - dset (xr.Dataset): Source dataset to calculate stats from.
+            - urlpath (str): Path or URI of dataset file to calculate stats from.
+            - engine (str): Engine to use with xr.open_dataset when using urlpath.
+            - catalog (str): Path or URI of intake catalog to calculate stats from.
+            - dataset_id (str): Intake dataset id to calculate stats from.
+            - mapping (dict): Dictionary for renaming dataset variables.
+            - slice_dict (dict): Dictionary specifying slicing parameters.
+            - updir (str): Path or URI to upload output stats file to.
+            - allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
+            - n_workers (int, str): Number of workers for local dask cluster, must be
+              an integer or one of 'all' or 'half' for using all or half of cpu count.
+            - calls (list): List of dicts defining each stat to run with keys
+              specifying keyword arguments for the `apply_func` method.
 
         Note:
             You must provide one of 'dset', 'urlpath' or ['catalog', 'dataset_id'].
@@ -94,10 +95,10 @@ class Stats(metaclass=Plugin):
         self.engine = engine
         self.mapping = mapping
         self.slice_dict = slice_dict
-        self.n_workers = n_workers
         self.updir = updir
         self.calls = calls
 
+        self._n_workers = n_workers
         self.dsout = xr.Dataset()
 
     def __call__(self):
@@ -107,6 +108,7 @@ class Stats(metaclass=Plugin):
 
         """
         self._clean_dask_worker_space()
+
         # Execute each stats method
         for call in self.calls:
             with Client(processes=True, n_workers=self.n_workers) as client:
@@ -120,6 +122,24 @@ class Stats(metaclass=Plugin):
             self.to_netcdf(self.outfile)
         elif self.outfile.endswith(".zarr"):
             self.to_zarr(self.outfile)
+
+    @property
+    def n_workers(self):
+        """Number of workers for dask cluster."""
+        if isinstance(self._n_workers, int):
+            return self._n_workers
+        else:
+            cpu_count = mp.cpu_count()
+            if self._n_workers == "all":
+                return cpu_count
+            elif self._n_workers == "half":
+                return int(cpu_count / 2)
+            else:
+                raise ValueError(
+                    "n_workers must either be an integer specifying the number of "
+                    "workers or one of ['all', 'half'] to allow using all or half of "
+                    f"the available cpus to define workers, got {self._n_workers}"
+                )
 
     def _clean_dask_worker_space(self):
         """Remove existing dask worker space directory."""
