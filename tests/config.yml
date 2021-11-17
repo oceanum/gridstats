@@ -3,7 +3,10 @@ kwds:
   outfile: ./tmp.nc
   urlpath: ./tasman.nc
   engine: netcdf4
-  n_workers: half
+  cluster_kwargs:
+    processes: True
+    n_workers: null
+    threads_per_worker: 1
   calls:
 
     - func: mean

@@ -55,8 +55,8 @@ class Stats(metaclass=Plugin):
         localdir="/scratch",
         allow_split_large_chunks=False,
         n_workers="half",
+        cluster_kwargs={},
         calls=[],
-        **kwargs,
     ):
         """Gridded stats using dask arrays.
 
@@ -71,8 +71,7 @@ class Stats(metaclass=Plugin):
             - slice_dict (dict): Dictionary specifying slicing parameters.
             - updir (str): Path or URI to upload output stats file to.
             - allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
-            - n_workers (int, str): Number of workers for local dask cluster, must be
-              an integer or one of 'all' or 'half' for using all or half of cpu count.
+            - cluster_kwargs (dict): Keyword arguments for the local dask cluster.
             - calls (list): List of dicts defining each stat to run with keys
               specifying keyword arguments for the `apply_func` method.
 
@@ -96,9 +95,9 @@ class Stats(metaclass=Plugin):
         self.mapping = mapping
         self.slice_dict = slice_dict
         self.updir = updir
+        self.cluster_kwargs = cluster_kwargs
         self.calls = calls
 
-        self._n_workers = n_workers
         self.dsout = xr.Dataset()
 
     def __call__(self):
@@ -111,7 +110,7 @@ class Stats(metaclass=Plugin):
 
         # Execute each stats method
         for call in self.calls:
-            with Client(processes=True, n_workers=self.n_workers) as client:
+            with Client(**self.cluster_kwargs) as client:
                 logger.info(client)
                 logger.info(f"Stat.apply_func(**{call})")
                 self.apply_func(**call)
@@ -122,24 +121,6 @@ class Stats(metaclass=Plugin):
             self.to_netcdf(self.outfile)
         elif self.outfile.endswith(".zarr"):
             self.to_zarr(self.outfile)
-
-    @property
-    def n_workers(self):
-        """Number of workers for dask cluster."""
-        if isinstance(self._n_workers, int):
-            return self._n_workers
-        else:
-            cpu_count = mp.cpu_count()
-            if self._n_workers == "all":
-                return cpu_count
-            elif self._n_workers == "half":
-                return int(cpu_count / 2)
-            else:
-                raise ValueError(
-                    "n_workers must either be an integer specifying the number of "
-                    "workers or one of ['all', 'half'] to allow using all or half of "
-                    f"the available cpus to define workers, got {self._n_workers}"
-                )
 
     def _clean_dask_worker_space(self):
         """Remove existing dask worker space directory."""
