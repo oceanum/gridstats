@@ -9,6 +9,16 @@ kwds:
     threads_per_worker: 1
   calls:
 
+    - func: rpv
+      return_periods: [10, 100]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 24
+      dim: time
+      data_vars: [hs, hsea, hswe]
+      chunks: {}
+      ystep: 50
+
     - func: mean
       dim: time
       # group: month
@@ -34,18 +44,6 @@ kwds:
     - func: quantile
       dim: time
       q: [0.95, 0.99]
-      data_vars: [hs, hsea, hswe]
-      chunks:
-        time: -1
-        latitude: 50
-        longitude: 50
-
-    - func: rpv
-      return_periods: [10, 100]
-      percentile: 95
-      distribution: gumbel_r
-      duration: 24
-      dim: time
       data_vars: [hs, hsea, hswe]
       chunks:
         time: -1
