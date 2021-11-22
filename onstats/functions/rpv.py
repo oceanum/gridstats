@@ -6,6 +6,8 @@ import pandas as pd
 import xarray as xr
 from scipy import stats, signal
 
+from onstats.utils import stepwise
+
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +118,7 @@ def _timestep(df, dim="time"):
     return pd.to_timedelta(tdiff[0])
 
 
+@stepwise
 def rpv(
     self,
     dset,
@@ -124,6 +127,10 @@ def rpv(
     distribution="gumbel_r",
     duration=24,
     dim="time",
+    ystep=None,
+    xstep=None,
+    yname="latitude",
+    xname="longitude",
 ):
     """Return period values.
 
@@ -172,3 +179,8 @@ def rpv(
         "storm_duration": duration,
     }
     return dsout.transpose("period", ...).chunk({"period": 1})
+
+
+if __name__ == "__main__":
+    dset = xr.open_dataset("/source/onhindcast/implementation/swan/tasman/model/tasman-19790201T00-grid.nc")
+    ds = rpv(None, dset[["hs"]], ystep=None, xstep=None, yname="latitude")#, xname="longitude")
