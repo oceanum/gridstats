@@ -249,14 +249,12 @@ class Stats(metaclass=Plugin):
         logger.debug(f"Calculating {func} for vars: {data_vars}")
         dset = dset[data_vars]
 
-        # Grouping by
+        # Replace suffix if grouping by
         if group:
-            logger.info(f"Grouping by {group}")
             suffix += f"_{group}"
-            dset = dset.groupby(f"time.{group}")
 
         # Calculate stats
-        dsout = getattr(self, func)(dset, **kwargs)
+        dsout = getattr(self, func)(dset, group, **kwargs)
         if compute:
             logger.info("Compute dask stats")
             dsout = dsout.load()
