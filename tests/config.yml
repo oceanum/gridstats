@@ -27,6 +27,14 @@ kwds:
         latitude: 100
         longitude: 100
 
+    - func: mean
+      dim: time
+      group: month
+      data_vars: [hs, hsea, hswe]
+      chunks:
+        latitude: 100
+        longitude: 100
+
     - func: min
       dim: time
       data_vars: [hs, hsea, hswe]
@@ -49,3 +57,16 @@ kwds:
         time: -1
         latitude: 50
         longitude: 50
+
+    # - func: distribution
+    #   dim: time
+    #   var1: hs
+    #   var2: tps
+    #   var3: dpm
+    #   bins1: []
+    #   q: [0.95, 0.99]
+    #   data_vars: [hs, hsea, hswe]
+    #   chunks:
+    #     time: -1
+    #     latitude: 50
+    #     longitude: 50
