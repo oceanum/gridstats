@@ -9,6 +9,18 @@ kwds:
     threads_per_worker: 1
   calls:
 
+    - func: distribution2
+      chunks: {}
+      ystep: 10
+      var1: hs
+      var2: dpm
+      bins1: {start: 0, step: 0.5}
+      bins2: {start: 0, stop: 360, step: 45}
+      isdir1: False
+      isdir2: True
+      dim: time
+      group: month
+
     - func: distribution3
       chunks: {}
       ystep: 10

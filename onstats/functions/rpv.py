@@ -12,6 +12,77 @@ from onstats.utils import stepwise
 logger = logging.getLogger(__name__)
 
 
+@stepwise
+def rpv(
+    self,
+    dset,
+    return_periods=[1, 5, 10, 20, 50, 100, 1000, 10000],
+    percentile=95,
+    distribution="gumbel_r",
+    duration=24,
+    dim="time",
+    group=None,
+    ystep=None,
+    xstep=None,
+    yname="latitude",
+    xname="longitude",
+):
+    """Return period values.
+
+    Args:
+        self (instance): Instance argument required for plugging into Stats class.
+        dset (xr.Dataset): Dataset with variables to calculate rpv for.
+        return_periods (list): Return period years to calculate rpv values for.
+        percentile (float): Percentile above which peaks are selected.
+        distribution (str): Statistical distribution to fit the data, any valid
+            distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
+        duration (float): Hours in storm below which extra peaks are discarded.
+        dim (str): Dimension to calculate rpv along.
+        group (str): Time grouping type, any valid time_{group} such month, season.
+
+    Returns:
+        rpvs (xr.Dataset): Return period values dataset.
+
+    """
+    dt_hour = _timestep(dset, dim).total_seconds() / 3600
+
+    # Grouping by
+    if group is not None:
+        logger.debug(f"Grouping by {group}")
+        dset = dset.groupby(f"time.{group}")
+
+    # Calculate rpv for variables in dataset
+    dsout = xr.apply_ufunc(
+        _np_rpv,
+        dset,
+        dt_hour,
+        return_periods,
+        percentile,
+        distribution,
+        duration,
+        input_core_dims=[[dim], [], ["period"], [], [], []],
+        output_core_dims=[["period"]],
+        exclude_dims=set((dim,)),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=["float32"],
+    )
+    # Assign return period coordinate
+    dsout = dsout.assign_coords({"period": return_periods})
+    # Set attributes
+    dsout.period.attrs = {
+        "standard_name": "return_period",
+        "long_name": "return period",
+        "units": "year",
+    }
+    dsout.attrs = {
+        "distribution": distribution,
+        "threshold_percentile": percentile,
+        "storm_duration": duration,
+    }
+    return dsout.transpose("period", ...).chunk({"period": 1})
+
+
 def _pov(data, dt_hour, percentile=95, duration=24):
     """Peaks over threshold.
 
@@ -116,77 +187,6 @@ def _timestep(df, dim="time"):
     if tdiff.min() != tdiff.max():
         raise ValueError("Times are not regularly-spaced in time")
     return pd.to_timedelta(tdiff[0])
-
-
-@stepwise
-def rpv(
-    self,
-    dset,
-    return_periods=[1, 5, 10, 20, 50, 100, 1000, 10000],
-    percentile=95,
-    distribution="gumbel_r",
-    duration=24,
-    dim="time",
-    group=None,
-    ystep=None,
-    xstep=None,
-    yname="latitude",
-    xname="longitude",
-):
-    """Return period values.
-
-    Args:
-        self (instance): Instance argument required for plugging into Stats class.
-        dset (xr.Dataset): Dataset with variables to calculate rpv for.
-        return_periods (list): Return period years to calculate rpv values for.
-        percentile (float): Percentile above which peaks are selected.
-        distribution (str): Statistical distribution to fit the data, any valid
-            distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
-        duration (float): Hours in storm below which extra peaks are discarded.
-        dim (str): Dimension to calculate rpv along.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-
-    Returns:
-        rpvs (xr.Dataset): Return period values dataset.
-
-    """
-    dt_hour = _timestep(dset, dim).total_seconds() / 3600
-
-    # Grouping by
-    if group is not None:
-        logger.debug(f"Grouping by {group}")
-        dset = dset.groupby(f"time.{group}")
-
-    # Calculate rpv for variables in dataset
-    dsout = xr.apply_ufunc(
-        _np_rpv,
-        dset,
-        dt_hour,
-        return_periods,
-        percentile,
-        distribution,
-        duration,
-        input_core_dims=[[dim], [], ["period"], [], [], []],
-        output_core_dims=[["period"]],
-        exclude_dims=set((dim,)),
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=["float32"],
-    )
-    # Assign return period coordinate
-    dsout = dsout.assign_coords({"period": return_periods})
-    # Set attributes
-    dsout.period.attrs = {
-        "standard_name": "return_period",
-        "long_name": "return period",
-        "units": "year",
-    }
-    dsout.attrs = {
-        "distribution": distribution,
-        "threshold_percentile": percentile,
-        "storm_duration": duration,
-    }
-    return dsout.transpose("period", ...).chunk({"period": 1})
 
 
 if __name__ == "__main__":
