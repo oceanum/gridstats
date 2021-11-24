@@ -127,6 +127,7 @@ def rpv(
     distribution="gumbel_r",
     duration=24,
     dim="time",
+    group=None,
     ystep=None,
     xstep=None,
     yname="latitude",
@@ -143,12 +144,19 @@ def rpv(
             distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
         duration (float): Hours in storm below which extra peaks are discarded.
         dim (str): Dimension to calculate rpv along.
+        group (str): Time grouping type, any valid time_{group} such month, season.
 
     Returns:
         rpvs (xr.Dataset): Return period values dataset.
 
     """
     dt_hour = _timestep(dset, dim).total_seconds() / 3600
+
+    # Grouping by
+    if group is not None:
+        logger.debug(f"Grouping by {group}")
+        dset = dset.groupby(f"time.{group}")
+
     # Calculate rpv for variables in dataset
     dsout = xr.apply_ufunc(
         _np_rpv,

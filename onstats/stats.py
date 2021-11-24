@@ -254,7 +254,7 @@ class Stats(metaclass=Plugin):
             suffix += f"_{group}"
 
         # Calculate stats
-        dsout = getattr(self, func)(dset, group, **kwargs)
+        dsout = getattr(self, func)(dset, group=group, **kwargs)
         if compute:
             logger.info("Compute dask stats")
             dsout = dsout.load()
