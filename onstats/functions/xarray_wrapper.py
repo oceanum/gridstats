@@ -2,6 +2,8 @@
 import logging
 import xarray as xr
 
+from onstats.utils import stepwise
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +89,7 @@ def std(self, dset, group=None, **kwargs):
     return dset.std(**kwargs)
 
 
+@stepwise
 def quantile(self, dset, group=None, **kwargs):
     """Quantile wrapper function.
 

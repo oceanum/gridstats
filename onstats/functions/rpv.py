@@ -22,10 +22,6 @@ def rpv(
     duration=24,
     dim="time",
     group=None,
-    ystep=None,
-    xstep=None,
-    yname="latitude",
-    xname="longitude",
 ):
     """Return period values.
 

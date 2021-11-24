@@ -24,14 +24,16 @@ def stepwise(func):
     """Execute func on loaded slices of dataset in a stepswise manner.
 
     This decorator is intended to run functions requiring single time chunks (e.g. rpv,
-        quantile) onto large datasets that are not chunked with single time chunks and
-        require rechunking which can require prohibitively large amounts of RAM.
+    quantile) onto large datasets that are not chunked with single time chunks and
+    require rechunking which can require prohibitively large amounts of RAM.
+
+    Decorator kwargs:
+        - yname, xname specifying dimension names to stepwise through.
+        - ystep, xstep specifying dimension sizes to stepwise through.
 
     Required signature in decorated function func:
         - self as the first arg as function is attached to Stats class dynamically.
         - dset as either a kwarg or the second arg.
-        - yname, xname specifying dimension names to stepwise through.
-        - ystep, xstep specifying dimension sizes to stepwise through.
 
     """
     @wraps(func)
@@ -39,19 +41,16 @@ def stepwise(func):
 
         # Stepwise applied only if both steps are provided
         if kwargs.get("ystep", None) is None and kwargs.get("xstep", None) is None:
-            logger.info("No stepwise applied")
+            logger.info(
+                "No stepwise applied, provide at least one of 'ystep', 'xstep' kwargs "
+                f"if you wish to execute {func.__name__} in a stepwise manner."
+            )
+            kwargs.pop("ystep", None)
+            kwargs.pop("xstep", None)
             return func(*args, **kwargs)
 
         # Default kwargs that may have not been set
         kwdef = _get_default_parameters(func)
-
-        # Ensure function has required kwargs
-        for key in ["yname", "xname", "ystep", "xstep"]:
-            if key not in kwargs and key not in kwdef:
-                raise ValueError(
-                    f"stepwise decorator requires '{key}' kwarg in func but the "
-                    f"func signature is: {func.__name__}{signature(func)}"
-                )
 
         # Dataset
         dset = kwargs.pop("dset", args[1])
@@ -59,17 +58,20 @@ def stepwise(func):
             ValueError("stepwise decorator requires dset as a kwarg or the first arg")
 
         # Coords names
-        yname = kwargs.pop("yname", kwdef["yname"])
-        xname = kwargs.pop("xname", kwdef["xname"])
+        yname = kwargs.pop("yname", kwdef.get("yname", "latitude"))
+        xname = kwargs.pop("xname", kwdef.get("xname", "longitude"))
         for name in [yname, xname]:
             if name not in dset.dims:
-                raise ValueError(f"'{name}' is not a dimension of dataset {dset.dims}")
+                raise ValueError(
+                    f"'{name}' is not a dimension of dataset {dset.dims}, define "
+                    "appropriate y and x dimension names with kwargs 'yname', 'xname'."
+                )
 
         # Dims and steps sizes
         yend = dset[yname].size
         xend = dset[xname].size
-        ystep = kwargs.pop("ystep", kwdef["ystep"]) or yend
-        xstep = kwargs.pop("xstep", kwdef["xstep"]) or xend
+        ystep = kwargs.pop("ystep", kwdef.get("ystep", yend)) or yend
+        xstep = kwargs.pop("xstep", kwdef.get("xstep", xend)) or xend
         if yend % ystep != 0:
             yend += ystep
         if xend % xstep != 0:

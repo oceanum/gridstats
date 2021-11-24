@@ -3,6 +3,8 @@ kwds:
   outfile: ./tmp.nc
   urlpath: ./tasman.nc
   engine: netcdf4
+  mapping:
+    tps: tp
   cluster_kwargs:
     processes: True
     n_workers: null
@@ -11,7 +13,7 @@ kwds:
 
     - func: distribution2
       chunks: {}
-      ystep: 10
+      ystep: null
       var1: hs
       var2: dpm
       bins1: {start: 0, step: 0.5}
@@ -25,7 +27,7 @@ kwds:
       chunks: {}
       ystep: 10
       var1: hs
-      var2: tps
+      var2: tp
       var3: dpm
       bins1: {start: 0, step: 0.5}
       bins2: {start: 0, step: 1.0}
@@ -92,3 +94,7 @@ kwds:
         time: -1
         latitude: 50
         longitude: 50
+      ystep: 10
+      xstep: null
+      yname: latitude
+      xname: longitude

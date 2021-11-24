@@ -26,10 +26,6 @@ def distribution3(
     isdir3=True,
     dim="time",
     group="month",
-    ystep=None,
-    xstep=None,
-    yname="latitude",
-    xname="longitude",
 ):
     """3D Joint distribution.
 
@@ -170,10 +166,6 @@ def distribution2(
     isdir2=True,
     dim="time",
     group="month",
-    ystep=None,
-    xstep=None,
-    yname="latitude",
-    xname="longitude",
 ):
     """2D joint distribution.
 
