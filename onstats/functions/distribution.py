@@ -3,6 +3,8 @@ import logging
 import numpy as np
 import xarray as xr
 
+from onstats.utils import stepwise
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +33,25 @@ def _set_bins(bins, darr):
             f"bins must be a list/array or a dict specifying arange kwargs, got {bins}"
         )
 
-
-def distribution(
+@stepwise
+def distribution3(
     self,
     dset,
-    var1,
-    var2,
-    var3,
-    bins1,
-    bins2,
-    bins3,
+    var1="hs",
+    var2="tp",
+    var3="dpm",
+    bins1={"step": 0.5},
+    bins2={"step": 1.0},
+    bins3={"step": 45},
+    isdir1=False,
+    isdir2=False,
+    isdir3=True,
     dim="time",
     group="month",
+    ystep=None,
+    xstep=None,
+    yname="latitude",
+    xname="longitude",
 ):
     """Joint wave distribution (Hs, Tp, Dp).
 
@@ -52,9 +61,12 @@ def distribution(
         - var1 (str): Name of first variable in dset to compute joint distribution from.
         - var2 (str): Name of second variable in dset to compute joint distribution from.
         - var3 (str): Name of third variable in dset to compute joint distribution from.
-        - bins1 (1d array): Bin edges for Hs.
-        - bins2 (1d array): Bin edges for Tp.
-        - bins3 (1d array): Bin edges for Dp.
+        - bins1 (array, dict): Lower edges or arange kwargs to define bins for var1.
+        - bins2 (array, dict): Lower edges or arange kwargs to define bins for var2.
+        - bins3 (array, dict): Lower edges or arange kwargs to define bins for var3.
+        - isdir1 (bool): True if var1 is a directional variable, False otherwise.
+        - isdir2 (bool): True if var2 is a directional variable, False otherwise.
+        - isdir3 (bool): True if var3 is a directional variable, False otherwise.
         - dim (str): Dimension to calculate distribution along.
         - group (str): Time grouping type, any valid time_{group} such as month, season.
 
@@ -66,7 +78,6 @@ def distribution(
           np.arange kwargs 'start', 'stop' and 'step' ('start' and 'stop' are estimated
           from the data range if not available as keys).
         - Mask is defined based on missing values from first variable (typically hs).
-        - Any directional variable should be provided as `var3` to ensure wrapping.
 
     """
     label = f"dist_{var1}_{var2}_{var3}"
@@ -84,8 +95,15 @@ def distribution(
     bins3 = _set_bins(bins3, da3)
 
     # Direction wrapping
-    bins3 = bins3 - ((bins3[1] - bins3[0]) / 2)
-    da3 = _wrap_directions(da3, dirmax=bins3.max())
+    if isdir1:
+        bins1 = bins1 - ((bins1[1] - bins1[0]) / 2)
+        da1 = _wrap_directions(da1, dirmax=bins1.max())
+    if isdir2:
+        bins2 = bins2 - ((bins2[1] - bins2[0]) / 2)
+        da2 = _wrap_directions(da2, dirmax=bins2.max())
+    if isdir3:
+        bins3 = bins3 - ((bins3[1] - bins3[0]) / 2)
+        da3 = _wrap_directions(da3, dirmax=bins3.max())
 
     # Bin coordinates at cell centre
     coords = {
@@ -116,8 +134,8 @@ def distribution(
     # Mask based on the first variable
     mask = da1.isel(**{dim: 0}, drop=True).notnull()
 
-    # Grouping before computing
-    if group:
+    # Grouping by
+    if group is not None:
         logger.debug(f"Grouping by {group}")
         da1 = da1.groupby(f"time.{group}")
         da2 = da2.groupby(f"time.{group}")
