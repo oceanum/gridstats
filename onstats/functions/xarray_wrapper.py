@@ -89,6 +89,22 @@ def std(self, dset, group=None, **kwargs):
     return dset.std(**kwargs)
 
 
+def count(self, dset, group=None, **kwargs):
+    """Count wrapper function.
+
+    Args:
+        dset (xr.Dataset): Dataset to reduce.
+        group (str): Time grouping type, any valid time_{group} such month, season.
+        kwargs: Keywork arguments to pass to xarray's count method.
+
+    Returns:
+        dsout (xr.Dataset): Reduced dataset.
+
+    """
+    dset = _groupby(dset, group)
+    return dset.count(**kwargs)
+
+
 @stepwise
 def quantile(self, dset, group=None, **kwargs):
     """Quantile wrapper function.
