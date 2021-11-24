@@ -9,29 +9,8 @@ from onstats.utils import stepwise
 logger = logging.getLogger(__name__)
 
 
-def _set_bins(bins, darr):
-    """Construct bins from different arguments options."""
-    if isinstance(bins, (list, np.ndarray)):
-        return np.array(bins)
-    elif isinstance(bins, dict):
-        logger.info(f"Constructing bins from arange kwargs: {bins}")
-        try:
-            step = bins.get("step")
-        except KeyError:
-            raise ValueError(
-                f"'step' is required when specifying bins as arange kwargs ({bins})"
-            )
-        if "start" not in bins:
-            vmin = float(darr.min())
-            bins["start"] = vmin - (vmin % step)
-        if "stop" not in bins:
-            vmax = float(darr.max())
-            bins["stop"] = vmax + (vmax % step)
-        return np.arange(**bins)
-    else:
-        raise ValueError(
-            f"bins must be a list/array or a dict specifying arange kwargs, got {bins}"
-        )
+_FILLVALUE = int(-2 ** 32 / 2)
+
 
 @stepwise
 def distribution3(
@@ -40,9 +19,9 @@ def distribution3(
     var1="hs",
     var2="tp",
     var3="dpm",
-    bins1={"step": 0.5},
-    bins2={"step": 1.0},
-    bins3={"step": 45},
+    bins1={"start": 0, "step": 0.5},
+    bins2={"start": 0, "step": 1.0},
+    bins3={"start": 0, "stop": 360, "step": 45},
     isdir1=False,
     isdir2=False,
     isdir3=True,
@@ -53,7 +32,7 @@ def distribution3(
     yname="latitude",
     xname="longitude",
 ):
-    """Joint wave distribution (Hs, Tp, Dp).
+    """3D Joint distribution.
 
     Args:
         - self (instance): Instance argument required for plugging into Stats class.
@@ -71,7 +50,7 @@ def distribution3(
         - group (str): Time grouping type, any valid time_{group} such as month, season.
 
     Returns:
-        - dsout (xr.Dataset): Dataset with Hs, Tp, Dp joint distributio along dim.
+        - dsout (xr.Dataset): Dataset with 3D joint distribution.
 
     Note:
         - The bins args can be a list/array with lower bin edges or a dictionary with
@@ -117,17 +96,17 @@ def distribution3(
         bin1_name: {
             "standard_name": f"{da1.attrs.get('standard_name', 'hs')}_bin",
             "long_name": f"{da1.attrs.get('long_name', 'hs')} bin",
-            "units": "m",
+            "units": da1.attrs.get("units", "m"),
         },
         bin2_name: {
             "standard_name": f"{da2.attrs.get('standard_name', 'tp')}_bin",
             "long_name": f"{da2.attrs.get('long_name', 'tp')} bin",
-            "units": "s",
+            "units": da2.attrs.get("units", "s"),
         },
         bin3_name: {
             "standard_name": f"{da3.attrs.get('standard_name', 'dp')}_bin",
             "long_name": f"{da3.attrs.get('long_name', 'dp')} bin",
-            "units": "degree",
+            "units": da3.attrs.get("units", "degree"),
         },
     }
 
@@ -175,96 +154,121 @@ def distribution3(
     dsout[bin1_name].attrs = attrs[bin1_name]
     dsout[bin2_name].attrs = attrs[bin2_name]
     dsout[bin3_name].attrs = attrs[bin3_name]
-    dsout[label].encoding = {"dtype": "int32", "_FillValue": -32768}
+    dsout[label].encoding = {"dtype": "int32", "_FillValue": _FILLVALUE}
 
     return dsout
 
 
-def distribution_spddir(
-    spd,
-    dir,
-    spd_bins,
-    dir_bins,
+@stepwise
+def distribution2(
+    self,
+    dset,
+    var1="wspd",
+    var2="wdir",
+    bins1={"start": 0, "step": 0.5},
+    bins2={"start": 0, "stop": 360, "step": 45},
+    isdir1=False,
+    isdir2=True,
     dim="time",
     group="month",
-    label="spd_dir_dist",
+    ystep=None,
+    xstep=None,
+    yname="latitude",
+    xname="longitude",
 ):
-    """Joint wind distribution (spd, dir).
+    """2D joint distribution.
 
     Args:
-        spd (xr.DataArray): Wind / current speed.
-        dir (xr.DataArray): Wind / current direction.
-        spd_bins (1d array): Bin edges for spd.
-        dir_bins (1d array): Bin edges for dir.
-        dim (str): Dimension to calculate distribution along.
-        group (str): Time grouping type, any valid time_{group} such as month, season.
-        label (str): Name for joint distribution variable.
+        - self (instance): Instance argument required for plugging into Stats class.
+        - dset (xr.Dataset): Dataset with variables to calculate distributions for.
+        - var1 (str): Name of first variable in dset to compute joint distribution from.
+        - var2 (str): Name of second variable in dset to compute joint distribution from.
+        - bins1 (array, dict): Lower edges or arange kwargs to define bins for var1.
+        - bins2 (array, dict): Lower edges or arange kwargs to define bins for var2.
+        - isdir1 (bool): True if var1 is a directional variable, False otherwise.
+        - isdir2 (bool): True if var2 is a directional variable, False otherwise.
+        - dim (str): Dimension to calculate distribution along.
+        - group (str): Time grouping type, any valid time_{group} such as month, season.
 
     Returns:
-        Dataset with Wspd, Wdir joint distributio along dim.
+        - dsout (xr.Dataset): Dataset with 2D joint distribution.
+
+    Note:
+        - The bins args can be a list/array with lower bin edges or a dictionary with
+          np.arange kwargs 'start', 'stop' and 'step' ('start' and 'stop' are estimated
+          from the data range if not available as keys).
+        - Mask is defined based on missing values from first variable (typically wspd).
 
     """
-    spd_bins = np.array(spd_bins)
-    dir_bins = np.array(dir_bins)
+    label = f"dist_{var1}_{var2}"
+
+    da1 = dset[var1]
+    da2 = dset[var2]
+
+    bin1_name = f"{var1}_bin"
+    bin2_name = f"{var2}_bin"
+
+    bins1 = _set_bins(bins1, da1)
+    bins2 = _set_bins(bins2, da2)
 
     # Direction wrapping
-    dir_bins = dir_bins - ((dir_bins[1] - dir_bins[0]) / 2)
-    dir = _wrap_directions(dir, dirmax=dir_bins.max())
+    if isdir1:
+        bins1 = bins1 - ((bins1[1] - bins1[0]) / 2)
+        da1 = _wrap_directions(da1, dirmax=bins1.max())
+    if isdir2:
+        bins2 = bins2 - ((bins2[1] - bins2[0]) / 2)
+        da2 = _wrap_directions(da2, dirmax=bins2.max())
 
     # Bin coordinates at cell centre
     coords = {
-        "spd_bin": spd_bins[:-1] + (spd_bins[1] - spd_bins[0]) / 2,
-        "dir_bin": dir_bins[:-1] + (dir_bins[1] - dir_bins[0]) / 2,
+        bin1_name: bins1[:-1] + (bins1[1] - bins1[0]) / 2,
+        bin2_name: bins2[:-1] + (bins2[1] - bins2[0]) / 2,
     }
-
-    # Mask based on spd
-    mask = spd.isel(**{dim: 0}, drop=True).notnull()
 
     # Coordinates attributes
     attrs = {
-        "spd_bin": {
-            "standard_name": f"{spd.attrs.get('standard_name', 'speed')}_bin",
-            "long_name": f"{spd.attrs.get('long_name', 'speed')} bin",
-            "units": "m s-1",
+        bin1_name: {
+            "standard_name": f"{da1.attrs.get('standard_name', 'wspd')}_bin",
+            "long_name": f"{da1.attrs.get('long_name', 'wspd')} bin",
+            "units": da1.attrs.get("units", "m/s"),
         },
-        "dir_bin": {
-            "standard_name": f"{dir.attrs.get('standard_name', 'direction')}_bin",
-            "long_name": f"{dir.attrs.get('long_name', 'direction')} bin",
-            "units": "degree",
+        bin2_name: {
+            "standard_name": f"{da2.attrs.get('standard_name', 'wdir')}_bin",
+            "long_name": f"{da2.attrs.get('long_name', 'wdir')} bin",
+            "units": da2.attrs.get("units", "degree"),
         },
     }
 
-    # Grouping before computing
-    if group:
+    # Mask based on the first variable
+    mask = da1.isel(**{dim: 0}, drop=True).notnull()
+
+    # Grouping by
+    if group is not None:
         logger.debug(f"Grouping by {group}")
-        spd = spd.groupby(f"time.{group}")
-        dir = dir.groupby(f"time.{group}")
+        da1 = da1.groupby(f"time.{group}")
+        da2 = da2.groupby(f"time.{group}")
 
     # Computing
-    dsout = (
-        xr.apply_ufunc(
-            _np_histogram_2d,
-            spd,
-            dir,
-            spd_bins,
-            dir_bins,
-            input_core_dims=[[dim], [dim], ["dummy1"], ["dummy2"]],
-            output_core_dims=[["spd_bin", "dir_bin"]],
-            exclude_dims=set((dim,)),
-            vectorize=True,
-            dask="parallelized",
-            output_dtypes=["int32"],
-            dask_gufunc_kwargs={
-                "output_sizes": {
-                    "spd_bin": spd_bins.size - 1,
-                    "dir_bin": dir_bins.size - 1,
-                },
+    dsout = xr.apply_ufunc(
+        _np_histogram_2d,
+        da1,
+        da2,
+        bins1,
+        bins2,
+        input_core_dims=[[dim], [dim], ["dummy1"], ["dummy2"]],
+        output_core_dims=[[bin1_name, bin2_name]],
+        exclude_dims=set((dim,)),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=["int32"],
+        dask_gufunc_kwargs={
+            "output_sizes": {
+                bin1_name: bins1.size - 1,
+                bin2_name: bins2.size - 1,
             },
-        )
-        .assign_coords(coords)
-        .where(mask)
-        .to_dataset(name=label)
+        },
     )
+    dsout = dsout.assign_coords(coords).where(mask).to_dataset(name=label)
 
     # Attributes
     dsout[label].attrs = {
@@ -272,11 +276,36 @@ def distribution_spddir(
         "long_name": "number of valid data points",
         "units": "",
     }
-    dsout.spd_bin.attrs = attrs["spd_bin"]
-    dsout.dir_bin.attrs = attrs["dir_bin"]
-    dsout[label].encoding = {"dtype": "int32", "_FillValue": -32767}
+    dsout[bin1_name].attrs = attrs[bin1_name]
+    dsout[bin2_name].attrs = attrs[bin2_name]
+    dsout[label].encoding = {"dtype": "int32", "_FillValue": _FILLVALUE}
 
     return dsout
+
+
+def _set_bins(bins, darr):
+    """Construct bins from different arguments options."""
+    if isinstance(bins, (list, np.ndarray)):
+        return np.array(bins)
+    elif isinstance(bins, dict):
+        logger.info(f"Constructing bins from arange kwargs: {bins}")
+        try:
+            step = bins.get("step")
+        except KeyError:
+            raise ValueError(
+                f"'step' is required when specifying bins as arange kwargs ({bins})"
+            )
+        if "start" not in bins:
+            vmin = float(darr.min())
+            bins["start"] = vmin - (vmin % step)
+        if "stop" not in bins:
+            vmax = float(darr.max())
+            bins["stop"] = vmax + (vmax % step)
+        return np.arange(**bins)
+    else:
+        raise ValueError(
+            f"bins must be a list/array or a dict specifying arange kwargs, got {bins}"
+        )
 
 
 def _wrap_directions(darr, dirmax):
@@ -323,19 +352,34 @@ def _np_histogram_3d(arr1, arr2, arr3, bins1, bins2, bins3):
 
 
 if __name__ == "__main__":
+    from onstats.utils import uv_to_spddir
+
     dset = xr.open_dataset(
         "/source/onhindcast/implementation/swan/tasman/model/tasman-19790201T00-grid.nc",
         chunks={},
     )
-    dsout = distribution(
+    dset["wspd"], dset["wdir"] = uv_to_spddir(dset.xwnd, dset.ywnd, coming_from=True)
+
+    # dsout = distribution3(
+    #     None,
+    #     dset,
+    #     var1="hs",
+    #     var2="tps",
+    #     var3="dpm",
+    #     bins1={"step": 1.0},
+    #     bins2=[0, 5, 10, 15, 20],
+    #     bins3={"step": 90.0},
+    #     dim="time",
+    #     group="month",
+    # )
+
+    dsout = distribution2(
         None,
         dset,
-        var1="hs",
-        var2="tps",
-        var3="dpm",
-        bins1={"step": 1.0},
-        bins2=[0, 5, 10, 15, 20],
-        bins3={"step": 90.0},
+        var1="wspd",
+        var2="wdir",
+        bins1={"start": 0, "step": 1.0},
+        bins2={"start": 0, "stop": 360, "step": 45},
         dim="time",
         group="month",
     )
