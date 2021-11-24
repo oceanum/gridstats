@@ -8,7 +8,6 @@ from onstats.utils import stepwise
 
 logger = logging.getLogger(__name__)
 
-
 _FILLVALUE = int(-2 ** 32 / 2)
 
 
