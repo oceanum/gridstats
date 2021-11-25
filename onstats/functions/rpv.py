@@ -26,18 +26,18 @@ def rpv(
     """Return period values.
 
     Args:
-        self (instance): Instance argument required for plugging into Stats class.
-        dset (xr.Dataset): Dataset with variables to calculate rpv for.
-        return_periods (list): Return period years to calculate rpv values for.
-        percentile (float): Percentile above which peaks are selected.
-        distribution (str): Statistical distribution to fit the data, any valid
-            distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
-        duration (float): Hours in storm below which extra peaks are discarded.
-        dim (str): Dimension to calculate rpv along.
-        group (str): Time grouping type, any valid time_{group} such month, season.
+        - self (instance): Instance argument required for plugging into Stats class.
+        - dset (xr.Dataset): Dataset with variables to calculate rpv for.
+        - return_periods (list): Return period years to calculate rpv values for.
+        - percentile (float): Percentile above which peaks are selected.
+        - distribution (str): Statistical distribution to fit the data, any valid
+          distribution in scipy.stats, e.g., "gumbel_r", "weibull_min", etc.
+        - duration (float): Hours in storm below which extra peaks are discarded.
+        - dim (str): Dimension to calculate rpv along.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
 
     Returns:
-        rpvs (xr.Dataset): Return period values dataset.
+        - rpvs (xr.Dataset): Return period values dataset.
 
     """
     dt_hour = _timestep(dset, dim).total_seconds() / 3600
