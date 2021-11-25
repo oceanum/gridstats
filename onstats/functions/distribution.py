@@ -308,13 +308,13 @@ def _np_histogram_2d(arr1, arr2, bins1, bins2):
     """Histogram 2D.
 
     Args:
-        arr1 (1d array): First array to compute histogram from, e.g., Wspd.
-        arr2 (1d array): Second array to compute histogram from, e.g., Wdir.
-        bins1 (1d array): Bin edges for arr1.
-        bins2 (1d array): Bin edges for arr2.
+        - arr1 (1d array): First array to compute histogram from, e.g., Wspd.
+        - arr2 (1d array): Second array to compute histogram from, e.g., Wdir.
+        - bins1 (1d array): Bin edges for arr1.
+        - bins2 (1d array): Bin edges for arr2.
 
     Returns:
-        The multidimensional histogram of (arr1, arr2).
+        - The multidimensional histogram of (arr1, arr2).
 
     """
     dist, __, __ = np.histogram2d(x=arr1, y=arr2, bins=(bins1, bins2), normed=False)
@@ -325,15 +325,15 @@ def _np_histogram_3d(arr1, arr2, arr3, bins1, bins2, bins3):
     """Histogram 3D.
 
     Args:
-        arr1 (1d array): First array to compute histogram from, e.g., Hs.
-        arr2 (1d array): Second array to compute histogram from, e.g., Tp.
-        arr3 (1d array): Third array to compute histogram from, e.g., Dp.
-        bins1 (1d array): Bin edges for arr1.
-        bins2 (1d array): Bin edges for arr2.
-        bins3 (1d array): Bin edges for arr3.
+        - arr1 (1d array): First array to compute histogram from, e.g., Hs.
+        - arr2 (1d array): Second array to compute histogram from, e.g., Tp.
+        - arr3 (1d array): Third array to compute histogram from, e.g., Dp.
+        - bins1 (1d array): Bin edges for arr1.
+        - bins2 (1d array): Bin edges for arr2.
+        - bins3 (1d array): Bin edges for arr3.
 
     Returns:
-        The multidimensional histogram of (arr1, arr2, arr3).
+        - The multidimensional histogram of (arr1, arr2, arr3).
 
     """
     dist, __ = np.histogramdd(
