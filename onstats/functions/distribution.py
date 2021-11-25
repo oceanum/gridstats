@@ -292,6 +292,7 @@ def _set_bins(bins, darr):
         if "stop" not in bins:
             vmax = float(darr.max())
             bins["stop"] = vmax + (vmax % step)
+        logger.info(f"Construct bins from arange kwargs: {bins}")
         return np.arange(**bins)
     else:
         raise ValueError(
