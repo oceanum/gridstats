@@ -279,7 +279,6 @@ def _set_bins(bins, darr):
     if isinstance(bins, (list, np.ndarray)):
         return np.array(bins)
     elif isinstance(bins, dict):
-        logger.info(f"Constructing bins from arange kwargs: {bins}")
         try:
             step = bins.get("step")
         except KeyError:
@@ -292,7 +291,7 @@ def _set_bins(bins, darr):
         if "stop" not in bins:
             vmax = float(darr.max())
             bins["stop"] = vmax + (vmax % step)
-        logger.info(f"Construct bins from arange kwargs: {bins}")
+        logger.info(f"Constructing bins from arange kwargs: {bins}")
         return np.arange(**bins)
     else:
         raise ValueError(
