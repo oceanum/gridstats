@@ -50,6 +50,7 @@ class Stats(metaclass=Plugin):
         localdir="/scratch",
         allow_split_large_chunks=False,
         cluster_kwargs={},
+        disable_cluster_logging=True,
         calls=[],
     ):
         """Gridded stats using dask arrays.
@@ -66,6 +67,7 @@ class Stats(metaclass=Plugin):
             - updir (str): Path or URI to upload output stats file to.
             - allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
             - cluster_kwargs (dict): Keyword arguments for the local dask cluster.
+            - disable_cluster_logging (bool): Disable cluster logging below CRITICAL.
             - calls (list): List of dicts defining each stat to run with keys
               specifying keyword arguments for the `apply_func` method.
 
@@ -93,6 +95,10 @@ class Stats(metaclass=Plugin):
         self.calls = calls
 
         self.dsout = xr.Dataset()
+
+        if disable_cluster_logging:
+            logging.getLogger("distributed.scheduler").setLevel(logging.CRITICAL)
+            logging.getLogger("distributed.client").setLevel(logging.CRITICAL)
 
     def __call__(self):
         """Loop over list of dictionary to execute stats methods.
@@ -245,6 +251,51 @@ class Stats(metaclass=Plugin):
 
         return dsout
 
+    def _directional_stat(self, dset, func, dirs, nsector, group, compute, **kwargs):
+        """Calculate func over directional sectors.
+
+        Args:
+            - dset (Dataset): Dataset to sectorise.
+            - func (str): Name of valid function defined in functions package.
+            - dirs (DataArray): Directional data array to use for binning dset.
+            - nsector (int): Number of directional sectors.
+            - group (str): Time grouping type, any valid time_{group} such month, season.
+            - kwargs: Aditional keyword arguments for function `func`.
+
+        Notes:
+            - dirs must share same dimensions as variables in dset.
+
+        """
+        # Binning data per directional sector
+        dsector = 360 / nsector
+        sectors = np.linspace(0, 360 - dsector, nsector)
+        starts = (sectors - dsector / 2) % 360
+        stops = (sectors + dsector / 2) % 360
+        dsout = []
+        for start, stop in zip(starts, stops):
+            logger.info(
+                f"Calculate directional {func} for sector [{start:5.1f}, {stop:5.1f})"
+            )
+            if stop > start:
+                mask = (dirs >= start) & (dirs < stop)
+            else:
+                mask = (dirs >= start) | (dirs < stop)
+            ds = getattr(self, func)(dset.where(mask), group=group, **kwargs)
+            if compute:
+                ds = ds.load()
+            dsout.append(ds)
+
+        # Concat directional bins into new dimension
+        dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
+        dsout["direction"].attrs = {
+            "standard_name": dirs.attrs.get("standard_name", "direction") + "_sector",
+            "long_name": dirs.attrs.get("long_name", "direction") + " sector",
+            "units": dirs.attrs.get("units", "degree"),
+            "variable_name": dirs.name,
+        }
+
+        return dsout
+
     @stepwise
     def apply_func(
         self,
@@ -298,22 +349,23 @@ class Stats(metaclass=Plugin):
         logger.debug(f"Calculating {func} for vars: {data_vars}")
         dset = dset[data_vars]
 
-        # Sectorise by direction
-        if nsector:
-            dset = self._sector_direction(dset, dirs, nsector)
-            suffix += "_direc"
-
         # Replace suffix if grouping by
         if group:
             suffix += f"_{group}"
 
         # Calculate stats
-        dsout = getattr(self, func)(dset, group=group, **kwargs)
-        if compute:
-            logger.info("Compute dask stats")
-            dsout = dsout.load()
+        if nsector:
+            suffix += "_direc"
+            dsout = self._directional_stat(
+                dset, func, dirs, nsector, group, compute, **kwargs
+            )
         else:
-            logger.info("Dask stats will be computed when saving dataset to disk")
+            dsout = getattr(self, func)(dset, group=group, **kwargs)
+            if compute:
+                logger.info("Compute dask stats")
+                dsout = dsout.load()
+            else:
+                logger.info("Dask stats will be computed when saving dataset to disk")
 
         # Rename
         dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
