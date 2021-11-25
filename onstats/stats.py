@@ -209,6 +209,42 @@ class Stats(metaclass=Plugin):
                 "units": "",
             }
 
+    def _sector_direction(self, dset, dirs, nsector):
+        """Expand dataset with direction sector dimension.
+
+        Args:
+            - dset (Dataset): Dataset to sectorise.
+            - dirs (DataArray): Directional data array to use for binning dset.
+            - nsector (int): Number of directional sectors.
+
+        Notes:
+            - dirs must share same dimensions as variables in dset.
+
+        """
+        # Binning data per directional sector
+        dsector = 360 / nsector
+        sectors = np.linspace(0, 360 - dsector, nsector)
+        starts = (sectors - dsector / 2) % 360
+        stops = (sectors + dsector / 2) % 360
+        dsout = []
+        for start, stop in zip(starts, stops):
+            if stop > start:
+                mask = (dirs >= start) & (dirs < stop)
+            else:
+                mask = (dirs >= start) | (dirs < stop)
+            dsout.append(dset.where(mask))
+
+        # Concat directional bins into new dimension
+        dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
+        dsout["direction"].attrs = {
+            "standard_name": dirs.attrs.get("standard_name", "direction") + "_sector",
+            "long_name": dirs.attrs.get("long_name", "direction") + " sector",
+            "units": dirs.attrs.get("units", "degree"),
+            "variable_name": dirs.name,
+        }
+
+        return dsout
+
     @stepwise
     def apply_func(
         self,
@@ -219,6 +255,8 @@ class Stats(metaclass=Plugin):
         suffix=None,
         compute=True,
         dset=None,
+        nsector=None,
+        dir_var="dpm",
         **kwargs,
     ):
         """apply xarray function.
@@ -232,6 +270,8 @@ class Stats(metaclass=Plugin):
             - compute (bool): Compute dask variables in output dataset before returning.
             - dset (xr.Dataset): Dataset to reduce if other than what is defined from
               init, only necessary because of the decorators which modify the dataset.
+            - nsector (int): Number of directional sectors if sectorising dataset.
+            - dir_var (str): Name of directional variable to use if sectorising dataset.
             - kwargs: Aditional keyword arguments for function `func`.
 
         """
@@ -242,11 +282,26 @@ class Stats(metaclass=Plugin):
         if dset is None:
             dset = self._open_dataset(chunks=chunks)
 
+        # Variable to sectorise directions
+        if nsector:
+            try:
+                dirs = dset[dir_var]
+            except KeyError:
+                raise ValueError(
+                    "Attempting to sectorise over directions "
+                    f"but dset does not have dir_var '{dir_var}'"
+                )
+
         # Selecting variables
         if data_vars == "all":
             data_vars = [k for k in dset.data_vars]
         logger.debug(f"Calculating {func} for vars: {data_vars}")
         dset = dset[data_vars]
+
+        # Sectorise by direction
+        if nsector:
+            dset = self._sector_direction(dset, dirs, nsector)
+            suffix += "_direc"
 
         # Replace suffix if grouping by
         if group:
