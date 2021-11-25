@@ -13,8 +13,8 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 
-def _get_default_parameters(func, kwargs):
-    """Default kwargs from function."""
+def _get_kwargs(func, kwargs):
+    """Returns all function kwargs including defaults that may have not been passed."""
     param = signature(func).parameters
     kw = {k: v.default for k, v in param.items() if v.default is not Parameter.empty}
     kw.update(kwargs)
@@ -29,12 +29,13 @@ def stepwise(func):
     require rechunking which can require prohibitively large amounts of RAM.
 
     Decorator kwargs:
-        - yname, xname specifying dimension names to stepwise through.
-        - ystep, xstep specifying dimension sizes to stepwise through.
+        - ystep (int): Size of the y dimension to load and process in each step.
+        - xstep (int): Size of the x dimension to load and process in each step.
+        - yname (str): Name of the y dimension in dataset, by default 'latitude'.
+        - xname (str): Name of the x dimension in dataset, by default 'longitude'.
 
     Required signature in decorated function func:
         - self as the first arg as function is attached to Stats class dynamically.
-        - dset as either a kwarg or the second arg.
 
     """
     @wraps(func)
@@ -50,14 +51,11 @@ def stepwise(func):
             kwargs.pop("xstep", None)
             return func(*args, **kwargs)
 
-        # All kwargs including default that may have not been passed
-        kwall = _get_default_parameters(func, kwargs)
+        # Passed and default kwargs
+        kwall = _get_kwargs(func, kwargs)
 
-        # Dataset
-        chunks = kwall.get("chunks")
-        dset = args[0]._open_dataset(chunks=chunks)
-        if not isinstance(dset, xr.Dataset):
-            ValueError("stepwise decorator requires dset as a kwarg or the first arg")
+        # Full dataset
+        dset = args[0]._open_dataset(chunks=kwall.get("chunks"))
 
         # Coords names
         yname = kwall.pop("yname", "latitude")
