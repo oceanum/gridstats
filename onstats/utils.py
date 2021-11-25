@@ -26,16 +26,14 @@ def stepwise(func):
 
     This decorator is intended to run functions requiring single time chunks (e.g. rpv,
     quantile) onto large datasets that are not chunked with single time chunks and
-    require rechunking which can require prohibitively large amounts of RAM.
+    require rechunking, which can require prohibitively large amounts of RAM, by
+    loading and processing slices from the data in a stepwise manner.
 
     Decorator kwargs:
         - ystep (int): Size of the y dimension to load and process in each step.
         - xstep (int): Size of the x dimension to load and process in each step.
         - yname (str): Name of the y dimension in dataset, by default 'latitude'.
         - xname (str): Name of the x dimension in dataset, by default 'longitude'.
-
-    Required signature in decorated function func:
-        - self as the first arg as function is attached to Stats class dynamically.
 
     """
     @wraps(func)
