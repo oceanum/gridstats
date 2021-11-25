@@ -105,7 +105,6 @@ def count(self, dset, group=None, **kwargs):
     return dset.count(**kwargs)
 
 
-@stepwise
 def quantile(self, dset, group=None, **kwargs):
     """Quantile wrapper function.
 

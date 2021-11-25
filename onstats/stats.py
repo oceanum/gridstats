@@ -4,7 +4,7 @@ from pathlib import Path
 from importlib import import_module
 from inspect import getmembers, isfunction
 import shutil
-import logging
+import logging.config
 import numpy as np
 import xarray as xr
 from intake import open_catalog
@@ -13,10 +13,13 @@ from dask.distributed import Client
 import multiprocessing as mp
 
 from oncore.dataio import put, isdir, exists, rm, get
+from oncore import LOGGING_CONFIG
 
+from onstats.utils import stepwise
+
+
+logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
-
-np.seterr(divide="ignore", invalid="ignore")
 
 
 class Plugin(type):
@@ -46,7 +49,6 @@ class Stats(metaclass=Plugin):
         updir=None,
         localdir="/scratch",
         allow_split_large_chunks=False,
-        n_workers="half",
         cluster_kwargs={},
         calls=[],
     ):
@@ -68,7 +70,7 @@ class Stats(metaclass=Plugin):
               specifying keyword arguments for the `apply_func` method.
 
         Note:
-            You must provide one of 'dset', 'urlpath' or ['catalog', 'dataset_id'].
+            - You must provide one of 'dset', 'urlpath' or ['catalog', 'dataset_id'].
 
         """
         dask.config.set({"array.slicing.split_large_chunks": allow_split_large_chunks})
@@ -125,8 +127,8 @@ class Stats(metaclass=Plugin):
         """Open and slice dataset according to the init attributes provided.
 
         Args:
-            chunks (dict): Mapping dim: size for chunking each dimension,
-                only used if opening dataset from urlpath to avoid rechunking.
+            - chunks (dict): Mapping dim: size for chunking each dimension,
+              only used if opening dataset from urlpath to avoid rechunking.
 
         """
         logger.info("Open dataset")
@@ -181,7 +183,7 @@ class Stats(metaclass=Plugin):
         """Upload stats files.
 
         Args:
-            filename (str): Name of file to upload.
+            - filename (str): Name of file to upload.
 
         """
         outfile = os.path.join(self.updir, os.path.basename(filename))
@@ -207,6 +209,7 @@ class Stats(metaclass=Plugin):
                 "units": "",
             }
 
+    @stepwise
     def apply_func(
         self,
         func,
@@ -215,25 +218,29 @@ class Stats(metaclass=Plugin):
         group=None,
         suffix=None,
         compute=True,
+        dset=None,
         **kwargs,
     ):
         """apply xarray function.
 
         Args:
-            func (str): Name of valid function defined in functions package.
-            data_vars (list): Data vars to apply stats over, "all" for all variables.
-            chunks (dict): Mapping {dim_name: dim_size} for chunking dataset.
-            group (str): Time grouping type, any valid time_{group} such month, season.
-            suffix (str): String to append to each variable name in output dataset.
-            compute (bool): Compute dask variables in output dataset before returning.
-            kwargs: Aditional keyword arguments for function `func`.
+            - func (str): Name of valid function defined in functions package.
+            - data_vars (list): Data vars to apply stats over, "all" for all variables.
+            - chunks (dict): Mapping {dim_name: dim_size} for chunking dataset.
+            - group (str): Time grouping type, any valid time_{group} such month, season.
+            - suffix (str): String to append to each variable name in output dataset.
+            - compute (bool): Compute dask variables in output dataset before returning.
+            - dset (xr.Dataset): Dataset to reduce if other than what is defined from
+              init, only necessary because of the decorators which modify the dataset.
+            - kwargs: Aditional keyword arguments for function `func`.
 
         """
         if suffix is None:
             suffix = f"_{func}"
 
         # Open dataset
-        dset = self._open_dataset(chunks=chunks)
+        if dset is None:
+            dset = self._open_dataset(chunks=chunks)
 
         # Selecting variables
         if data_vars == "all":
@@ -265,9 +272,9 @@ class Stats(metaclass=Plugin):
         """Save output dataset as netcdf.
 
         Args:
-            outfile (str): Name of output netcdf file.
-            format (str): Output Netcdf file format.
-            _FillValue (int): Fill Value.
+            - outfile (str): Name of output netcdf file.
+            - format (str): Output Netcdf file format.
+            - _FillValue (int): Fill Value.
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
@@ -290,12 +297,12 @@ class Stats(metaclass=Plugin):
         """Save output dataset as zarr.
 
         Args:
-            outfile (str): Base name of output zarr file.
-            dsout (str): Output dataset to write, self.dsout by default.
-            _FillValue (int): Fill Value.
-            mode (str): Zarr write mode.
-            chunksizes (dict): Key is a suffix for outfile, values are chunks, one file
-                is saved for each key-value in the dictionary.
+            - outfile (str): Base name of output zarr file.
+            - dsout (str): Output dataset to write, self.dsout by default.
+            - _FillValue (int): Fill Value.
+            - mode (str): Zarr write mode.
+            - chunksizes (dict): Key is a suffix for outfile, values are chunks, one
+              file is saved for each key-value in the dictionary.
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
@@ -316,3 +323,18 @@ class Stats(metaclass=Plugin):
             dsout.chunk(included_chunks).to_zarr(store, consolidated=True, mode=mode)
             if self.updir:
                 self._upload(store)
+
+
+if __name__ == "__main__":
+    st = Stats(
+        outfile="tmp.nc",
+        urlpath="/source/onstats/tests/tasman.nc",
+        engine="netcdf4",
+        mapping={"tps": "tp"},
+        localdir="/scratch",
+        cluster_kwargs={},
+        calls=[],
+    )
+
+    # dsout1 = st.apply_func(func="mean", data_vars=["hs", "tp", "dpm"], compute=True, dim="time")
+    dsout2 = st.apply_func(func="mean", data_vars=["hs", "tp", "dpm"], compute=True, dim="time", xstep=10, ystep=10)

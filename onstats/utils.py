@@ -13,10 +13,11 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 
-def _get_default_parameters(func):
+def _get_default_parameters(func, kwargs):
     """Default kwargs from function."""
     param = signature(func).parameters
     kw = {k: v.default for k, v in param.items() if v.default is not Parameter.empty}
+    kw.update(kwargs)
     return kw
 
 
@@ -49,17 +50,18 @@ def stepwise(func):
             kwargs.pop("xstep", None)
             return func(*args, **kwargs)
 
-        # Default kwargs that may have not been set
-        kwdef = _get_default_parameters(func)
+        # All kwargs including default that may have not been passed
+        kwall = _get_default_parameters(func, kwargs)
 
         # Dataset
-        dset = kwargs.pop("dset", args[1])
+        chunks = kwall.get("chunks")
+        dset = args[0]._open_dataset(chunks=chunks)
         if not isinstance(dset, xr.Dataset):
             ValueError("stepwise decorator requires dset as a kwarg or the first arg")
 
         # Coords names
-        yname = kwargs.pop("yname", kwdef.get("yname", "latitude"))
-        xname = kwargs.pop("xname", kwdef.get("xname", "longitude"))
+        yname = kwall.pop("yname", "latitude")
+        xname = kwall.pop("xname", "longitude")
         for name in [yname, xname]:
             if name not in dset.dims:
                 raise ValueError(
@@ -70,8 +72,8 @@ def stepwise(func):
         # Dims and steps sizes
         yend = dset[yname].size
         xend = dset[xname].size
-        ystep = kwargs.pop("ystep", kwdef.get("ystep", yend)) or yend
-        xstep = kwargs.pop("xstep", kwdef.get("xstep", xend)) or xend
+        ystep = kwall.pop("ystep", yend) or yend
+        xstep = kwall.pop("xstep", xend) or xend
         if yend % ystep != 0:
             yend += ystep
         if xend % xstep != 0:
@@ -92,9 +94,8 @@ def stepwise(func):
                     yname: slice(yint.left, yint.right),
                     xname: slice(xint.left, xint.right),
                 }
-                ds = dset.isel(slice_kwargs).load()
-                # Function needs to have self and dset as 1st and 2nd args
-                dsout = func(args[0], ds, *args[2:], **kwargs)
+                kwall["dset"] = dset.isel(slice_kwargs).load()
+                dsout = func(*args, **kwall)
                 dsout_list.append(dsout)
                 i += 1
         dsout = xr.combine_by_coords(dsout_list)

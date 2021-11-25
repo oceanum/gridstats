@@ -6,13 +6,10 @@ import pandas as pd
 import xarray as xr
 from scipy import stats, signal
 
-from onstats.utils import stepwise
-
 
 logger = logging.getLogger(__name__)
 
 
-@stepwise
 def rpv(
     self,
     dset,

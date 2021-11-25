@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 _FILLVALUE = int(-2 ** 32 / 2)
 
 
-@stepwise
 def distribution3(
     self,
     dset,
@@ -154,7 +153,6 @@ def distribution3(
     return dsout
 
 
-@stepwise
 def distribution2(
     self,
     dset,
