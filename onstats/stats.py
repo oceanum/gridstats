@@ -13,14 +13,6 @@ from dask.distributed import Client
 import multiprocessing as mp
 
 from oncore.dataio import put, isdir, exists, rm, get
-from onstats.xarray_stats import (
-    rpv,
-    distribution,
-    directional_stat,
-    distribution_spddir,
-)
-from onstats.frequency_domain import hmo, BANDS
-
 
 logger = logging.getLogger(__name__)
 
