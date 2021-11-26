@@ -215,31 +215,6 @@ class Stats(metaclass=Plugin):
                 "units": "",
             }
 
-    def _sector_direction(self, dset, dirs, nsector):
-        """Expand dataset with direction sector dimension.
-
-        Args:
-            - dset (Dataset): Dataset to sectorise.
-            - dirs (DataArray): Directional data array to use for binning dset.
-            - nsector (int): Number of directional sectors.
-
-        Notes:
-            - dirs must share same dimensions as variables in dset.
-
-        """
-        # Binning data per directional sector
-        dsector = 360 / nsector
-        sectors = np.linspace(0, 360 - dsector, nsector)
-        starts = (sectors - dsector / 2) % 360
-        stops = (sectors + dsector / 2) % 360
-        dsout = []
-        for start, stop in zip(starts, stops):
-            if stop > start:
-                mask = (dirs >= start) & (dirs < stop)
-            else:
-                mask = (dirs >= start) | (dirs < stop)
-            dsout.append(dset.where(mask))
-
         # Concat directional bins into new dimension
         dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
         dsout["direction"].attrs = {
@@ -251,7 +226,7 @@ class Stats(metaclass=Plugin):
 
         return dsout
 
-    def _directional_stat(self, dset, func, dirs, nsector, group, compute, **kwargs):
+    def _directional_stat(self, dset, func, dirs, nsector, group, **kwargs):
         """Calculate func over directional sectors.
 
         Args:
@@ -280,10 +255,7 @@ class Stats(metaclass=Plugin):
                 mask = (dirs >= start) & (dirs < stop)
             else:
                 mask = (dirs >= start) | (dirs < stop)
-            ds = getattr(self, func)(dset.where(mask), group=group, **kwargs)
-            if compute:
-                ds = ds.load()
-            dsout.append(ds)
+            dsout.append(getattr(self, func)(dset.where(mask), group=group, **kwargs))
 
         # Concat directional bins into new dimension
         dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
@@ -356,9 +328,7 @@ class Stats(metaclass=Plugin):
         # Calculate stats
         if nsector:
             suffix += "_direc"
-            dsout = self._directional_stat(
-                dset, func, dirs, nsector, group, compute, **kwargs
-            )
+            dsout = self._directional_stat(dset, func, dirs, nsector, group, **kwargs)
         else:
             dsout = getattr(self, func)(dset, group=group, **kwargs)
             if compute:
