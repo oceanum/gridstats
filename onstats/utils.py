@@ -80,6 +80,10 @@ def stepwise(func):
         x_intervals = pd.interval_range(start=0, end=xend, freq=xstep)
         n_intervals = len(y_intervals) * len(x_intervals)
 
+        # Size of chunks after slicing
+        ychunksize = kwall.pop("ychunksize", -1)
+        xchunksize = kwall.pop("xchunksize", -1)
+
         # Compute each spatial box slice loading before calculating stats
         i = 1
         dsout_list = []
@@ -90,7 +94,9 @@ def stepwise(func):
                     yname: slice(yint.left, yint.right),
                     xname: slice(xint.left, xint.right),
                 }
-                kwall["dset"] = dset.isel(slice_kwargs).load().chunk({})
+                chunks = {"time": -1, yname: ychunksize, xname: xchunksize}
+                logger.info(f"Rechunk stepwise slice as {chunks}")
+                kwall["dset"] = dset.isel(slice_kwargs).load().chunk(chunks)
                 dsout = func(*args, **kwall)
                 dsout_list.append(dsout)
                 i += 1
