@@ -90,7 +90,7 @@ def stepwise(func):
                     yname: slice(yint.left, yint.right),
                     xname: slice(xint.left, xint.right),
                 }
-                kwall["dset"] = dset.isel(slice_kwargs).load()
+                kwall["dset"] = dset.isel(slice_kwargs).load().chunk({})
                 dsout = func(*args, **kwall)
                 dsout_list.append(dsout)
                 i += 1
