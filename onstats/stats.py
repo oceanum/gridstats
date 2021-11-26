@@ -176,7 +176,7 @@ class Stats(metaclass=Plugin):
         """Slice dataset from slice_dict attribute."""
         for slice_method, slice_kwargs in self.slice_dict.items():
             dset = getattr(dset, slice_method)(**slice_kwargs)
-            sizes = {k: v.size for k, v in ds.coords.items()}
+            sizes = {k: v.size for k, v in dset.coords.items()}
             for k, v in sizes.items():
                 if v == 0:
                     raise ValueError(
