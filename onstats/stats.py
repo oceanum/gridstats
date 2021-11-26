@@ -215,17 +215,6 @@ class Stats(metaclass=Plugin):
                 "units": "",
             }
 
-        # Concat directional bins into new dimension
-        dsout = xr.concat(dsout, dim="direction").assign_coords({"direction": sectors})
-        dsout["direction"].attrs = {
-            "standard_name": dirs.attrs.get("standard_name", "direction") + "_sector",
-            "long_name": dirs.attrs.get("long_name", "direction") + " sector",
-            "units": dirs.attrs.get("units", "degree"),
-            "variable_name": dirs.name,
-        }
-
-        return dsout
-
     def _directional_stat(self, dset, func, dirs, nsector, group, **kwargs):
         """Calculate func over directional sectors.
 
