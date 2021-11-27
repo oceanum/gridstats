@@ -22,12 +22,11 @@ def _get_kwargs(func, kwargs):
 
 
 def stepwise(func):
-    """Execute func on loaded slices of dataset in a stepswise manner.
+    """Execute func on box slices of dataset in a stepswise manner.
 
     This decorator is intended to run functions requiring single time chunks (e.g. rpv,
-    quantile) onto large datasets that are not chunked with single time chunks and
-    require rechunking, which can require prohibitively large amounts of RAM, by
-    loading and processing slices from the data in a stepwise manner.
+    quantile) onto large datasets that are not chunked with single time chunks
+    requiring rechunking, which can require prohibitively large amounts of RAM.
 
     Decorator kwargs:
         - ystep (int): Size of the y dimension to load and process in each step.
@@ -84,7 +83,7 @@ def stepwise(func):
         ychunksize = kwall.pop("ychunksize", -1)
         xchunksize = kwall.pop("xchunksize", -1)
 
-        # Compute each spatial box slice loading before calculating stats
+        # Compute each spatial rechunked box slice
         i = 1
         dsout_list = []
         for iy, yint in enumerate(y_intervals):
@@ -96,9 +95,9 @@ def stepwise(func):
                 }
                 chunks = {"time": -1, yname: ychunksize, xname: xchunksize}
                 logger.info(f"Rechunk stepwise slice as {chunks}")
-                # kwall["dset"] = dset.isel(slice_kwargs).load().chunk(chunks)
                 kwall["dset"] = dset.isel(slice_kwargs).chunk(chunks)
                 dsout = func(*args, **kwall)
+                del kwall["dset"]
                 dsout_list.append(dsout)
                 i += 1
         dsout = xr.combine_by_coords(dsout_list)
