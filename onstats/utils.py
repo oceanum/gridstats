@@ -96,7 +96,7 @@ def stepwise(func):
                 chunks = {"time": -1, yname: ychunksize, xname: xchunksize}
                 logger.info(f"Rechunk stepwise slice as {chunks}")
                 kwall["dset"] = dset.isel(slice_kwargs).chunk(chunks)
-                dsout_list.append(func(*args, **kwall).load())
+                dsout_list.append(func(*args, **kwall))
                 del kwall["dset"]
                 i += 1
         dsout = xr.combine_by_coords(dsout_list)
