@@ -84,7 +84,6 @@ def stepwise(func):
         xchunksize = kwall.pop("xchunksize", -1)
 
         # Compute each spatial rechunked box slice
-        kwall.pop("dset", None)
         i = 1
         dsout_list = []
         for iy, yint in enumerate(y_intervals):
@@ -97,9 +96,9 @@ def stepwise(func):
                 # chunks = {"time": -1, yname: ychunksize, xname: xchunksize}
                 # logger.info(f"Rechunk stepwise slice as {chunks}")
                 # kwall["dset"] = dset.isel(slice_kwargs).chunk(chunks)
-                dset = args[0]._open_dataset(chunks=kwall.get("chunks"))
-                dset = dset.isel(slice_kwargs)
-                dsout_list.append(func(dset=dset, *args, **kwall))
+                kwall["dset"] = dset.isel(slice_kwargs)
+                dsout_list.append(func(*args, **kwall))
+                del kwall["dset"]
                 i += 1
         dsout = xr.combine_by_coords(dsout_list)
         return dsout
