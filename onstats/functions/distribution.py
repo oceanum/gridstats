@@ -27,6 +27,7 @@ def distribution3_timestep(
     isdir3=True,
     dim="time",
     group="month",
+    rechunk={},
 ):
     """3D Joint distribution over timesteps to handle memory.
 
@@ -44,6 +45,7 @@ def distribution3_timestep(
         - isdir3 (bool): True if var3 is a directional variable, False otherwise.
         - dim (str): Dimension to calculate distribution along.
         - group (str): Time grouping type, any valid time_{group} such as month, season.
+        - rechunk (dict): Dimension: Size for rechunking each sliced time step.
 
     Returns:
         - dsout (xr.Dataset): Dataset with 3D joint distribution.
@@ -124,6 +126,11 @@ def distribution3_timestep(
         da1t = da1.sel(time=tslice)
         da2t = da2.sel(time=tslice)
         da3t = da3.sel(time=tslice)
+        if rechunk:
+            logger.info(f"Rechunking time slice as {rechunk}")
+            da1t = da1t.chunk(rechunk)
+            da2t = da2t.chunk(rechunk)
+            da3t = da3t.chunk(rechunk)
 
         # Grouping by
         if group is not None:
