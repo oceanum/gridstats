@@ -3,12 +3,180 @@ import logging
 import numpy as np
 import xarray as xr
 
+from oncore.date import daterange, _parse
 from onstats.utils import stepwise
 
 
 logger = logging.getLogger(__name__)
 
 _FILLVALUE = int(-2 ** 32 / 2)
+
+
+def distribution3_timestep(
+    self,
+    dset,
+    freq="1m",
+    var1="hs",
+    var2="tp",
+    var3="dpm",
+    bins1={"start": 0, "step": 0.5},
+    bins2={"start": 0, "step": 1.0},
+    bins3={"start": 0, "stop": 360, "step": 45},
+    isdir1=False,
+    isdir2=False,
+    isdir3=True,
+    dim="time",
+    group="month",
+):
+    """3D Joint distribution over timesteps to handle memory.
+
+    Args:
+        - self (instance): Instance argument required for plugging into Stats class.
+        - dset (xr.Dataset): Dataset with variables to calculate distributions for.
+        - var1 (str): Name of first variable in dset to compute joint distribution from.
+        - var2 (str): Name of second variable in dset to compute joint distribution from.
+        - var3 (str): Name of third variable in dset to compute joint distribution from.
+        - bins1 (array, dict): Lower edges or arange kwargs to define bins for var1.
+        - bins2 (array, dict): Lower edges or arange kwargs to define bins for var2.
+        - bins3 (array, dict): Lower edges or arange kwargs to define bins for var3.
+        - isdir1 (bool): True if var1 is a directional variable, False otherwise.
+        - isdir2 (bool): True if var2 is a directional variable, False otherwise.
+        - isdir3 (bool): True if var3 is a directional variable, False otherwise.
+        - dim (str): Dimension to calculate distribution along.
+        - group (str): Time grouping type, any valid time_{group} such as month, season.
+
+    Returns:
+        - dsout (xr.Dataset): Dataset with 3D joint distribution.
+
+    Note:
+        - The bins args can be a list/array with lower bin edges or a dictionary with
+          np.arange kwargs 'start', 'stop' and 'step' ('start' and 'stop' are estimated
+          from the data range if not available as keys).
+        - Mask is defined based on missing values from first variable (typically hs).
+
+    """
+    label = f"dist_{var1}_{var2}_{var3}"
+
+    da1 = dset[var1]
+    da2 = dset[var2]
+    da3 = dset[var3]
+
+    bin1_name = f"{var1}_bin"
+    bin2_name = f"{var2}_bin"
+    bin3_name = f"{var3}_bin"
+
+    bins1 = _set_bins(bins1, da1)
+    bins2 = _set_bins(bins2, da2)
+    bins3 = _set_bins(bins3, da3)
+
+    # Direction wrapping
+    if isdir1:
+        bins1 = bins1 - ((bins1[1] - bins1[0]) / 2)
+        da1 = _wrap_directions(da1, dirmax=bins1.max())
+    if isdir2:
+        bins2 = bins2 - ((bins2[1] - bins2[0]) / 2)
+        da2 = _wrap_directions(da2, dirmax=bins2.max())
+    if isdir3:
+        bins3 = bins3 - ((bins3[1] - bins3[0]) / 2)
+        da3 = _wrap_directions(da3, dirmax=bins3.max())
+
+    # Bin coordinates at cell centre
+    coords = {
+        bin1_name: bins1[:-1] + (bins1[1] - bins1[0]) / 2,
+        bin2_name: bins2[:-1] + (bins2[1] - bins2[0]) / 2,
+        bin3_name: bins3[:-1] + (bins3[1] - bins3[0]) / 2,
+    }
+
+    # Coordinates attributes
+    attrs = {
+        bin1_name: {
+            "standard_name": f"{da1.attrs.get('standard_name', 'hs')}_bin",
+            "long_name": f"{da1.attrs.get('long_name', 'hs')} bin",
+            "units": da1.attrs.get("units", "m"),
+        },
+        bin2_name: {
+            "standard_name": f"{da2.attrs.get('standard_name', 'tp')}_bin",
+            "long_name": f"{da2.attrs.get('long_name', 'tp')} bin",
+            "units": da2.attrs.get("units", "s"),
+        },
+        bin3_name: {
+            "standard_name": f"{da3.attrs.get('standard_name', 'dp')}_bin",
+            "long_name": f"{da3.attrs.get('long_name', 'dp')} bin",
+            "units": da3.attrs.get("units", "degree"),
+        },
+    }
+
+    # Mask based on the first variable
+    mask = da1.isel(**{dim: 0}, drop=True).notnull()
+
+    # Looping based on time frequency
+    alltimes = dset.time.to_index().to_pydatetime()
+    times = list(daterange(start=alltimes[0], end=alltimes[-1], freq=freq))
+    times.append(None)
+
+    for ind, (t0, t1) in enumerate(zip(times[:-1], times[1:])):
+
+        tslice = list(dset.time.sel(time=slice(t0, t1)).to_index().to_pydatetime())
+        if tslice[-1] == t1:
+            tslice.pop(-1)
+        logger.info(f"Adding count for time step {ind + 1}/{len(times) - 1} ({tslice[0]} to {tslice[-1]})")
+
+        da1t = da1.sel(time=tslice)
+        da2t = da2.sel(time=tslice)
+        da3t = da3.sel(time=tslice)
+
+        # Grouping by
+        if group is not None:
+            logger.debug(f"Grouping by {group}")
+            da1t = da1t.groupby(f"time.{group}")
+            da2t = da2t.groupby(f"time.{group}")
+            da3t = da3t.groupby(f"time.{group}")
+
+        # Computing
+        ds = xr.apply_ufunc(
+            _np_histogram_3d,
+            da1t,
+            da2t,
+            da3t,
+            bins1,
+            bins2,
+            bins3,
+            input_core_dims=[[dim], [dim], [dim], ["dummy1"], ["dummy2"], ["dummy3"]],
+            output_core_dims=[[bin1_name, bin2_name, bin3_name]],
+            exclude_dims=set((dim,)),
+            vectorize=True,
+            dask="parallelized",
+            output_dtypes=["int32"],
+            dask_gufunc_kwargs={
+                "output_sizes": {
+                    bin1_name: bins1.size - 1,
+                    bin2_name: bins2.size - 1,
+                    bin3_name: bins3.size - 1,
+                },
+            },
+        )
+        ds = ds.assign_coords(coords).to_dataset(name=label)
+
+        if ind == 0:
+            dsout = ds
+        else:
+            dsout += ds
+
+    # Masking
+    dsout = dsout.where(mask)
+
+    # Attributes
+    dsout[label].attrs = {
+        "standard_name": "data_count",
+        "long_name": "number of valid data points",
+        "units": "",
+    }
+    dsout[bin1_name].attrs = attrs[bin1_name]
+    dsout[bin2_name].attrs = attrs[bin2_name]
+    dsout[bin3_name].attrs = attrs[bin3_name]
+    dsout[label].encoding = {"dtype": "int32", "_FillValue": _FILLVALUE}
+
+    return dsout
 
 
 def distribution3(
