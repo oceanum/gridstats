@@ -166,7 +166,9 @@ def distribution3_timestep(
         )
         ds = ds.assign_coords(coords).to_dataset(name=label)
         if loadstep:
-            ds = ds.load()
+            ds = ds.load().chunk(
+                {bin1_name: 1, bin2_name: 1, bin3_name: 1}
+            )
 
         if ind == 0:
             dsout = ds
