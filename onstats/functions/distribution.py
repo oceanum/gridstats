@@ -166,14 +166,15 @@ def distribution3_timestep(
         )
         ds = ds.assign_coords(coords).to_dataset(name=label)
         if loadstep:
-            ds = ds.load().chunk(
-                {bin1_name: 1, bin2_name: 1, bin3_name: 1}
-            )
+            ds = ds.load()
 
         if ind == 0:
             dsout = ds
         else:
             dsout += ds
+
+    # Chunking output before saving to disk
+    dsout = dsout.chunk({bin1_name: 1, bin2_name: 1, bin3_name: 1})
 
     # Masking
     dsout = dsout.where(mask)
