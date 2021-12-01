@@ -22,6 +22,9 @@ logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 
+_FillValue = np.int32(2 ** 32 / 2)
+
+
 class Plugin(type):
     """Add stats functions as bound methods at class creation."""
 
@@ -355,9 +358,8 @@ class Stats(metaclass=Plugin):
         self,
         outfile,
         dsout=None,
-        _FillValue=-32767,
+        _FillValue=_FillValue,
         mode="w",
-        chunksizes={"": {}},
         **kwargs,
     ):
         """Save output dataset as zarr.
@@ -366,9 +368,7 @@ class Stats(metaclass=Plugin):
             - outfile (str): Base name of output zarr file.
             - dsout (str): Output dataset to write, self.dsout by default.
             - _FillValue (int): Fill Value.
-            - mode (str): Zarr write mode.
-            - chunksizes (dict): Key is a suffix for outfile, values are chunks, one
-              file is saved for each key-value in the dictionary.
+            - kwargs: Keyword arguments to pass to Dataset.to_zarr.
 
         """
         logger.debug(f"Saving stats dataset into file: {outfile}")
@@ -378,17 +378,9 @@ class Stats(metaclass=Plugin):
             dsout[data_var].encoding.pop("zlib", None)
         self._sortby()
         self._setattrs()
-
-        basename, ext = os.path.splitext(outfile)
-        for suffix, chunks in chunksizes.items():
-            if suffix and not suffix.startswith("_"):
-                suffix = "_" + suffix
-            store = f"{basename}{suffix}{ext}"
-            logger.info(f"Writing zarr file {store} with chunks {chunks}")
-            included_chunks = {c: v for c, v in chunks.items() if c in dsout.dims}
-            dsout.chunk(included_chunks).to_zarr(store, consolidated=True, mode=mode)
-            if self.updir:
-                self._upload(store)
+        dsout.to_zarr(outfile, **kwargs)
+        if self.updir:
+            self._upload(store)
 
 
 if __name__ == "__main__":
