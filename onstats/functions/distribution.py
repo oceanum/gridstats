@@ -174,7 +174,7 @@ def distribution3_timestep(
             dsout += ds
 
     # Chunking output before saving to disk
-    dsout = dsout.chunk({bin1_name: 1, bin2_name: 1, bin3_name: 1})
+    dsout = dsout.chunk({group: 1, bin1_name: 1, bin2_name: 1, bin3_name: 1})
 
     # Masking
     dsout = dsout.where(mask)
