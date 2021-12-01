@@ -21,6 +21,62 @@ def _get_kwargs(func, kwargs):
     return kw
 
 
+def timestep(func):
+    """Execute func over time slices."""
+
+    @wraps(func)
+    def wrapped_func(*args, **kwargs):
+
+        # Decorator applied only if freq is provided
+        if kwargs.get("freq", None) is None:
+            logger.info(
+                "No timestepping applied, provide at 'freq' kwarg if you wish to "
+                f"execute {func.__name__} in a timestepping manner."
+            )
+            kwargs.pop("rechunk", None)
+            kwargs.pop("loadstep", None)
+            return func(*args, **kwargs)
+
+        # Passed and default kwargs
+        kwall = _get_kwargs(func, kwargs)
+
+        # Full dataset
+        dset = args[0]._open_dataset(chunks=kwall.get("chunks"))
+
+        # Time slices
+        alltimes = dset.time.to_index().to_pydatetime()
+        times = list(daterange(start=alltimes[0], end=alltimes[-1], freq=freq))
+        times.append(None)
+
+        dsout = xr.Dataset()
+        for ind, (t0, t1) in enumerate(zip(times[:-1], times[1:])):
+
+            tslice = list(dset.time.sel(time=slice(t0, t1)).to_index().to_pydatetime())
+            if tslice[-1] == t1:
+                tslice.pop(-1)
+            logger.info(
+                f"Adding count for time step {ind + 1}/{len(times) - 1} "
+                f"({tslice[0]} to {tslice[-1]})"
+            )
+            dslice = dslice.sel(time=tslice)
+            if kwall["rechunk"]:
+                logger.info(f"Rechunking time slice as {rechunk}")
+                dslice = dslice.chunk(rechunk)
+
+            ds = func(None, dslice, **kwall)
+
+            if kwall.get("compute"):
+                ds = ds.load()
+
+            if ind == 0:
+                dsout = ds
+            else:
+                dsout += ds
+
+        return dsout
+
+    return wrapped_func
+
 def stepwise(func):
     """Execute func on box slices of dataset in a stepswise manner.
 

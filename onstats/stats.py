@@ -380,7 +380,7 @@ class Stats(metaclass=Plugin):
         self._setattrs()
         dsout.to_zarr(outfile, **kwargs)
         if self.updir:
-            self._upload(store)
+            self._upload(outfile)
 
 
 if __name__ == "__main__":
