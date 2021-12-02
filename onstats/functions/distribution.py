@@ -110,9 +110,6 @@ def distribution3_timestep(
         },
     }
 
-    # Mask based on the first variable
-    mask = da1.isel(**{dim: 0}, drop=True).notnull()
-
     # Looping based on time frequency
     alltimes = dset.time.to_index().to_pydatetime()
     times = list(daterange(start=alltimes[0], end=alltimes[-1], freq=freq))
@@ -174,9 +171,10 @@ def distribution3_timestep(
             dsout += ds
 
     # Chunking output before saving to disk
-    dsout = dsout.chunk({group: 1, bin1_name: 1, bin2_name: 1, bin3_name: 1})
+    dsout = dsout.chunk({bin1_name: 1, bin2_name: 1, bin3_name: 1})
 
-    # Masking
+    # Masking based on the first variable
+    mask = da1.isel(**{dim: 0}, drop=True).notnull()
     dsout = dsout.where(mask)
 
     # Attributes
