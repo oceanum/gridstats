@@ -1,6 +1,6 @@
 !!python/object/apply:onstats.stats.Stats
 kwds:
-  outfile: ./tmp.nc
+  outfile: ./tmp.zarr
   urlpath: ./tasman.nc
   engine: netcdf4
   mapping:
@@ -25,6 +25,8 @@ kwds:
       dim: time
       group: month
       freq: 10d
+      loadstep: True
+      compute: False
 
     # # Distribution timestep 3d
     # - func: distribution3

@@ -1,7 +1,7 @@
 """Miscellaneous functions."""
 
 
-def pcount(self, dset, dim):
+def pcount(self, dset, dim, **kwargs):
     """Percentaga count function.
 
     Args:
