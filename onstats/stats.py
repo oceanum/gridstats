@@ -123,11 +123,11 @@ class Stats(metaclass=Plugin):
                     self.apply_func(**call)
                 self._clean_dask_worker_space()
 
-        # Save output file
-        if self.outfile.endswith(".nc"):
-            self.to_netcdf(self.outfile)
-        elif self.outfile.endswith(".zarr"):
-            self.to_zarr(self.outfile)
+            # Save output file
+            if self.outfile.endswith(".nc"):
+                self.to_netcdf(self.outfile)
+            elif self.outfile.endswith(".zarr"):
+                self.to_zarr(self.outfile)
 
     def _clean_dask_worker_space(self):
         """Remove existing dask worker space directory."""
