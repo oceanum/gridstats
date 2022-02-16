@@ -15,7 +15,7 @@ import multiprocessing as mp
 from oncore.dataio import put, isdir, exists, rm, get
 from oncore import LOGGING_CONFIG
 
-from onstats.utils import stepwise
+from onstats.utils import stepwise, cd
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -50,7 +50,7 @@ class Stats(metaclass=Plugin):
         mapping={},
         slice_dict={},
         updir=None,
-        localdir="/scratch",
+        localdir="/tmp/run/stats",
         allow_split_large_chunks=False,
         cluster_kwargs={},
         disable_cluster_logging=True,
@@ -68,6 +68,7 @@ class Stats(metaclass=Plugin):
             - mapping (dict): Dictionary for renaming dataset variables.
             - slice_dict (dict): Dictionary specifying slicing parameters.
             - updir (str): Path or URI to upload output stats file to.
+            - localdir (str): Path to calculate stats and create dask workspace.
             - allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
             - cluster_kwargs (dict): Keyword arguments for the local dask cluster.
             - disable_cluster_logging (bool): Disable cluster logging below CRITICAL.
@@ -94,6 +95,7 @@ class Stats(metaclass=Plugin):
         self.mapping = mapping
         self.slice_dict = slice_dict
         self.updir = updir
+        self.localdir = localdir
         self.cluster_kwargs = cluster_kwargs
         self.calls = calls
 
@@ -109,15 +111,17 @@ class Stats(metaclass=Plugin):
         Local dask clusters are set up for running each stats method.
 
         """
-        self._clean_dask_worker_space()
-
-        # Execute each stats method
-        for call in self.calls:
-            with Client(**self.cluster_kwargs) as client:
-                logger.info(client)
-                logger.info(f"Stat.apply_func(**{call})")
-                self.apply_func(**call)
+        Path(self.localdir).mkdir(parents=True, exist_ok=True)
+        with cd(self.localdir):
             self._clean_dask_worker_space()
+
+            # Execute each stats method
+            for call in self.calls:
+                with Client(**self.cluster_kwargs) as client:
+                    logger.info(client)
+                    logger.info(f"Stat.apply_func(**{call})")
+                    self.apply_func(**call)
+                self._clean_dask_worker_space()
 
         # Save output file
         if self.outfile.endswith(".nc"):

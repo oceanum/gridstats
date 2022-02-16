@@ -1,4 +1,5 @@
 """Auxiliary functions."""
+import os
 import logging
 import numpy as np
 import dask.array as da
@@ -76,6 +77,7 @@ def timestep(func):
         return dsout
 
     return wrapped_func
+
 
 def stepwise(func):
     """Execute func on box slices of dataset in a stepswise manner.
@@ -350,3 +352,17 @@ def wavenumber(ang_freq, water_depth):
     for i in range(1, 6):
         a += D[i] * k0h ** i
     return (k0h * (1 + 1.0 / (k0h * a)) ** 0.5) / water_depth
+
+
+class cd:
+    """Context manager for changing the current working directory"""
+
+    def __init__(self, newPath):
+        self.newPath = os.path.expanduser(newPath)
+
+    def __enter__(self):
+        self.savedPath = os.getcwd()
+        os.chdir(self.newPath)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.savedPath)

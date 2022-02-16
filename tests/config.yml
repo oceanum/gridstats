@@ -1,7 +1,7 @@
 !!python/object/apply:onstats.stats.Stats
 kwds:
-  outfile: ./tmp.zarr
-  urlpath: ./tasman.nc
+  outfile: /source/onstats/tests/tmp.zarr
+  urlpath: /source/onstats/tests/tasman.nc
   engine: netcdf4
   mapping:
     tps: tp
