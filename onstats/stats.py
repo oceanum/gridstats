@@ -140,8 +140,7 @@ class Stats(metaclass=Plugin):
         """Open and slice dataset according to the init attributes provided.
 
         Args:
-            - chunks (dict): Mapping dim: size for chunking each dimension,
-              only used if opening dataset from urlpath to avoid rechunking.
+            - chunks (dict): Mapping dim: size for chunking each dimension.
 
         """
         logger.info("Open dataset")
@@ -163,7 +162,7 @@ class Stats(metaclass=Plugin):
             cat = open_catalog(self.catalog)
             if not cat:
                 raise ValueError(f"Cannot open intake catalog from {self.catalog}")
-            dset = cat[self.dataset_id].to_dask()
+            dset = cat[self.dataset_id](chunks=chunks).to_dask()
         else:
             raise ValueError("Cannot identify source dataset from input arguments")
 
