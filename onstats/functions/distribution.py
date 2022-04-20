@@ -177,6 +177,7 @@ def distribution3_timestep(
 
     # Masking based on the first variable
     mask = da1.isel(**{dim: 0}, drop=True).notnull()
+    mask = mask.chunk({dim: size for dim, size in zip(mask.dims, mask.shape)})
     dsout = dsout.where(mask)
 
     # Attributes

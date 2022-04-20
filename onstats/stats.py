@@ -354,10 +354,10 @@ class Stats(metaclass=Plugin):
 
             # Computing
             if compute:
-                logger.info("Compute dask stats")
+                logger.info(f"Compute dask {func} stat")
                 dsout = dsout.load()
             else:
-                logger.info("Dask stats will be computed when saving dataset to disk")
+                logger.info(f"Dask {func} stat will be computed when saving to disk")
 
         # Rename and merge onto output dataset
         dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
@@ -374,7 +374,7 @@ class Stats(metaclass=Plugin):
             - _FillValue (int): Fill Value.
 
         """
-        logger.debug(f"Saving stats dataset into file: {outfile}")
+        logger.info(f"Saving stats file: {Path(outfile).absolute()}")
         encoding = {v: {"zlib": True} for v in self.dsout.data_vars}
         self._sortby()
         self._setattrs()
@@ -399,7 +399,7 @@ class Stats(metaclass=Plugin):
             - kwargs: Keyword arguments to pass to Dataset.to_zarr.
 
         """
-        logger.debug(f"Saving stats dataset into file: {outfile}")
+        logger.info(f"Saving stats file: {Path(outfile).absolute()}")
         dsout = dsout or self.dsout
         for data_var in dsout.data_vars:
             dsout[data_var].encoding.update({"_FillValue": _FillValue})
