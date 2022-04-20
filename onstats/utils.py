@@ -98,7 +98,7 @@ def stepwise(func):
 
         # Stepwise applied only if both steps are provided
         if kwargs.get("ystep", None) is None and kwargs.get("xstep", None) is None:
-            logger.info(
+            logger.debug(
                 "No stepwise applied, provide at least one of 'ystep', 'xstep' kwargs "
                 f"if you wish to execute {func.__name__} in a stepwise manner."
             )
@@ -151,9 +151,6 @@ def stepwise(func):
                     yname: slice(yint.left, yint.right),
                     xname: slice(xint.left, xint.right),
                 }
-                # chunks = {"time": -1, yname: ychunksize, xname: xchunksize}
-                # logger.info(f"Rechunk stepwise slice as {chunks}")
-                # kwall["dset"] = dset.isel(slice_kwargs).chunk(chunks)
                 kwall["dset"] = dset.isel(slice_kwargs)
                 dsout_list.append(func(*args, **kwall))
                 del kwall["dset"]
