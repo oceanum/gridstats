@@ -360,11 +360,18 @@ class Stats(metaclass=Plugin):
             else:
                 logger.info("Dask stats will be computed when saving dataset to disk")
 
-            # Renaming
-            dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
+        # Renaming
+        dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
 
-            # Merge onto output
-            self.dsout = self.dsout.merge(dsout)
+        # TMP ====================
+        # Test writing tmp file
+        # TMP ====================
+        logger.info(f"Writing zarr file before merging")
+        dsout.to_zarr(f"./tmpfile-{func}.zarr")
+        logger.info(f"Written zarr file before merging")
+
+        # Merge onto output
+        self.dsout = self.dsout.merge(dsout)
 
         # Reset previously cluster state
         self._client = _client
