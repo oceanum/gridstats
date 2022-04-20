@@ -313,7 +313,6 @@ class Stats(metaclass=Plugin):
 
         """
         # Local cluster definition
-        _client = self._client
         self._client = use_dask_cluster
 
         # Define variable suffix
@@ -360,21 +359,9 @@ class Stats(metaclass=Plugin):
             else:
                 logger.info("Dask stats will be computed when saving dataset to disk")
 
-        # Renaming
+        # Rename and merge onto output dataset
         dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
-
-        # TMP ====================
-        # Test writing tmp file
-        # TMP ====================
-        logger.info(f"Writing zarr file before merging")
-        dsout.to_zarr(f"./tmpfile-{func}.zarr")
-        logger.info(f"Written zarr file before merging")
-
-        # Merge onto output
         self.dsout = self.dsout.merge(dsout)
-
-        # Reset previously cluster state
-        self._client = _client
 
         return dsout
 
@@ -391,8 +378,6 @@ class Stats(metaclass=Plugin):
         encoding = {v: {"zlib": True} for v in self.dsout.data_vars}
         self._sortby()
         self._setattrs()
-        # with self.client(**self.cluster_kwargs) as client:
-        # logger.info(client)
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
         if self.updir:
             self._upload(outfile)
@@ -421,8 +406,6 @@ class Stats(metaclass=Plugin):
             dsout[data_var].encoding.pop("zlib", None)
         self._sortby()
         self._setattrs()
-        # with self.client(**self.cluster_kwargs) as client:
-        # logger.info(client)
         dsout.to_zarr(outfile, **kwargs)
         if self.updir:
             self._upload(outfile)
