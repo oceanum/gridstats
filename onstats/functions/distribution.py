@@ -168,10 +168,12 @@ def distribution3_timestep(
         if ind == 0:
             dsout = ds
         else:
-            dsout += ds
+            dsout = dsout.broadcast_like(ds).fillna(0.)
+            dsout += ds.broadcast_like(dsout).fillna(0.)
 
     # Chunking output before saving to disk
-    dsout = dsout.chunk({bin1_name: 1, bin2_name: 1, bin3_name: 1})
+    chunks = {**dict(dsout.dims), **{bin1_name: 1, bin2_name: 1, bin3_name: 1}}
+    dsout = dsout.chunk(chunks)
 
     # Masking based on the first variable
     mask = da1.isel(**{dim: 0}, drop=True).notnull()
