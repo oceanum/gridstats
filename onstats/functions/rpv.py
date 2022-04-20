@@ -137,7 +137,7 @@ def _np_rpv(
 
     # Little hack to try and avoid ValueError: buffer source array is read-only
     # https://github.com/pydata/xarray/issues/3715
-    data = data.copy()
+    # data = data.copy()
 
     peaks, height = _pov(data, dt_hour, percentile, duration)
 
