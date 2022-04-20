@@ -415,7 +415,7 @@ class Stats(metaclass=Plugin):
         self._sortby()
         self._setattrs()
         # with self.client(**self.cluster_kwargs) as client:
-        logger.info(client)
+        # logger.info(client)
         dsout.to_zarr(outfile, **kwargs)
         if self.updir:
             self._upload(outfile)
