@@ -11,6 +11,7 @@ from intake import open_catalog
 import dask
 from dask.distributed import Client
 import multiprocessing as mp
+from contextlib import contextmanager
 
 from oncore.dataio import put, isdir, exists, rm, get
 from oncore import LOGGING_CONFIG
@@ -23,6 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 _FillValue = np.int32(2 ** 32 / 2)
+
+
+@contextmanager
+def DummyClient(*args, **kwargs):
+    """Dummy context manager when not using local dask cluster."""
+    yield "<No Dask Cluster>"
 
 
 class Plugin(type):
@@ -99,28 +106,34 @@ class Stats(metaclass=Plugin):
         self.cluster_kwargs = cluster_kwargs
         self.calls = calls
 
+        self._client = True
+
         self.dsout = xr.Dataset()
 
         if disable_cluster_logging:
             logging.getLogger("distributed.scheduler").setLevel(logging.CRITICAL)
             logging.getLogger("distributed.client").setLevel(logging.CRITICAL)
 
+    @property
+    def client(self):
+        """Define cluster client to use or not."""
+        if self._client is True:
+            return Client
+        elif self._client is False:
+            return DummyClient
+        else:
+            raise ValueError(f"_client must be bool, got {self.use_dask_cluster}")
+
     def __call__(self):
-        """Loop over list of dictionary to execute stats methods.
-
-        Local dask clusters are set up for running each stats method.
-
-        """
+        """Loop over list of dictionary to execute stats methods."""
         Path(self.localdir).mkdir(parents=True, exist_ok=True)
         with cd(self.localdir):
             self._clean_dask_worker_space()
 
             # Execute each stats method
             for call in self.calls:
-                with Client(**self.cluster_kwargs) as client:
-                    logger.info(client)
-                    logger.info(f"Stat.apply_func(**{call})")
-                    self.apply_func(**call)
+                logger.info(f"Stat.apply_func(**{call})")
+                self.apply_func(**call)
                 self._clean_dask_worker_space()
 
             # Save output file
@@ -275,6 +288,7 @@ class Stats(metaclass=Plugin):
         dset=None,
         nsector=None,
         dir_var="dpm",
+        use_dask_cluster=True,
         **kwargs,
     ):
         """apply xarray function.
@@ -290,11 +304,23 @@ class Stats(metaclass=Plugin):
               init, only necessary because of the decorators which modify the dataset.
             - nsector (int): Number of directional sectors if sectorising dataset.
             - dir_var (str): Name of directional variable to use if sectorising dataset.
+            - use_dask_cluster (bool): Use local dask cluster to calculate stats.
             - kwargs: Aditional keyword arguments for function `func`.
 
+        Note:
+            - Some stats, e.g., `quantile` or `rpv` require specifying single chunks
+              for the core dimension, usually `time`.
+
         """
+        # Local cluster definition
+        _client = self._client
+        self._client = use_dask_cluster
+
+        # Define variable suffix
         if suffix is None:
             suffix = f"_{func}"
+        if group:
+            suffix += f"_{group}"
 
         # Open dataset
         if dset is None:
@@ -316,27 +342,32 @@ class Stats(metaclass=Plugin):
         logger.debug(f"Calculating {func} for vars: {data_vars}")
         dset = dset[data_vars]
 
-        # Replace suffix if grouping by
-        if group:
-            suffix += f"_{group}"
+        # Calculating stats
+        with self.client(**self.cluster_kwargs) as client:
+            logger.info(client)
 
-        # Calculate stats
-        if nsector:
-            suffix += "_direc"
-            dsout = self._directional_stat(dset, func, dirs, nsector, group, **kwargs)
-        else:
-            dsout = getattr(self, func)(dset, group=group, **kwargs)
+            # Create graphs
+            if nsector:
+                suffix += "_direc"
+                dsout = self._directional_stat(dset, func, dirs, nsector, group, **kwargs)
+            else:
+                dsout = getattr(self, func)(dset, group=group, **kwargs)
+
+            # Computing
             if compute:
                 logger.info("Compute dask stats")
                 dsout = dsout.load()
             else:
                 logger.info("Dask stats will be computed when saving dataset to disk")
 
-        # Rename
-        dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
+            # Renaming
+            dsout = dsout.rename({v: f"{v}{suffix}" for v in dsout.data_vars.keys()})
 
-        # Merge onto output
-        self.dsout = self.dsout.merge(dsout)
+            # Merge onto output
+            self.dsout = self.dsout.merge(dsout)
+
+        # Reset previously cluster state
+        self._client = _client
 
         return dsout
 
@@ -353,7 +384,9 @@ class Stats(metaclass=Plugin):
         encoding = {v: {"zlib": True} for v in self.dsout.data_vars}
         self._sortby()
         self._setattrs()
-        self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
+        with self.client(**self.cluster_kwargs) as client:
+            logger.info(client)
+            self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
         if self.updir:
             self._upload(outfile)
 
@@ -381,7 +414,9 @@ class Stats(metaclass=Plugin):
             dsout[data_var].encoding.pop("zlib", None)
         self._sortby()
         self._setattrs()
-        dsout.to_zarr(outfile, **kwargs)
+        with self.client(**self.cluster_kwargs) as client:
+            logger.info(client)
+            dsout.to_zarr(outfile, **kwargs)
         if self.updir:
             self._upload(outfile)
 
