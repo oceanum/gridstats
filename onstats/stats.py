@@ -384,9 +384,9 @@ class Stats(metaclass=Plugin):
         encoding = {v: {"zlib": True} for v in self.dsout.data_vars}
         self._sortby()
         self._setattrs()
-        with self.client(**self.cluster_kwargs) as client:
-            logger.info(client)
-            self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
+        # with self.client(**self.cluster_kwargs) as client:
+        # logger.info(client)
+        self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
         if self.updir:
             self._upload(outfile)
 
