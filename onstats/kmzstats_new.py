@@ -8,6 +8,7 @@ import argparse
 import logging
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib import cm, colors
 import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
@@ -143,6 +144,15 @@ class KMZ:
         else:
             return False
 
+    @property
+    def depth(self):
+        """DataArray used to extract depth contours."""
+        try:
+            depth_var = self.layer_val["depth_var"]
+        except KeyError():
+            raise ValueError(f"'depth_var' must be defined in layer {self.layer_name}")
+        return self.ds[depth_var].where(self.ds[depth_var] > 0).fillna(0.)
+
     def _set_mask(self, dset):  # , ncfile, var, vmin=None, vmax=None):
         import geopandas as gpd
         import rioxarray
@@ -207,6 +217,8 @@ class KMZ:
                         self.add_contour()
                     elif layer_type == "cyclone":
                         self._make_cyclone()
+                    elif layer_type == "statscontour":
+                        self._make_statscontour()
         else:
             self.dim_name = None
             self.dim_index = 0
@@ -218,6 +230,8 @@ class KMZ:
                 self.add_contour()
             elif layer_type == "cyclone":
                 self._make_cyclone()
+            elif layer_type == "statscontour":
+                self._make_statscontour()
 
     def _make_plot(self):
         """Here the map and colorbar from each layer are generated."""
@@ -280,6 +294,100 @@ class KMZ:
         rgb = [int(round(v * 255)) for v in rgb_scaled]
         return "ff{0:02x}{1:02x}{2:02x}".format(*rgb)
 
+    def _add_colorbar(self, group):
+        screen = group.newscreenoverlay(name="Colorbar")
+        screen.icon.href = self.colorbar_name
+        screen.overlayxy = OverlayXY(
+            x=0, y=0, xunits=Units.fraction, yunits=Units.fraction
+        )
+        screen.screenxy = ScreenXY(
+            x=0.015, y=0.075, xunits=Units.fraction, yunits=Units.fraction
+        )
+        screen.rotationXY = RotationXY(
+            x=0.5, y=0.5, xunits=Units.fraction, yunits=Units.fraction
+        )
+        screen.size.x = 0
+        screen.size.y = 0
+        screen.size.xunits = Units.fraction
+        screen.size.yunits = Units.fraction
+        screen.visibility = self.visibility
+
+    def _make_statscontour(self):
+        """Make linestring for stats over depth layers."""
+        logger.info(f"Plotting statscontour for layer: {self.figname}")
+
+        self.darr = self.ds[self.layer_val["var"]]
+
+        levels = self.chart["depth_contours"]
+        units = self.layer_val.get("units", "m")
+
+        # Extract coordinates of depth contours, each contour will have multiple paths
+        fig = plt.figure()
+        depths = {}
+        for level in levels:
+            ax = fig.add_subplot()
+            cs = ax.contour(self.depth.lon, self.depth.lat, self.depth, levels=[level])
+            paths = cs.collections[0].get_paths()
+            # multipoint = self.group.newmultigeometry(name="{:0.0f} m".format(level))
+            paths = cs.collections[0].get_paths()
+            # Collect all contour paths for level
+            all_coords = []
+            for ipath, path in enumerate(paths):
+                coords = [
+                    (path.vertices[ivert][0], path.vertices[ivert][1], 0)
+                    for ivert in range(len(path.vertices))
+                ]
+                all_coords.append(coords)
+            depths.update({level: all_coords})
+            plt.clf()
+        plt.close()
+
+        norm = colors.Normalize(vmin=self.chart["vmin"], vmax=self.chart["vmax"], clip=True)
+        cmap = cm.get_cmap(self.chart.get("cmap", "turbo"))
+
+        # Define base container
+        containers = [c.name for c in self.group.containers]
+        if self.layer_name not in containers:
+            group = self.group.newfolder(name=self.layer_name)
+        else:
+            index = containers.index(self.layer_name)
+            group = self.group.containers[index]
+        group1 = group.newfolder(name=f"{self.layer_val['name']} at depths")
+
+        # Colorbar
+        if self.colorbar:
+            self._add_colorbar(group1)
+
+        # Loop over depth contours
+        for depth, all_contours in depths.items():
+            logger.info(f"Stat for depth layer {depth}")
+            subgroup = group1.newfolder(name=f"{depth:0.0f}m")
+            # Loop over all paths for current contour
+            for contour_coords in all_contours:
+                x = xr.DataArray([c[0] for c in contour_coords], dims=("stat",))
+                y = xr.DataArray([c[1] for c in contour_coords], dims=("stat",))
+                z = self.darr.interp(lon=x, lat=y).fillna(0.)
+                coords = [(xc, yc, zc) for xc, yc, zc in zip(x.values, y.values, z.values)]
+                for ind in range(len(coords) - 1):
+                    # Current segment to plot
+                    segment = coords[ind:ind+2]
+                    # Color of segment
+                    value = (segment[0][-1] + segment[1][-1]) / 2
+                    rgba = cmap(norm(value), bytes=True)
+                    alpha = 255 if value > 0 else 0
+                    color = Color.rgb(rgba[0], rgba[1], rgba[2], alpha)
+                    # Define linestring for segment
+                    linestring = subgroup.newlinestring(
+                        name=f"{value:0.2f} {units}",
+                        coords=segment,
+                        altitudemode=AltitudeMode.relativetoground,
+                    )
+                    linestring.style.linestyle.color = color
+                    linestring.style.linestyle.width = self.plot_kwargs.get(
+                        "linewidths", 2.0
+                    )
+                    linestring.visibility = self.visibility
+
     def _make_cyclone_raster(self):
         """Make linestring for cyclone path layers."""
         logger.info("Plotting cyclone for layer: {}".format(self.figname))
@@ -302,7 +410,6 @@ class KMZ:
             subgroup = self.group.newfolder(name="Cat {:0.0f}".format(cat))
             # pnt = subgroup.newpoint(name="point test")
             # pnt.coords = [(100+cat, 10+cat)]
-            # import ipdb; ipdb.set_trace()
 
             # Force attributes here to prescribe figure name
             self.dim_name = "cat"
@@ -418,7 +525,6 @@ class KMZ:
             subgroup = self.group.newfolder(name="Cat {:0.0f}".format(cat))
             for istorm in range(ds.storm.size):
                 df = ds.isel(storm=istorm).to_dataframe().dropna()
-                # import ipdb; ipdb.set_trace()
                 if df.size < 1:
                     continue
                 else:
@@ -564,6 +670,8 @@ class KMZ:
                     layer_type = "linestring"
                 elif self.chart.get("type", None) == "cyclone":
                     layer_type = "cyclone"
+                elif self.chart.get("type", None) == "statscontour":
+                    layer_type = "statscontour"
                 else:
                     layer_type = "groundoverlay"
                 self._plot_layer_figures(layer_type=layer_type)
@@ -639,23 +747,7 @@ class KMZ:
         ground.visibility = self.visibility
 
         if self.colorbar:
-            # screen = group.newscreenoverlay(name='Colorbar')
-            screen = subgroup.newscreenoverlay(name="Colorbar")
-            screen.icon.href = self.colorbar_name
-            screen.overlayxy = OverlayXY(
-                x=0, y=0, xunits=Units.fraction, yunits=Units.fraction
-            )
-            screen.screenxy = ScreenXY(
-                x=0.015, y=0.075, xunits=Units.fraction, yunits=Units.fraction
-            )
-            screen.rotationXY = RotationXY(
-                x=0.5, y=0.5, xunits=Units.fraction, yunits=Units.fraction
-            )
-            screen.size.x = 0
-            screen.size.y = 0
-            screen.size.xunits = Units.fraction
-            screen.size.yunits = Units.fraction
-            screen.visibility = ground.visibility
+            self._add_colorbar(subgroup)
 
     def add_contour(self):
         """Make linestring contour layers."""
