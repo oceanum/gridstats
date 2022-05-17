@@ -23,7 +23,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 
-_FillValue = np.int32(2 ** 32 / 2)
+_FILLVALUE = np.int32(2 ** 32 / 2)
 
 
 @contextmanager
@@ -56,6 +56,7 @@ class Stats(metaclass=Plugin):
         dataset_id=None,
         mapping={},
         slice_dict={},
+        chunks={},
         updir=None,
         localdir="/tmp/run/stats",
         allow_split_large_chunks=False,
@@ -74,6 +75,7 @@ class Stats(metaclass=Plugin):
             - dataset_id (str): Intake dataset id to calculate stats from.
             - mapping (dict): Dictionary for renaming dataset variables.
             - slice_dict (dict): Dictionary specifying slicing parameters.
+            - chunks(dict): Chunking sizes in output dataset.
             - updir (str): Path or URI to upload output stats file to.
             - localdir (str): Path to calculate stats and create dask workspace.
             - allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
@@ -101,6 +103,7 @@ class Stats(metaclass=Plugin):
         self.engine = engine
         self.mapping = mapping
         self.slice_dict = slice_dict
+        self.chunks = chunks
         self.updir = updir
         self.localdir = localdir
         self.cluster_kwargs = cluster_kwargs
@@ -218,21 +221,55 @@ class Stats(metaclass=Plugin):
             rm(outfile, recursive=isdir(outfile))
         put(filename, outfile, recursive=isdir(filename))
 
+    def _finalise(self):
+        """Sort dimensions, define attributes, transpose."""
+        self._sortby()
+        self._chunk()
+        self._transpose()
+        self._setattrs()
+        self._setdtype()
+
     def _sortby(self):
         """Sort output dataset by all coordinates."""
+        logger.debug("Sorting output by dims")
         for name, coords in self.dsout.coords.items():
             if coords[0] > coords[-1]:
                 logger.info(f"Sorting by coordinate {name}")
                 self.dsout = self.dsout.sortby(name)
 
+    def _chunk(self):
+        """.Chunk output dataset."""
+        logger.debug("Chunking output")
+        chunks = {k: v for k, v in self.chunks.items() if k in self.dsout.dims}
+        self.dsout = self.dsout.chunk(chunks)
+        for dvar in self.dsout.values():
+            dvar.encoding.pop("chunks", None)
+
+    def _transpose(self):
+        logger.debug("Transposing output")
+        """Transpose to ensure some predefined ordering."""
+        if "quantile" in self.dsout.coords:
+            self.dsout = self.dsout.transpose("quantile", ...)
+
     def _setattrs(self):
         """Define some attributes in output dataset."""
+        logger.debug("Defining attributes in output")
         if "quantile" in self.dsout.coords:
             self.dsout["quantile"].attrs = {
                 "standard_name": "quantile",
                 "long_name": "quantile",
                 "units": "",
             }
+
+    def _setdtype(self):
+        """Ensure correct data types."""
+        # Season is written with object data type which causes problems when rewriting
+        if "season" in self.dsout.coords:
+            self.dsout["season"] = self.dsout.season.astype("U")
+        # Ensure float32
+        for varname in self.dsout.data_vars:
+            if self.dsout[varname].dtype == "float64":
+                self.dsout[varname] = self.dsout[varname].astype("float32")
 
     def _directional_stat(self, dset, func, dirs, nsector, group, **kwargs):
         """Calculate func over directional sectors.
@@ -376,8 +413,7 @@ class Stats(metaclass=Plugin):
         """
         logger.info(f"Saving stats file: {Path(outfile).absolute()}")
         encoding = {v: {"zlib": True} for v in self.dsout.data_vars}
-        self._sortby()
-        self._setattrs()
+        self._finalise()
         self.dsout.to_netcdf(outfile, format=format, encoding=encoding)
         if self.updir:
             self._upload(outfile)
@@ -385,8 +421,7 @@ class Stats(metaclass=Plugin):
     def to_zarr(
         self,
         outfile,
-        dsout=None,
-        _FillValue=_FillValue,
+        _FillValue=_FILLVALUE,
         mode="w",
         **kwargs,
     ):
@@ -394,19 +429,16 @@ class Stats(metaclass=Plugin):
 
         Args:
             - outfile (str): Base name of output zarr file.
-            - dsout (str): Output dataset to write, self.dsout by default.
             - _FillValue (int): Fill Value.
             - kwargs: Keyword arguments to pass to Dataset.to_zarr.
 
         """
         logger.info(f"Saving stats file: {Path(outfile).absolute()}")
-        dsout = dsout or self.dsout
-        for data_var in dsout.data_vars:
-            dsout[data_var].encoding.update({"_FillValue": _FillValue})
-            dsout[data_var].encoding.pop("zlib", None)
-        self._sortby()
-        self._setattrs()
-        dsout.to_zarr(outfile, **kwargs)
+        self._finalise()
+        for data_var in self.dsout.data_vars:
+            self.dsout[data_var].encoding.update({"_FillValue": _FillValue})
+            self.dsout[data_var].encoding.pop("zlib", None)
+        self.dsout.to_zarr(outfile, **kwargs)
         if self.updir:
             self._upload(outfile)
 
