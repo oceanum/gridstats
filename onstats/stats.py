@@ -191,7 +191,7 @@ class Stats(metaclass=Plugin):
         # Slice dataset
         dset = self._slice(dset)
 
-        logger.debug(f"Dataset chunks: {dset.chunks}")
+        logger.debug(f"Dataset chunks: {dset.unify_chunks().chunks}")
         return dset
 
     def _slice(self, dset):
