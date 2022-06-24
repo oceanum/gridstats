@@ -1,0 +1,168 @@
+# ===============================================
+# Coordinates
+# ===============================================
+
+coord:
+
+  time:
+    standard_name: time
+    long_name: time
+
+  latitude: &latitude
+    standard_name: latitude
+    long_name: latitude
+    units: degrees_north
+
+  longitude: &longitude
+    standard_name: longitude
+    long_name: longitude
+    units: degrees_east
+
+  site: &site
+    standard_name: site
+    long_name: site
+    units: ""
+
+  cycle:
+    standard_name: forecast_reference_time
+    long_name: forecast cycle
+    units: ""
+
+  month:
+    standard_name: month
+    long_name: month
+    units: ""
+
+  season:
+    standard_name: season
+    long_name: season
+    units: ""
+
+  quantile:
+    standard_name: quantile
+    long_name: quantile
+    units: ""
+
+  lev: &lev
+    standard_name: depth
+    long_name: depth
+    units: m
+
+  lat: *latitude
+
+  lon: *longitude
+
+  point: *site
+
+  dep: *lev
+
+  depth: *lev
+
+
+# ===============================================
+# Variables
+# ===============================================
+
+data_vars:
+
+  temp:
+    standard_name: sea_water_temperature
+    long_name: sea water temperature
+    units: degree_C
+
+  salt:
+    standard_name: sea_water_salinity
+    long_name: sea water salinity
+    units: ""
+
+  hspd: &hspd
+    standard_name: sea_water_speed
+    long_name: current speed
+    units: m s-1
+
+  wspd:
+    standard_name: wind_speed_at_10m_above_ground_level
+    long_name: 10m wind speed
+    units: m s-1
+
+  wdir:
+    standard_name: wind_from_direction_at_10m_above_ground_level
+    long_name: 10m wind direction in coming from convention
+    units: degree
+
+  depth: &depth
+    standard_name: sea_floor_depth_below_sea_surface
+    long_name: water depth
+    units: m
+
+  hs:
+    standard_name: sea_surface_wave_significant_height
+    long_name: significant wave height
+    units: m
+
+  hmax:
+    standard_name: sea_surface_wave_maximum_height
+    long_name: maximum wave height
+    units: m
+
+  tp: &tp
+    standard_name: sea_surface_wave_period_at_variance_spectral_density_maximum
+    long_name: peak wave period
+    units: s
+
+  dpm: &dpm
+    standard_name: sea_surface_wave_from_direction_at_variance_spectral_density_maximum
+    long_name: peak wave direction
+    units: degree
+
+  dm:
+      standard_name: sea_surface_wave_mean_from_direction
+      long_name: mean wave direction
+      units: degree
+
+  dspr:
+      standard_name: sea_surface_wave_directional_spread
+      long_name: direction spread
+      units: degree
+
+  tm01:
+      standard_name: sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment
+      long_name: mean wave period from the first spectral moment
+      units: s
+
+  tm02:
+      standard_name: sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment
+      long_name: mean wave period from the second spectral moment
+      units: s
+
+  dep: *depth
+
+  dpt: *depth
+
+  botl: *depth
+
+  tps: *tp
+
+  dp: *dpm
+
+  cspd: *hspd
+
+
+# ===============================================
+# Stats
+# ===============================================
+stats:
+
+  mean: mean
+
+  max: maximum
+
+  min: minimum
+
+  std: standard_deviation
+
+  quantile: quantile
+
+  rpv: return_period_value
+
+  dist: joint_distribution
