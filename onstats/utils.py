@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import yaml
+import copy
 import logging
 import numpy as np
 import dask.array as da
@@ -368,7 +369,7 @@ class cd:
 
 
 def set_attributes(dset):
-    with open(Path(__name__).parent / "attributes.yml") as stream:
+    with open(Path(__file__).parent / "attributes.yml") as stream:
         metadata = yaml.load(stream, Loader=yaml.Loader)
 
     # Data variables
@@ -377,7 +378,7 @@ def set_attributes(dset):
         logger.debug(f"Setting metadata for variable '{v}'")
         try:
             stat = metadata["stats"][var_parts[1]]
-            attrs = metadata["data_vars"][var_parts[0]]
+            attrs = copy.deepcopy(metadata["data_vars"][var_parts[0]])
             attrs["standard_name"] = f"{attrs['standard_name']}_{stat}"
             attrs["long_name"] = f"{stat} {attrs['long_name']}"
             dvar.attrs = attrs

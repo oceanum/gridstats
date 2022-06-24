@@ -44,7 +44,7 @@ kwds:
     # # Time max for directional sectors
     # - func: max
     #   dim: time
-    #   data_vars: [hs, hsea, hswe]
+    #   data_vars: [hs]
     #   chunks: {}
     #   nsector: 8
     #   compute: False
@@ -56,7 +56,7 @@ kwds:
     #   distribution: gumbel_r
     #   duration: 24
     #   dim: time
-    #   data_vars: [hs, hsea, hswe]
+    #   data_vars: [hs]
     #   chunks: {}
     #   nsector: 8
     #   ystep: 20
@@ -96,7 +96,7 @@ kwds:
     #   distribution: gumbel_r
     #   duration: 24
     #   dim: time
-    #   data_vars: [hs, hsea, hswe]
+    #   data_vars: [hs]
     #   chunks: {}
     #   ystep: 50
 
@@ -108,7 +108,7 @@ kwds:
     #   duration: 24
     #   dim: time
     #   group: month
-    #   data_vars: [hs, hsea, hswe]
+    #   data_vars: [hs]
     #   chunks: {}
     #   ystep: 50
 
@@ -132,32 +132,32 @@ kwds:
         latitude: 100
         longitude: 100
 
-    # # Mean yearly
-    # - func: min
-    #   dim: time
-    #   data_vars: [hs, hsea, hswe]
-    #   chunks:
-    #     latitude: 100
-    #     longitude: 100
+    # Mean yearly
+    - func: min
+      dim: time
+      data_vars: [hs]
+      chunks:
+        latitude: 100
+        longitude: 100
 
-    # # Max yearly
-    # - func: max
-    #   dim: time
-    #   data_vars: [hs, hsea, hswe]
-    #   chunks:
-    #     latitude: 100
-    #     longitude: 100
+    # Max yearly
+    - func: max
+      dim: time
+      data_vars: [hs]
+      chunks:
+        latitude: 100
+        longitude: 100
 
-    # # Quantile yearly
-    # - func: quantile
-    #   dim: time
-    #   q: [0.95, 0.99]
-    #   data_vars: [hs, hsea, hswe]
-    #   chunks:
-    #     time: -1
-    #     latitude: 50
-    #     longitude: 50
-    #   ystep: 10
-    #   xstep: null
-    #   yname: latitude
-    #   xname: longitude
+    # Quantile yearly
+    - func: quantile
+      dim: time
+      q: [0.95, 0.99]
+      data_vars: [hs]
+      chunks:
+        time: -1
+        latitude: 50
+        longitude: 50
+      ystep: 10
+      xstep: null
+      yname: latitude
+      xname: longitude

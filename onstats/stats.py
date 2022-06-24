@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from oncore.dataio import put, isdir, exists, rm, get
 from oncore import LOGGING_CONFIG
 
-from onstats.utils import stepwise, cd
+from onstats.utils import stepwise, cd, set_attributes
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -254,12 +254,7 @@ class Stats(metaclass=Plugin):
     def _setattrs(self):
         """Define some attributes in output dataset."""
         logger.debug("Defining attributes in output")
-        if "quantile" in self.dsout.coords:
-            self.dsout["quantile"].attrs = {
-                "standard_name": "quantile",
-                "long_name": "quantile",
-                "units": "",
-            }
+        self.dsout = set_attributes(self.dsout)
 
     def _setdtype(self):
         """Ensure correct data types."""

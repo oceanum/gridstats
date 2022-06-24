@@ -43,6 +43,11 @@ coord:
     long_name: quantile
     units: ""
 
+  period:
+    standard_name: return_period
+    long_name: return period
+    units: year
+
   lev: &lev
     standard_name: depth
     long_name: depth
@@ -160,6 +165,10 @@ stats:
   min: minimum
 
   std: standard_deviation
+
+  count: count
+
+  pcount: percentage_count
 
   quantile: quantile
 
