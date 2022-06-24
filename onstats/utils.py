@@ -1,5 +1,7 @@
 """Auxiliary functions."""
 import os
+from pathlib import Path
+import yaml
 import logging
 import numpy as np
 import dask.array as da
@@ -363,3 +365,40 @@ class cd:
 
     def __exit__(self, etype, value, traceback):
         os.chdir(self.savedPath)
+
+
+def set_attributes(dset):
+    with open(Path(__name__).parent / "attributes.yml") as stream:
+        metadata = yaml.load(stream, Loader=yaml.Loader)
+
+    # Data variables
+    for v, dvar in dset.data_vars.items():
+        var_parts = v.split("_")
+        logger.debug(f"Setting metadata for variable '{v}'")
+        try:
+            stat = metadata["stats"][var_parts[1]]
+            attrs = metadata["data_vars"][var_parts[0]]
+            attrs["standard_name"] = f"{attrs['standard_name']}_{stat}"
+            attrs["long_name"] = f"{stat} {attrs['long_name']}"
+            dvar.attrs = attrs
+        except KeyError:
+            logger.warning(f"No metadata available for '{v}' in attributes.yml")
+            continue
+
+    # Coordinates
+    for coord, da in dset.coords.items():
+        logger.debug(f"Setting metadata for coordinate '{coord}'")
+        try:
+            attrs = metadata["coord"][coord]
+            attrs["standard_name"] = f"{attrs['standard_name']}"
+            attrs["long_name"] = f"{attrs['long_name']}"
+            da.attrs = attrs
+        except KeyError:
+            logger.warning(f"No metadata available for '{coord}' in attributes.yml")
+
+    return dset
+
+
+if __name__ == "__main__":
+    dset = xr.open_zarr("/source/datacube/swan_nz_1km/ontask/tasks/stats/data/gridstats_datacube_nz.zarr")
+    dset = set_attributes(dset)
