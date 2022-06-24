@@ -15,6 +15,7 @@ import pandas as pd
 import xarray as xr
 import cmocean
 from dateutil.parser import parse
+import warnings
 
 import oncore
 
@@ -29,6 +30,9 @@ from simplekml import (
     Camera,
 )
 from simplekml.featgeom import GroundOverlay
+
+
+warnings.filterwarnings("ignore")
 
 
 plt.switch_backend("agg")
@@ -240,7 +244,7 @@ class KMZ:
             self.darr = self.darr.isel(**{self.dim_name: self.dim_index})
         fig, ax = self.gearth_fig()
         # Plotting
-        logger.info("Plotting png for layer: {}".format(self.figname))
+        logger.debug("Plotting png for layer: {}".format(self.figname))
         cs = getattr(ax, self.chart["type"])(
             self.darr.lon, self.darr.lat, self.darr, **self.plot_kwargs
         )
@@ -314,11 +318,12 @@ class KMZ:
 
     def _make_statscontour(self):
         """Make linestring for stats over depth layers."""
-        logger.info(f"Plotting statscontour for layer: {self.figname}")
+        logger.debug(f"Plotting statscontour for layer: {self.figname}")
 
         self.darr = self.ds[self.layer_val["var"]]
 
         levels = self.chart["depth_contours"]
+        step = self.chart.get("step", 1)
         units = self.layer_val.get("units", "m")
 
         # Extract coordinates of depth contours, each contour will have multiple paths
@@ -359,15 +364,22 @@ class KMZ:
             self._add_colorbar(group1)
 
         # Loop over depth contours
+        npoints = {}
         for depth, all_contours in depths.items():
-            logger.info(f"Stat for depth layer {depth}")
+            npoints[depth] = 0
+            logger.debug(f"Stat for depth layer {depth}")
             subgroup = group1.newfolder(name=f"{depth:0.0f}m")
             # Loop over all paths for current contour
             for contour_coords in all_contours:
                 x = xr.DataArray([c[0] for c in contour_coords], dims=("stat",))
                 y = xr.DataArray([c[1] for c in contour_coords], dims=("stat",))
                 z = self.darr.interp(lon=x, lat=y).fillna(0.)
+                # Subsetting
+                x = x[::step]
+                y = y[::step]
+                z = z[::step]
                 coords = [(xc, yc, zc) for xc, yc, zc in zip(x.values, y.values, z.values)]
+                npoints[depth] += x.size
                 for ind in range(len(coords) - 1):
                     # Current segment to plot
                     segment = coords[ind:ind+2]
@@ -446,7 +458,7 @@ class KMZ:
         # levels = self.plot_kwargs.pop('levels')
         # gray_scales = np.linspace(0.2, 0.0, len(levels))
         # for level, gray_scale in zip(levels, gray_scales):
-        #     logger.info('Drawing contour level {}'.format(level))
+        #     logger.debug('Drawing contour level {}'.format(level))
         #     kwargs = self.plot_kwargs.copy()
         #     kwargs.update({'levels': [level]})
 
@@ -751,7 +763,7 @@ class KMZ:
 
     def add_contour(self):
         """Make linestring contour layers."""
-        logger.info("Plotting linestring for layer: {}".format(self.figname))
+        logger.debug("Plotting linestring for layer: {}".format(self.figname))
         fig, ax = self.gearth_fig()
         self.darr = self.ds[self.layer_val["var"]]
 
@@ -771,7 +783,7 @@ class KMZ:
         levels = self.plot_kwargs.pop("levels")
         gray_scales = np.linspace(0.2, 0.0, len(levels))
         for level, gray_scale in zip(levels, gray_scales):
-            logger.info("Drawing contour level {}".format(level))
+            logger.debug("Drawing contour level {}".format(level))
             kwargs = self.plot_kwargs.copy()
             kwargs.update({"levels": [level]})
 
