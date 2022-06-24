@@ -28,6 +28,11 @@ coord:
     long_name: forecast cycle
     units: ""
 
+  direction: &direction
+    standard_name: sea_surface_wave_from_direction
+    long_name: wave from direction
+    units: degree
+
   month:
     standard_name: month
     long_name: month
@@ -62,6 +67,8 @@ coord:
   dep: *lev
 
   depth: *lev
+
+  dir: *direction
 
 
 # ===============================================
