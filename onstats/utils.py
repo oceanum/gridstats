@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 import copy
 import logging
+import datetime
 import numpy as np
 import dask.array as da
 import pandas as pd
@@ -368,12 +369,32 @@ class cd:
         os.chdir(self.savedPath)
 
 
-def set_attributes(dset):
+def set_global_attributes(dset, dsout):
+    """Set global attributes in dsout."""
+    dsout.attrs = {
+        "title": "Data stats",
+        "institution": "Oceanum",
+        "source": "onstats",
+        "date_created": f"{datetime.datetime.utcnow():%Y-%m-%d}"
+    }
+    if "time" in dset:
+        t0, t1, tend = dset.time[[0, 1, -1]].to_index()
+        resolution = (t1 - t0).isoformat()
+        duration = (tend - t0).isoformat()
+        dsout.attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
+        dsout.attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
+        dsout.attrs["time_coverage_duration"] = duration
+        dsout.attrs["time_coverage_resolution"] = resolution
+    return dsout
+
+
+def set_variable_attributes(dsout):
+    """Set variable attributes in dsout."""
     with open(Path(__file__).parent / "attributes.yml") as stream:
         metadata = yaml.load(stream, Loader=yaml.Loader)
 
     # Data variables
-    for v, dvar in dset.data_vars.items():
+    for v, dvar in dsout.data_vars.items():
         var_parts = v.split("_")
         logger.debug(f"Setting metadata for variable '{v}'")
         try:
@@ -387,7 +408,7 @@ def set_attributes(dset):
             continue
 
     # Coordinates
-    for coord, da in dset.coords.items():
+    for coord, da in dsout.coords.items():
         logger.debug(f"Setting metadata for coordinate '{coord}'")
         try:
             attrs = metadata["coord"][coord]
@@ -397,7 +418,7 @@ def set_attributes(dset):
         except KeyError:
             logger.warning(f"No metadata available for '{coord}' in attributes.yml")
 
-    return dset
+    return dsout
 
 
 if __name__ == "__main__":

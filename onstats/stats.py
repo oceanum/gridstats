@@ -1,7 +1,6 @@
 """Calculated gridded stats using xarray and dask."""
 import os
 from pathlib import Path
-import datetime
 from importlib import import_module
 from inspect import getmembers, isfunction
 import shutil
@@ -17,7 +16,7 @@ from contextlib import contextmanager
 from oncore.dataio import put, isdir, exists, rm, get
 from oncore import LOGGING_CONFIG
 
-from onstats.utils import stepwise, cd, set_attributes
+from onstats.utils import stepwise, cd, set_variable_attributes, set_global_attributes
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -255,24 +254,9 @@ class Stats(metaclass=Plugin):
     def _setattrs(self):
         """Define some attributes in output dataset."""
         logger.debug("Defining attributes in output")
-        # variable attributes
-        self.dsout = set_attributes(self.dsout)
-        # Global attributes
         dset = self._open_dataset()
-        self.dsout.attrs = {
-            "title": "Data statis",
-            "institution": "Oceanum",
-            "source": "onstats",
-            "date_created": f"{datetime.datetime.utcnow():%Y-%m-%d}"
-        }
-        if "time" in dset.dims:
-            t0, t1, tend = dset.time[[0, 1, -1]].to_index()
-            resolution = (t1 - t0).isoformat()
-            duration = (tend - t0).isoformat()
-            self.dsout.attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
-            self.dsout.attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
-            self.dsout.attrs["time_coverage_duration"] = duration
-            self.dsout.attrs["time_coverage_resolution"] = resolution
+        self.dsout = set_variable_attributes(self.dsout)
+        self.dsout = set_global_attributes(dset, self.dsout)
 
     def _setdtype(self):
         """Ensure correct data types."""
