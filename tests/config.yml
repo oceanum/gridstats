@@ -122,42 +122,42 @@ kwds:
         latitude: 100
         longitude: 100
 
-    # Mean montly
-    - func: mean
-      use_dask_cluster: False
-      dim: time
-      group: month
-      data_vars: [hs]
-      chunks:
-        latitude: 100
-        longitude: 100
+    # # Mean montly
+    # - func: mean
+    #   use_dask_cluster: False
+    #   dim: time
+    #   group: month
+    #   data_vars: [hs]
+    #   chunks:
+    #     latitude: 100
+    #     longitude: 100
 
-    # Mean yearly
-    - func: min
-      dim: time
-      data_vars: [hs]
-      chunks:
-        latitude: 100
-        longitude: 100
+    # # Mean yearly
+    # - func: min
+    #   dim: time
+    #   data_vars: [hs]
+    #   chunks:
+    #     latitude: 100
+    #     longitude: 100
 
-    # Max yearly
-    - func: max
-      dim: time
-      data_vars: [hs]
-      chunks:
-        latitude: 100
-        longitude: 100
+    # # Max yearly
+    # - func: max
+    #   dim: time
+    #   data_vars: [hs]
+    #   chunks:
+    #     latitude: 100
+    #     longitude: 100
 
-    # Quantile yearly
-    - func: quantile
-      dim: time
-      q: [0.95, 0.99]
-      data_vars: [hs]
-      chunks:
-        time: -1
-        latitude: 50
-        longitude: 50
-      ystep: 10
-      xstep: null
-      yname: latitude
-      xname: longitude
+    # # Quantile yearly
+    # - func: quantile
+    #   dim: time
+    #   q: [0.95, 0.99]
+    #   data_vars: [hs]
+    #   chunks:
+    #     time: -1
+    #     latitude: 50
+    #     longitude: 50
+    #   ystep: 10
+    #   xstep: null
+    #   yname: latitude
+    #   xname: longitude

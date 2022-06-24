@@ -1,6 +1,7 @@
 """Calculated gridded stats using xarray and dask."""
 import os
 from pathlib import Path
+import datetime
 from importlib import import_module
 from inspect import getmembers, isfunction
 import shutil
@@ -254,7 +255,24 @@ class Stats(metaclass=Plugin):
     def _setattrs(self):
         """Define some attributes in output dataset."""
         logger.debug("Defining attributes in output")
+        # variable attributes
         self.dsout = set_attributes(self.dsout)
+        # Global attributes
+        dset = self._open_dataset()
+        self.dsout.attrs = {
+            "title": "Data statis",
+            "institution": "Oceanum",
+            "source": "onstats",
+            "date_created": f"{datetime.datetime.utcnow():%Y-%m-%d}"
+        }
+        if "time" in dset.dims:
+            t0, t1, tend = dset.time[[0, 1, -1]].to_index()
+            resolution = (t1 - t0).isoformat()
+            duration = (tend - t0).isoformat()
+            self.dsout.attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
+            self.dsout.attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
+            self.dsout.attrs["time_coverage_duration"] = duration
+            self.dsout.attrs["time_coverage_resolution"] = resolution
 
     def _setdtype(self):
         """Ensure correct data types."""
@@ -436,18 +454,3 @@ class Stats(metaclass=Plugin):
         self.dsout.to_zarr(outfile, **kwargs)
         if self.updir:
             self._upload(outfile)
-
-
-if __name__ == "__main__":
-    st = Stats(
-        outfile="tmp.nc",
-        urlpath="/source/onstats/tests/tasman.nc",
-        engine="netcdf4",
-        mapping={"tps": "tp"},
-        localdir="/scratch",
-        cluster_kwargs={},
-        calls=[],
-    )
-
-    # dsout1 = st.apply_func(func="mean", data_vars=["hs", "tp", "dpm"], compute=True, dim="time")
-    dsout2 = st.apply_func(func="mean", data_vars=["hs", "tp", "dpm"], compute=True, dim="time", xstep=10, ystep=10)
