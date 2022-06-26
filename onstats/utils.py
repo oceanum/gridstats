@@ -388,10 +388,17 @@ def set_global_attributes(dset, dsout):
     return dsout
 
 
-def set_variable_attributes(dsout):
+def set_variable_attributes(dsout, new_metadata={}):
     """Set variable attributes in dsout."""
     with open(Path(__file__).parent / "attributes.yml") as stream:
         metadata = yaml.load(stream, Loader=yaml.Loader)
+
+    # Add attributes passed by the caller
+    for key in ["coords", "data_vars", "stats"]:
+        try:
+            metadata[key].update(new_metadata.get(key, {}))
+        except KeyError:
+            logger.debug(f"new_metadata dict does not have {key} key to update")
 
     # Data variables
     for v, dvar in dsout.data_vars.items():
@@ -400,8 +407,10 @@ def set_variable_attributes(dsout):
         try:
             stat = metadata["stats"][var_parts[1]]
             attrs = copy.deepcopy(metadata["data_vars"][var_parts[0]])
-            attrs["standard_name"] = f"{attrs['standard_name']}_{stat}"
-            attrs["long_name"] = f"{stat} {attrs['long_name']}"
+            stdname = f"{attrs['standard_name']}"
+            lngname = attrs.get("long_name", stdname.replace("_", " "))
+            attrs["standard_name"] = f"{stdname}_{stat}"
+            attrs["long_name"] = f"{stat} {lngname}"
             dvar.attrs = attrs
         except KeyError:
             logger.warning(f"No metadata available for '{v}' in attributes.yml")
@@ -411,9 +420,11 @@ def set_variable_attributes(dsout):
     for coord, da in dsout.coords.items():
         logger.debug(f"Setting metadata for coordinate '{coord}'")
         try:
-            attrs = metadata["coord"][coord]
-            attrs["standard_name"] = f"{attrs['standard_name']}"
-            attrs["long_name"] = f"{attrs['long_name']}"
+            attrs = metadata["coords"][coord]
+            stdname = f"{attrs['standard_name']}"
+            lngname = attrs.get("long_name", stdname.replace("_", " "))
+            attrs["standard_name"] = f"{stdname}"
+            attrs["long_name"] = f"{lngname}"
             da.attrs = attrs
         except KeyError:
             logger.warning(f"No metadata available for '{coord}' in attributes.yml")

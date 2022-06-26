@@ -2,7 +2,7 @@
 # Coordinates
 # ===============================================
 
-coord:
+coords:
 
   time:
     standard_name: time

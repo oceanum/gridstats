@@ -57,6 +57,7 @@ class Stats(metaclass=Plugin):
         mapping={},
         slice_dict={},
         chunks={},
+        metadata={},
         updir=None,
         localdir="/tmp/run/stats",
         allow_split_large_chunks=False,
@@ -76,6 +77,7 @@ class Stats(metaclass=Plugin):
             - mapping (dict): Dictionary for renaming dataset variables.
             - slice_dict (dict): Dictionary specifying slicing parameters.
             - chunks(dict): Chunking sizes in output dataset.
+            - metadata (dict): Attributes to update or override existing ones.
             - updir (str): Path or URI to upload output stats file to.
             - localdir (str): Path to calculate stats and create dask workspace.
             - allow_split_large_chunks (bool): Allow dask auto-resize of small chunks.
@@ -104,6 +106,7 @@ class Stats(metaclass=Plugin):
         self.mapping = mapping
         self.slice_dict = slice_dict
         self.chunks = chunks
+        self.metadata = metadata
         self.updir = updir
         self.localdir = localdir
         self.cluster_kwargs = cluster_kwargs
@@ -255,7 +258,7 @@ class Stats(metaclass=Plugin):
         """Define some attributes in output dataset."""
         logger.debug("Defining attributes in output")
         dset = self._open_dataset()
-        self.dsout = set_variable_attributes(self.dsout)
+        self.dsout = set_variable_attributes(self.dsout, self.metadata)
         self.dsout = set_global_attributes(dset, self.dsout)
 
     def _setdtype(self):

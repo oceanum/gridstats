@@ -3,6 +3,13 @@ kwds:
   outfile: /source/onstats/tests/tmp.nc
   urlpath: /data/forecast/glob-20211214T12.nc
   engine: netcdf4
+  attrs:
+    coords:
+      latitude:
+        standard_name: lalala
+    data_vars:
+      hs:
+        standard_name: lololo
   # mapping:
   #   tps: tp
   # cluster_kwargs:
