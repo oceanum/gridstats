@@ -19,7 +19,7 @@ def exceedance(
     dset,
     threshold,
     inclusive=True,
-    duration="24h",
+    duration="0h",
     dim="time",
     group=None,
 ):
@@ -67,7 +67,7 @@ def nonexceedance(
     dset,
     threshold,
     inclusive=True,
-    duration="24h",
+    duration="0h",
     dim="time",
     group=None,
 ):
@@ -190,6 +190,6 @@ def _values_over_threshold(data, dt, durations):
 
 if __name__ == "__main__":
     dset = xr.open_dataset("/data/forecast/glob-20211214T12.nc", chunks={})
-    dset = dset.hs.sel(longitude=173, latitude=-40, drop=True)
+    dset = dset.hs#.sel(longitude=173, latitude=-40, drop=True)
     ds1 = exceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()
-    ds2 = nonexceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()
+    # ds2 = nonexceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()

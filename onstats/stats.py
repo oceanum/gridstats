@@ -233,12 +233,12 @@ class Stats(metaclass=Plugin):
         self._setdtype()
 
     def _sortby(self):
-        """Sort output dataset by all coordinates."""
+        """Sort output dataset by all dimensions."""
         logger.debug("Sorting output by dims")
-        for name, coords in self.dsout.coords.items():
-            if coords[0] > coords[-1]:
-                logger.info(f"Sorting by coordinate {name}")
-                self.dsout = self.dsout.sortby(name)
+        for dim in self.dsout.dims:
+            if self.dsout[dim][0] > self.dsout[dim][-1]:
+                logger.info(f"Sorting by dim {dim}")
+                self.dsout = self.dsout.sortby(dim)
 
     def _chunk(self):
         """.Chunk output dataset."""
@@ -247,6 +247,8 @@ class Stats(metaclass=Plugin):
         self.dsout = self.dsout.chunk(chunks)
         for dvar in self.dsout.values():
             dvar.encoding.pop("chunks", None)
+        for coord in self.dsout.coords.values():
+            coord.encoding.pop("chunks", None)
 
     def _transpose(self):
         logger.debug("Transposing output")
