@@ -6,6 +6,8 @@ import pandas as pd
 import xarray as xr
 from scipy import stats, signal
 
+from onstats.utils import get_timestep
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ def rpv(
         - rpvs (xr.Dataset): Return period values dataset.
 
     """
-    dt_hour = _timestep(dset, dim).total_seconds() / 3600
+    dt_hour = get_timestep(dset, dim).total_seconds() / 3600
 
     # Grouping by
     if group is not None:
@@ -156,30 +158,6 @@ def _np_rpv(
         p = ntimes * dt_year / (return_period * npeaks)
         rpvs.append(func.isf(p, *fits))
     return da.from_array(rpvs, chunks=(1,))
-
-
-def _timestep(df, dim="time"):
-    """Timestep from regularly-spaced dataframe with time-based index.
-
-    Args:
-        df (pd.Dataframe, pd.Series): Pandas object with a time-based index.
-        dim (str): Time dimension if xarray object.
-
-    Returns:
-        dt (timedelta): Regular time-step in Timedelta format.
-
-    """
-    if isinstance(df, (xr.Dataset, xr.DataArray)):
-        tdiff = np.diff(df[dim])
-    elif isinstance(df, (pd.DataFrame, pd.Series)):
-        tdiff = np.diff(df.index)
-    elif isinstance(df, xr.core.groupby.DatasetGroupBy):
-        tdiff = np.diff(list(df)[0][1][dim])
-        # Ignore extra times in grouped for now because they jump from year to year
-        tdiff = tdiff[[0]]
-    if tdiff.min() != tdiff.max():
-        raise ValueError("Times are not regularly-spaced in time")
-    return pd.to_timedelta(tdiff[0])
 
 
 if __name__ == "__main__":

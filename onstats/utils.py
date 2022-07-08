@@ -18,6 +18,20 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 
+class cd:
+    """Context manager for changing the current working directory"""
+
+    def __init__(self, newPath):
+        self.newPath = os.path.expanduser(newPath)
+
+    def __enter__(self):
+        self.savedPath = os.getcwd()
+        os.chdir(self.newPath)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.savedPath)
+
+
 def _get_kwargs(func, kwargs):
     """Returns all function kwargs including defaults that may have not been passed."""
     param = signature(func).parameters
@@ -355,18 +369,28 @@ def wavenumber(ang_freq, water_depth):
     return (k0h * (1 + 1.0 / (k0h * a)) ** 0.5) / water_depth
 
 
-class cd:
-    """Context manager for changing the current working directory"""
+def get_timestep(df, dim="time"):
+    """Timestep from regularly-spaced dataframe with time-based index.
 
-    def __init__(self, newPath):
-        self.newPath = os.path.expanduser(newPath)
+    Args:
+        df (pd.Dataframe, pd.Series): Pandas object with a time-based index.
+        dim (str): Time dimension if xarray object.
 
-    def __enter__(self):
-        self.savedPath = os.getcwd()
-        os.chdir(self.newPath)
+    Returns:
+        dt (timedelta): Regular time-step in Timedelta format.
 
-    def __exit__(self, etype, value, traceback):
-        os.chdir(self.savedPath)
+    """
+    if isinstance(df, (xr.Dataset, xr.DataArray)):
+        tdiff = np.diff(df[dim])
+    elif isinstance(df, (pd.DataFrame, pd.Series)):
+        tdiff = np.diff(df.index)
+    elif isinstance(df, xr.core.groupby.DatasetGroupBy):
+        tdiff = np.diff(list(df)[0][1][dim])
+        # Ignore extra times in grouped for now because they jump from year to year
+        tdiff = tdiff[[0]]
+    if tdiff.min() != tdiff.max():
+        raise ValueError("Times are not regularly-spaced in time")
+    return pd.to_timedelta(tdiff[0])
 
 
 def set_global_attributes(dset, dsout):
