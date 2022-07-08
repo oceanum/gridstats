@@ -48,6 +48,11 @@ coords:
     long_name: quantile
     units: ""
 
+  duration:
+    standard_name: duration
+    long_name: duration
+    units: ""
+
   period:
     standard_name: return_period
     long_name: return period
@@ -182,3 +187,7 @@ stats:
   rpv: return_period_value
 
   dist: joint_distribution
+
+  exceedance: exceedance_probability
+
+  nonexceedance: non_exceedance_probability
