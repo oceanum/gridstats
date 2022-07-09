@@ -47,6 +47,10 @@ def exceedance(
 
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
 
+    # Land masking
+    mask = dset.isel(**{dim: -1}).notnull()
+    dsout = dsout.where(mask)
+
     # Set attributes
     dsout.duration.attrs = {
         "standard_name": "exceedance_duration",
@@ -94,6 +98,10 @@ def nonexceedance(
         ds = xr.where(dset < threshold, 1, 0)
 
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
+
+    # Land masking
+    mask = dset.isel(**{dim: -1}).notnull()
+    dsout = dsout.where(mask)
 
     # Set attributes
     dsout.duration.attrs = {
@@ -190,6 +198,6 @@ def _values_over_threshold(data, dt, durations):
 
 if __name__ == "__main__":
     dset = xr.open_dataset("/data/forecast/glob-20211214T12.nc", chunks={})
-    dset = dset.hs#.sel(longitude=173, latitude=-40, drop=True)
+    dset = dset.hs.isel(latitude=slice(None, None, 10), longitude=slice(None, None, 10))#.sel(longitude=173, latitude=-40, drop=True)
     ds1 = exceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()
     # ds2 = nonexceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()
