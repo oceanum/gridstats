@@ -44,12 +44,9 @@ def exceedance(
         ds = xr.where(dset >= threshold, 1, 0)
     else:
         ds = xr.where(dset > threshold, 1, 0)
+    ds = ds.where(dset.notnull())
 
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
-
-    # Land masking
-    mask = dset.isel(**{dim: -1}).notnull()
-    dsout = dsout.where(mask)
 
     # Set attributes
     dsout.duration.attrs = {
@@ -96,12 +93,9 @@ def nonexceedance(
         ds = xr.where(dset <= threshold, 1, 0)
     else:
         ds = xr.where(dset < threshold, 1, 0)
+    ds = ds.where(dset.notnull())
 
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
-
-    # Land masking
-    mask = dset.isel(**{dim: -1}).notnull()
-    dsout = dsout.where(mask)
 
     # Set attributes
     dsout.duration.attrs = {
@@ -180,6 +174,11 @@ def _values_over_threshold(data, dt, durations):
         - vot (1d array): Values over threshold corresponding to each duration.
 
     """
+    # Ensure no missing values
+    if np.isnan(data).any():
+        logger.debug("Missing values not allowed, returning nan")
+        return da.from_array([np.nan] * len(durations), chunks=(1,))
+
     vot = []
     for duration in durations:
         # Distance corresponding to duration
