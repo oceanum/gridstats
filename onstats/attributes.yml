@@ -38,6 +38,11 @@ coords:
     long_name: month
     units: ""
 
+  year:
+    standard_name: year
+    long_name: year
+    units: ""
+
   season:
     standard_name: season
     long_name: season

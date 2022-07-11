@@ -22,7 +22,6 @@ def exceedance(
     duration="0h",
     dim="time",
     group=None,
-    mask_missing=True,
 ):
     """Probability of exceedance over duration period.
 
@@ -35,7 +34,6 @@ def exceedance(
           use a list for exceedances over different durations.
         - dim (str): Dimension to calculate exceedance along.
         - group (str): Time grouping type, any valid time_{group} such month, season.
-        - mask_missing (bool): Mask any cell with at least one missing valuealong dim.
 
     Returns:
         - dsout (Dataset, DataArray): Probability of exceedance.
@@ -50,9 +48,8 @@ def exceedance(
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
 
     # Land masking
-    if mask_missing:
-        mask = dset.isel(**{dim: -1}).notnull()
-        dsout = dsout.where(mask)
+    mask = dset.isel(**{dim: -1}).notnull()
+    dsout = dsout.where(mask)
 
     # Set attributes
     dsout.duration.attrs = {
@@ -77,7 +74,6 @@ def nonexceedance(
     duration="0h",
     dim="time",
     group=None,
-    mask_missing=True,
 ):
     """Probability of non-exceedance over duration period.
 
@@ -90,7 +86,6 @@ def nonexceedance(
           discarded, use a list for non-exceedances over different durations.
         - dim (str): Dimension to calculate non-exceedance along.
         - group (str): Time grouping type, any valid time_{group} such month, season.
-        - mask_missing (bool): Mask any cell with at least one missing valuealong dim.
 
     Returns:
         - dsout (Dataset, DataArray): Probability of non-exceedance.
@@ -105,9 +100,8 @@ def nonexceedance(
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
 
     # Land masking
-    if mask_missing:
-        mask = dset.isel(**{dim: -1}).notnull()
-        dsout = dsout.where(mask)
+    mask = dset.isel(**{dim: -1}).notnull()
+    dsout = dsout.where(mask)
 
     # Set attributes
     dsout.duration.attrs = {
@@ -166,7 +160,9 @@ def _probability_of_occurrance(dset, duration, dim="time", group=None):
         dask="parallelized",
         output_dtypes=["float32"],
     )
-    dsout = dsout / dset[dim].size
+
+    # Scale by count
+    dsout = dsout / dset.count(dim)
 
     # Assign duration coordinate
     dsout = dsout.assign_coords({"duration": duration})
