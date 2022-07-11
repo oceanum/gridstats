@@ -62,6 +62,11 @@ def rpv(
         dask="parallelized",
         output_dtypes=["float32"],
     )
+
+    # Land masking
+    mask = dset.count(dim) == dset[dim].size
+    dsout = dsout.where(mask)
+
     # Assign return period coordinate
     dsout = dsout.assign_coords({"period": return_periods})
     # Set attributes
@@ -131,15 +136,6 @@ def _np_rpv(
             f"Distribution '{distribution}' not available in scipy.stats, valid "
             f"distributions are: {[f for f in dir(stats) if f[0].islower()]}"
         ) from err
-
-    # Ensure no missing values
-    if np.isnan(data).any():
-        logger.debug("Missing values not allowed, returning nan")
-        return da.from_array([np.nan] * len(return_periods), chunks=(1,))
-
-    # Little hack to try and avoid ValueError: buffer source array is read-only
-    # https://github.com/pydata/xarray/issues/3715
-    # data = data.copy()
 
     peaks, height = _pov(data, dt_hour, percentile, duration)
 
