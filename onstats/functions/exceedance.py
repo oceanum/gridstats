@@ -51,7 +51,7 @@ def exceedance(
 
     # Land masking
     if mask_missing:
-        mask = dset.count(dim) == dset[dim].size
+        mask = dset.isel(**{dim: -1}).notnull()
         dsout = dsout.where(mask)
 
     # Set attributes
@@ -106,7 +106,7 @@ def nonexceedance(
 
     # Land masking
     if mask_missing:
-        mask = dset.count(dim) == dset[dim].size
+        mask = dset.isel(**{dim: -1}).notnull()
         dsout = dsout.where(mask)
 
     # Set attributes
