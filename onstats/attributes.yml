@@ -102,6 +102,11 @@ data_vars:
     long_name: current speed
     units: m s-1
 
+  mld:
+    standard_name: ocean_mixed_layer_depth
+    long_name: mixed layer depth
+    units: m
+
   wspd:
     standard_name: wind_speed_at_10m_above_ground_level
     long_name: 10m wind speed
