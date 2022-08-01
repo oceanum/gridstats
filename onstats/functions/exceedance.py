@@ -178,7 +178,7 @@ def _values_over_threshold(data, dt, durations):
 
     Args:
         - data (1d array): Binary timeseries indicating exceedance.
-        - dt (array): Time step of data in hours.
+        - dt (float): Time step of data in hours.
         - durations (list): Hours in storm below which extra peaks are discarded.
 
     Return:
@@ -187,13 +187,10 @@ def _values_over_threshold(data, dt, durations):
     """
     vot = []
     for duration in durations:
-        # Distance corresponding to duration
-        if duration < dt:
-            raise ValueError(f"dt {dt}h must be less than storm duration {duration}h")
         distance = round(duration / dt)
 
         # Append zeros at start and end to ensure boundary values are detected, this would
-        # be more efficient at xarray level function but that results in multiple time chunks
+        # be more efficient at xarray level function but that creates multiple time chunks
         data = np.hstack([0, data, 0])
         ind, prop = signal.find_peaks(data, height=1.0, plateau_size=distance)
         vot.append(prop["plateau_sizes"].sum())
@@ -204,5 +201,5 @@ def _values_over_threshold(data, dt, durations):
 if __name__ == "__main__":
     dset = xr.open_dataset("/data/forecast/glob-20211214T12.nc", chunks={})
     dset = dset.hs.isel(latitude=slice(None, None, 10), longitude=slice(None, None, 10))#.sel(longitude=173, latitude=-40, drop=True)
-    ds1 = exceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()
+    ds1 = exceedance(None, dset, threshold=3.0, duration=["0h", "1h", "3h"]).load()
     # ds2 = nonexceedance(None, dset, threshold=3.0, duration=["3h", "6h", "9h"]).load()
