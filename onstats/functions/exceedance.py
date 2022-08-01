@@ -18,6 +18,7 @@ def exceedance(
     self,
     dset,
     threshold,
+    maxval=np.inf,
     inclusive=True,
     duration="0h",
     dim="time",
@@ -29,7 +30,8 @@ def exceedance(
         - self (instance): Instance argument required for plugging into Stats class.
         - dset (Dataset, DataArray): Data to calculate exceedance for.
         - threshold (float): Threshold value at or above which exceedance is computed.
-        - inclusive (bool): If True the threshold value is included.
+        - maxval (float): Compute exceedance for data below this value.
+        - inclusive (bool): If True the threshold and maxval values are included.
         - duration (str, list): Duration below which exceeding values are discarded,
           use a list for exceedances over different durations.
         - dim (str): Dimension to calculate exceedance along.
@@ -41,9 +43,10 @@ def exceedance(
     """
     # Exceedance array
     if inclusive:
-        ds = xr.where(dset >= threshold, 1, 0)
+        condition = (dset >= threshold) & (dset <= maxval)
     else:
-        ds = xr.where(dset > threshold, 1, 0)
+        condition = (dset > threshold) & (dset < maxval)
+    ds = xr.where(condition, 1, 0)
 
     dsout = _probability_of_occurrance(ds, duration=duration, dim=dim, group=group)
 
