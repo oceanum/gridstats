@@ -76,7 +76,7 @@ class Stats(metaclass=Plugin):
             - dataset_id (str): Intake dataset id to calculate stats from.
             - mapping (dict): Dictionary for renaming dataset variables.
             - slice_dict (dict): Dictionary specifying slicing parameters.
-            - chunks(dict): Chunking sizes in output dataset.
+            - chunks (dict): Chunking sizes in output dataset.
             - metadata (dict): Attributes to update or override existing ones.
             - updir (str): Path or URI to upload output stats file to.
             - localdir (str): Path to calculate stats and create dask workspace.

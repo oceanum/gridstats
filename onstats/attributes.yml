@@ -68,6 +68,11 @@ coords:
     long_name: depth
     units: m
 
+  alt:
+    standard_name: altitude
+    long_name: altitude
+    units: m
+
   lat: *latitude
 
   lon: *longitude
