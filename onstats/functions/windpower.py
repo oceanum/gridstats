@@ -9,7 +9,17 @@ def _pol3(x, a, b, c, d):
     return (a * x) + (b * x ** 2) + (c * x ** 3) + d
 
 
-def winpow(self, wspd, turbine_power, cutin=3.0, rated=10.61, cutout=25.0, group=None):
+def winpow(
+    self,
+    wspd,
+    turbine_power,
+    cutin=3.0,
+    rated=10.61,
+    cutout=25.0,
+    agg="mean",
+    dim="time",
+    group=None,
+):
     """Empirical turbine wind power.
 
     Args:
@@ -19,7 +29,15 @@ def winpow(self, wspd, turbine_power, cutin=3.0, rated=10.61, cutout=25.0, group
         - cutin (float): Cut-in wind speed below which power is zero.
         - rated (float): Rated wind speed above which wind power is optimised.
         - cutout (float): Cut-out wind speed above which wind power is zero.
+        - agg (str): Aggregation function to apply.
+        - dim (str): Dimension to calculate rpv along.
         - group (str): Time grouping type, any valid time_{group} such month, season.
+
+    Returns:
+        - winpow (xr.DataArray): Wind Power DataArray.
+
+    Note:
+        - Windpower should be a derived variable instead a function.
 
     """
     if group is not None:
@@ -40,6 +58,10 @@ def winpow(self, wspd, turbine_power, cutin=3.0, rated=10.61, cutout=25.0, group
 
     # Zero above cut-out
     power = power.where(wspd < cutout, 0)
+
+    # Aggregation
+    if agg is not None:
+        power = getattr(power, agg)(dim=dim)
 
     return power
 
