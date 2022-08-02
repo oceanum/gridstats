@@ -12,11 +12,11 @@ def _groupby(dset, group):
     """Groupby dataset.
 
     Args:
-        dset (xr.Dataset): Dataset to groupby.
-        group (str): Time grouping type, any valid time_{group} such month, season.
+        - dset (xr.Dataset): Dataset to groupby.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
 
     Returns:
-        dset (Dataset, DatasetGroupBy): Dataset grouped by or not.
+        - dset (Dataset, DatasetGroupBy): Dataset grouped by or not.
 
     """
     if group is not None:
@@ -29,12 +29,12 @@ def min(self, dset, group=None, **kwargs):
     """Minimum wrapper function.
 
     Args:
-        dset (xr.Dataset): Dataset to reduce.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-        kwargs: Keywork arguments to pass to xarray's min method.
+        - dset (xr.Dataset): Dataset to reduce.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
+        - kwargs: Keywork arguments to pass to xarray's min method.
 
     Returns:
-        dsout (xr.Dataset): Reduced dataset.
+        - dsout (xr.Dataset): Reduced dataset.
 
     """
     dset = _groupby(dset, group)
@@ -45,12 +45,12 @@ def max(self, dset, group=None, **kwargs):
     """Maximum wrapper function.
 
     Args:
-        dset (xr.Dataset): Dataset to reduce.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-        kwargs: Keywork arguments to pass to xarray's max method.
+        - dset (xr.Dataset): Dataset to reduce.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
+        - kwargs: Keywork arguments to pass to xarray's max method.
 
     Returns:
-        dsout (xr.Dataset): Reduced dataset.
+        - dsout (xr.Dataset): Reduced dataset.
 
     """
     dset = _groupby(dset, group)
@@ -61,12 +61,12 @@ def mean(self, dset, group=None, **kwargs):
     """Mean wrapper function.
 
     Args:
-        dset (xr.Dataset): Dataset to reduce.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-        kwargs: Keywork arguments to pass to xarray's mean method.
+        - dset (xr.Dataset): Dataset to reduce.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
+        - kwargs: Keywork arguments to pass to xarray's mean method.
 
     Returns:
-        dsout (xr.Dataset): Reduced dataset.
+        - dsout (xr.Dataset): Reduced dataset.
 
     """
     dset = _groupby(dset, group)
@@ -77,12 +77,12 @@ def std(self, dset, group=None, **kwargs):
     """Standard deviation wrapper function.
 
     Args:
-        dset (xr.Dataset): Dataset to reduce.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-        kwargs: Keywork arguments to pass to xarray's std method.
+        - dset (xr.Dataset): Dataset to reduce.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
+        - kwargs: Keywork arguments to pass to xarray's std method.
 
     Returns:
-        dsout (xr.Dataset): Reduced dataset.
+        - dsout (xr.Dataset): Reduced dataset.
 
     """
     dset = _groupby(dset, group)
@@ -93,12 +93,12 @@ def count(self, dset, group=None, **kwargs):
     """Count wrapper function.
 
     Args:
-        dset (xr.Dataset): Dataset to reduce.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-        kwargs: Keywork arguments to pass to xarray's count method.
+        - dset (xr.Dataset): Dataset to reduce.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
+        - kwargs: Keywork arguments to pass to xarray's count method.
 
     Returns:
-        dsout (xr.Dataset): Reduced dataset.
+        - dsout (xr.Dataset): Reduced dataset.
 
     """
     dset = _groupby(dset, group)
@@ -109,12 +109,12 @@ def quantile(self, dset, group=None, **kwargs):
     """Quantile wrapper function.
 
     Args:
-        dset (xr.Dataset): Dataset to reduce.
-        group (str): Time grouping type, any valid time_{group} such month, season.
-        kwargs: Keywork arguments to pass to xarray's quantile method.
+        - dset (xr.Dataset): Dataset to reduce.
+        - group (str): Time grouping type, any valid time_{group} such month, season.
+        - kwargs: Keywork arguments to pass to xarray's quantile method.
 
     Returns:
-        dsout (xr.Dataset): Reduced dataset.
+        - dsout (xr.Dataset): Reduced dataset.
 
     """
     dset = _groupby(dset, group)
