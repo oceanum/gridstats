@@ -167,6 +167,11 @@ data_vars:
       long_name: mean wave period from the second spectral moment
       units: s
 
+  winpow:
+    standard_name: wind_power
+    long_name: wind power
+    units: kW
+
   dep: *depth
 
   dpt: *depth
