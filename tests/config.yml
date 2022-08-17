@@ -1,7 +1,8 @@
 !!python/object/apply:onstats.stats.Stats
 kwds:
   outfile: /source/onstats/tests/tmp.nc
-  urlpath: /data/forecast/glob-20211214T12.nc
+  # urlpath: /data/forecast/glob-20211214T12.nc
+  urlpath: /data/forecast/ww3-test.nc
   engine: netcdf4
   metadata:
     coords:
@@ -96,16 +97,17 @@ kwds:
     #   dim: time
     #   group: month
 
-    # # RPV yearly
-    # - func: rpv
-    #   return_periods: [10, 100]
-    #   percentile: 95
-    #   distribution: gumbel_r
-    #   duration: 24
-    #   dim: time
-    #   data_vars: [hs]
-    #   chunks: {}
-    #   ystep: 50
+    # RPV yearly
+    - func: rpv
+      return_periods: [10, 100]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 24
+      dim: time
+      data_vars: [hs]
+      use_dask_cluster: False
+      # chunks: {}
+      # ystep: 50
 
     # # RPV monthly
     # - func: rpv
@@ -119,15 +121,15 @@ kwds:
     #   chunks: {}
     #   ystep: 50
 
-    # Mean yearly
-    - func: mean
-      use_dask_cluster: False
-      dim: time
-      # group: month
-      data_vars: [hs]
-      chunks:
-        latitude: 100
-        longitude: 100
+    # # Mean yearly
+    # - func: mean
+    #   use_dask_cluster: False
+    #   dim: time
+    #   # group: month
+    #   data_vars: [hs]
+    #   chunks:
+    #     latitude: 100
+    #     longitude: 100
 
     # # Mean montly
     # - func: mean
