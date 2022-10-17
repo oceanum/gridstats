@@ -70,6 +70,10 @@ def exceedance(
             "units": "",
         }
 
+    # Rename variables
+    mapping = {v: f"{v}_{threshold}" for v in dsout.data_vars.keys()}
+    dsout = dsout.rename(mapping)
+
     return dsout
 
 
@@ -125,6 +129,10 @@ def nonexceedance(
             "long_name": f"probability of {v} not exceeding {threshold} {units} over duration period",
             "units": "",
         }
+
+    # Rename variables
+    mapping = {v: f"{v}_{threshold}" for v in dsout.data_vars.keys()}
+    dsout = dsout.rename(mapping)
 
     return dsout
 
