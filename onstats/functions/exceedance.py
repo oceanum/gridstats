@@ -8,7 +8,7 @@ import datetime
 from scipy import stats, signal
 
 from oncore.date import timedelta
-from onstats.utils import get_timestep
+from onstats.utils import get_timestep, METADATA
 
 
 logger = logging.getLogger(__name__)
@@ -56,15 +56,19 @@ def exceedance(
 
     # Set attributes
     dsout.duration.attrs = {
-        "standard_name": "exceedance_duration",
-        "long_name": "duration above which exceedance is computed",
+        "standard_name": "duration",
+        "long_name": "minimum time duration for computing (non)exceedance",
         "units": "",
     }
-    dsout.attrs = {
-        "standard_name": "exceedance_probability",
-        "long_name": "probability of exceedance at or above duration period",
-        "units": "",
-    }
+    for v, dvar in dsout.data_vars.items():
+        attrs = METADATA["data_vars"]["hs"]
+        standard_name = attrs.get('standard_name', v)
+        units = attrs.get("units", "")
+        dvar.attrs = {
+            "standard_name": f"{standard_name}_{threshold}{units}_exceedance_probability",
+            "long_name": f"probability of {v} exceeding {threshold} {units} over duration period",
+            "units": "",
+        }
 
     return dsout
 
@@ -108,15 +112,19 @@ def nonexceedance(
 
     # Set attributes
     dsout.duration.attrs = {
-        "standard_name": "non_exceedance_duration",
-        "long_name": "duration above which non exceedance is computed",
+        "standard_name": "duration",
+        "long_name": "minimum time duration for computing (non)exceedance",
         "units": "",
     }
-    dsout.attrs = {
-        "standard_name": "non_exceedance_probability",
-        "long_name": "probability of non exceedance at or above duration period",
-        "units": "",
-    }
+    for v, dvar in dsout.data_vars.items():
+        attrs = METADATA["data_vars"]["hs"]
+        standard_name = attrs.get('standard_name', v)
+        units = attrs.get("units", "")
+        dvar.attrs = {
+            "standard_name": f"{standard_name}_{threshold}{units}_non_exceedance_probability",
+            "long_name": f"probability of {v} not exceeding {threshold} {units} over duration period",
+            "units": "",
+        }
 
     return dsout
 

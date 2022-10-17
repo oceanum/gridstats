@@ -18,6 +18,10 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 
+with open(Path(__file__).parent / "attributes.yml") as stream:
+    METADATA = yaml.load(stream, Loader=yaml.Loader)
+
+
 class cd:
     """Context manager for changing the current working directory"""
 
@@ -414,13 +418,11 @@ def set_global_attributes(dset, dsout):
 
 def set_variable_attributes(dsout, new_metadata={}):
     """Set variable attributes in dsout."""
-    with open(Path(__file__).parent / "attributes.yml") as stream:
-        metadata = yaml.load(stream, Loader=yaml.Loader)
 
     # Add attributes passed by the caller
     for key in ["coords", "data_vars", "stats"]:
         try:
-            metadata[key].update(new_metadata.get(key, {}))
+            METADATA[key].update(new_metadata.get(key, {}))
         except KeyError:
             logger.debug(f"new_metadata dict does not have {key} key to update")
 
@@ -429,8 +431,12 @@ def set_variable_attributes(dsout, new_metadata={}):
         var_parts = v.split("_")
         logger.debug(f"Setting metadata for variable '{v}'")
         try:
-            stat = metadata["stats"][var_parts[1]]
-            attrs = copy.deepcopy(metadata["data_vars"][var_parts[0]])
+            # O not override if variable already has all main attributes required
+            if all([attr in dvar.attrs for attr in ["standard_name", "long_name", "units"]]):
+                logger.debug(f"All required attributes already available for {v}")
+                continue
+            stat = METADATA["stats"][var_parts[1]]
+            attrs = copy.deepcopy(METADATA["data_vars"][var_parts[0]])
             stdname = f"{attrs['standard_name']}"
             lngname = attrs.get("long_name", stdname.replace("_", " "))
             attrs["standard_name"] = f"{stdname}_{stat}"
@@ -444,7 +450,11 @@ def set_variable_attributes(dsout, new_metadata={}):
     for coord, da in dsout.coords.items():
         logger.debug(f"Setting metadata for coordinate '{coord}'")
         try:
-            attrs = metadata["coords"][coord]
+            # O not override if variable already has all main attributes required
+            if all([attr in da.attrs for attr in ["standard_name", "long_name", "units"]]):
+                logger.debug(f"All required attributes already available for {v}")
+                continue
+            attrs = METADATA["coords"][coord]
             stdname = f"{attrs['standard_name']}"
             lngname = attrs.get("long_name", stdname.replace("_", " "))
             attrs["standard_name"] = f"{stdname}"
