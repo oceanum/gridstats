@@ -73,6 +73,7 @@ def rpv(
         vectorize=True,
         dask="parallelized",
         output_dtypes=["float32"],
+        dask_gufunc_kwargs={"allow_rechunk": True},
     )
 
     # Land masking
@@ -149,7 +150,7 @@ def _np_rpv(
         for return_period in return_periods:
             p = ntimes * dt_year / (return_period * npeaks)
             rpvs.append(func.isf(p, *fits))
-    return da.from_array(rpvs, chunks=(1,))
+    return np.array(rpvs)
 
 
 if __name__ == "__main__":
