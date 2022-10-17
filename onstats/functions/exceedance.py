@@ -162,6 +162,7 @@ def _probability_of_occurrance(dset, duration, dim="time", group=None):
         vectorize=True,
         dask="parallelized",
         output_dtypes=["float32"],
+        dask_gufunc_kwargs={"allow_rechunk": True},
     )
 
     # Scale by count
@@ -195,7 +196,7 @@ def _values_over_threshold(data, dt, durations):
         ind, prop = signal.find_peaks(data, height=1.0, plateau_size=distance)
         vot.append(prop["plateau_sizes"].sum())
 
-    return da.from_array(vot, chunks=(1,))
+    return np.array(vot)
 
 
 if __name__ == "__main__":

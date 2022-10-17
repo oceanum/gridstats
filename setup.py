@@ -20,6 +20,7 @@ requirements = [
     "flox",
     "intake",
     "matplotlib",
+    "netcdf4",
     "nco",
     "pyyaml",
     "simplekml",
