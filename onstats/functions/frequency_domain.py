@@ -16,7 +16,7 @@ BANDS = {
 }
 
 
-def np_hs(x, fs, segsec, bands):
+def _np_hs(x, fs, segsec, bands):
     """Frequency domain significant wave height for frequency bands.
 
     Args:
@@ -49,31 +49,32 @@ def np_hs(x, fs, segsec, bands):
         freq_band = np.hstack((fmin, freq[ifreq], fmax))
         efth_band = f(freq_band)
         hs.append(float(4 * np.sqrt(simps(efth_band, freq_band))))
-    return da.from_array(hs, chunks=(1,))
+    return np.array(hs)
 
 
-def hmo(darr, fs, segsec=256, bands=BANDS, dim="time"):
+def hmo(self, dset, segsec=256, bands=BANDS, dim="time", group=None):
     """Frequency domain significant wave height for frequency bands.
 
     Args:
-        darr (DataArray): Time series data to calculate Hs from.
-        fs (float): Sampling frequency of darr (Hz).
-        segsec (int): Size of overlapping segments (s).
-        bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax] (Hz).
-        dim (str): Dimension to calculate fft along.
+        - self (instance): Instance argument required for plugging into Stats class.
+        - dset (xr.Dataset): Dataset with variables to calculate Hmo for.
+        - segsec (int): Size of overlapping segments (s).
+        - bands (dict): Frequency bands, keys are band labels, values are [fmin, fmax] (Hz).
+        - dim (str): Dimension to calculate fft along.
 
     Returns:
-        hs (DataArray):
+        - hs (DataArray):
 
     Note:
-        None or nan band values are interpreted as the min or max frequency available.
+        - None or nan band values are interpreted as the min or max frequency available.
 
     """
     # Apply function
     bands_array = np.array(list(bands.values()), dtype=float)
+    fs = 1 / float(np.diff(dset[dim]).mean())
     dsout = xr.apply_ufunc(
-        np_hs,
-        darr,
+        _np_hs,
+        dset,
         fs,
         segsec,
         bands_array,
@@ -83,6 +84,7 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="time"):
         vectorize=True,
         dask="parallelized",
         output_dtypes=["float32"],
+        dask_gufunc_kwargs={"allow_rechunk": True},
     )
     dsout = dsout.assign_coords({"band": list(bands.keys())})
     # Finalise
@@ -91,7 +93,7 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="time"):
         "long_name": "Frequency ranges hs is calculated over",
         "units": "Hz",
     }
-    if isinstance(darr, xr.DataArray):
+    if isinstance(dset, xr.DataArray):
         dsout = dsout.to_dataset()
     for varname, dvar in dsout.data_vars.items():
         dvar.attrs = {
@@ -100,7 +102,7 @@ def hmo(darr, fs, segsec=256, bands=BANDS, dim="time"):
             "units": dvar.attrs.get("units", "m"),
         }
     dsout = dsout.rename({v: f"hs_{v}" for v in dsout.data_vars})
-    if isinstance(darr, xr.DataArray):
+    if isinstance(dset, xr.DataArray):
         dsout = dsout.to_array().isel(variable=0, drop=True)
-        dsout.name = f"hs_{darr.name}"
+        dsout.name = f"hs_{dset.name}"
     return dsout

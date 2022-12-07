@@ -406,13 +406,16 @@ def set_global_attributes(dset, dsout):
         "date_created": f"{datetime.datetime.utcnow():%Y-%m-%d}"
     }
     if "time" in dset:
-        t0, t1, tend = dset.time[[0, 1, -1]].to_index()
-        resolution = (t1 - t0).isoformat()
-        duration = (tend - t0).isoformat()
-        dsout.attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
-        dsout.attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
-        dsout.attrs["time_coverage_duration"] = duration
-        dsout.attrs["time_coverage_resolution"] = resolution
+        try:
+            t0, t1, tend = dset.time[[0, 1, -1]].to_index()
+            resolution = (t1 - t0).isoformat()
+            duration = (tend - t0).isoformat()
+            dsout.attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
+            dsout.attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
+            dsout.attrs["time_coverage_duration"] = duration
+            dsout.attrs["time_coverage_resolution"] = resolution
+        except AttributeError:
+            logger.debug("time dim is not datetime, not calculating time global attrs")
     return dsout
 
 

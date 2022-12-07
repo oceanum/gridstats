@@ -1,47 +1,15 @@
-init:
-  # dataset: /source/onfunwave/tests/data/funwave.nc
-  dataset: /source/onfunwave/tests/data/funwave.zarr
-  # updir: ./
-  slice_dict:
-    isel:
-      second: !!python/object/apply:slice [-1800, 10000]
-  # chunks:
-  #   latitude: 50
-  #   longitude: 50
+!!python/object/apply:onstats.stats.Stats
+kwds:
+  outfile: /source/onstats/tests/tmp.nc
+  urlpath: /data/funwave/funwave-test.zarr
+  engine: zarr
+  # slice_dict:
+  #   isel:
+  #     x: 50
+  #     y: 50
 
-calls:
+  calls:
 
-  - method: hsig
-    kwargs:
-      dim: second
-      data_vars:
-        - eta
-        - u
-        - v
-
-  - method: hmo_stepwise
-    kwargs:
-      dim: second
-      fs: 1
+    - func: hmo
+      data_vars: [eta]
       segsec: 256
-      step_x: 25
-      step_y: 25
-      data_vars:
-        - eta
-        - u
-        - v
-      bands:
-        "0_25": [0.04, null]
-        "8_25": [0.04, 0.125]
-        "25_120": [0.00833, 0.04]
-        "25_300": [0.00333, 0.04]
-        tot: [null, null]
-
-  - method: to_netcdf
-    kwargs:
-      outfile: /source/onstats/tests/hmo.nc
-      format: NETCDF4
-
-  # - method: to_zarr
-  #   kwargs:
-  #     outfile: /source/onstats/tests/gridstat.zarr
