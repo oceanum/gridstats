@@ -13,6 +13,7 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "bottleneck",
+    "charset-normalizer<3.0,>=2.0",
     "click",
     "cmocean",
     "dask",
