@@ -112,6 +112,7 @@ def _pot(data, dt_hour, percentile=95, duration=24):
     distance = duration / dt_hour
     ind_perc = int(0.01 * percentile * data.shape[0])
     height = np.sort(data)[ind_perc]
+    data = data.copy() # https://github.com/pydata/xarray/issues/3715
     ind = signal.find_peaks(data, height=height, distance=distance)[0]
     return data[ind], height
 
