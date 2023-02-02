@@ -77,7 +77,7 @@ def rpv(
     )
 
     # Land masking
-    mask = dset.isel(**{dim: -1}).notnull()
+    mask = dset.isel(**{dim: -1}, drop=True).notnull()
     dsout = dsout.where(mask)
 
     # Assign return period coordinate
