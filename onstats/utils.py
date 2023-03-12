@@ -434,16 +434,23 @@ def set_variable_attributes(dsout, new_metadata={}):
         var_parts = v.split("_")
         logger.debug(f"Setting metadata for variable '{v}'")
         try:
-            # O not override if variable already has all main attributes required
-            if all([attr in dvar.attrs for attr in ["standard_name", "long_name", "units"]]):
-                logger.debug(f"All required attributes already available for {v}")
-                continue
+            # # Do not override if variable already has all main attributes required
+            # if all([attr in dvar.attrs for attr in ["standard_name", "long_name", "units"]]):
+            #     logger.debug(f"All required attributes already available for {v}")
+            #     continue
             stat = METADATA["stats"][var_parts[1]]
             attrs = copy.deepcopy(METADATA["data_vars"][var_parts[0]])
             stdname = f"{attrs['standard_name']}"
             lngname = attrs.get("long_name", stdname.replace("_", " "))
             attrs["standard_name"] = f"{stdname}_{stat}"
             attrs["long_name"] = f"{stat} {lngname}"
+            # Deal with groups
+            if "month" in v:
+                attrs["long_name"] = "monthly " + attrs["long_name"]
+            elif "year" in v:
+                attrs["long_name"] = "yearly " + attrs["long_name"]
+            elif "season" in v:
+                attrs["long_name"] = "seasonal " + attrs["long_name"]
             dvar.attrs = attrs
         except KeyError:
             logger.warning(f"No metadata available for '{v}' in attributes.yml")
