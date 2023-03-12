@@ -53,6 +53,9 @@ def rpv(
     if duration < dt_hour:
         raise ValueError(f"dt {dt_hour}h must be less than storm duration {duration}h")
 
+    # Land mask
+    mask = dset.isel(**{dim: -1}, drop=True).notnull()
+
     # Grouping by
     if group is not None:
         logger.debug(f"Grouping by {group}")
@@ -74,11 +77,7 @@ def rpv(
         dask="parallelized",
         output_dtypes=["float32"],
         dask_gufunc_kwargs={"allow_rechunk": True},
-    )
-
-    # Land masking
-    mask = dset.isel(**{dim: -1}, drop=True).notnull()
-    dsout = dsout.where(mask)
+    ).where(mask)
 
     # Assign return period coordinate
     dsout = dsout.assign_coords({"period": return_periods})
