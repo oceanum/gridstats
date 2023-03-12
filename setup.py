@@ -29,8 +29,8 @@ requirements = [
     "tqdm",
     "xarray",
     "zarr",
-    "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.26",
-    "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@v1.1.9",
+    "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.28",
+    "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@v1.6.0",
     # "onstats @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/onstats@master",
 ]
 
@@ -60,6 +60,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://gitlab.com/oceanum/onstats",
-    version="0.1.0",
+    version="1.3.0",
     zip_safe=False,
 )
