@@ -142,7 +142,14 @@ def _np_rpv(
     peaks, height = _pot(data, dt_hour, percentile, duration)
     rpvs = [np.nan] * len(return_periods)
     if peaks.size > 0:
-        fits = func.fit(peaks, floc=height)
+        try:
+            fits = func.fit(peaks, floc=height)
+        except TypeError:
+            logger.error(
+                "TypeError when calling func.fit with "
+                f"peaks={peaks} ({type(peaks)}), floc={height} ({type(height)})"
+            )
+            return np.array(rpvs)
         dt_year = dt_hour / (24 * 365)
         ntimes = data.shape[0]
         npeaks = peaks.shape[0]
