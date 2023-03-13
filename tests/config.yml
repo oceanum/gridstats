@@ -21,11 +21,26 @@ kwds:
   #   threads_per_worker: 1
   calls:
 
+    # Distribution timestep 3d
+    - func: distribution3_timestep
+      suffix: ""
+      chunks: {}
+      rechunk: {time: -1, latitude: -1, longitude: -1}
+      var1: hs
+      var2: tp
+      var3: dpm
+      bins1: {start: 0, step: 0.5}
+      bins2: {start: 0, step: 1.0}
+      bins3: {start: 0, stop: 360, step: 45}
+      dim: time
+      group: month
+      freq: 10d
+      loadstep: True
+      compute: False
+
     # # Distribution timestep 3d
-    # - func: distribution3_timestep
-    #   suffix: ""
+    # - func: distribution3
     #   chunks: {}
-    #   rechunk: {time: -1, latitude: -1, longitude: -1}
     #   var1: hs
     #   var2: tp
     #   var3: dpm
@@ -34,91 +49,76 @@ kwds:
     #   bins3: {start: 0, stop: 360, step: 45}
     #   dim: time
     #   group: month
-    #   freq: 10d
-    #   loadstep: True
-    #   compute: False
+    #   suffix: ""
 
-    # # # Distribution timestep 3d
-    # # - func: distribution3
-    # #   chunks: {}
-    # #   var1: hs
-    # #   var2: tp
-    # #   var3: dpm
-    # #   bins1: {start: 0, step: 0.5}
-    # #   bins2: {start: 0, step: 1.0}
-    # #   bins3: {start: 0, stop: 360, step: 45}
-    # #   dim: time
-    # #   group: month
-    # #   suffix: ""
+    # Time max for directional sectors
+    - func: max
+      dim: time
+      data_vars: [hs]
+      chunks: {}
+      nsector: 8
+      compute: False
 
-    # # Time max for directional sectors
-    # - func: max
-    #   dim: time
-    #   data_vars: [hs]
-    #   chunks: {}
-    #   nsector: 8
-    #   compute: False
+    # RPV for directional sectors
+    - func: rpv
+      return_periods: [10, 100]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 24
+      dim: time
+      data_vars: [hs]
+      chunks: {}
+      nsector: 8
+      ystep: 20
+      ychunksize: 10
+      xchunksize: 10
 
-    # # RPV for directional sectors
-    # - func: rpv
-    #   return_periods: [10, 100]
-    #   percentile: 95
-    #   distribution: gumbel_r
-    #   duration: 24
-    #   dim: time
-    #   data_vars: [hs]
-    #   chunks: {}
-    #   nsector: 8
-    #   ystep: 20
-    #   ychunksize: 10
-    #   xchunksize: 10
+    # Distribution 2d
+    - func: distribution2
+      chunks: {}
+      ystep: null
+      var1: hs
+      var2: dpm
+      bins1: {start: 0, step: 0.5}
+      bins2: {start: 0, stop: 360, step: 45}
+      isdir1: False
+      isdir2: True
+      dim: time
+      group: month
 
-    # # Distribution 2d
-    # - func: distribution2
-    #   chunks: {}
-    #   ystep: null
-    #   var1: hs
-    #   var2: dpm
-    #   bins1: {start: 0, step: 0.5}
-    #   bins2: {start: 0, stop: 360, step: 45}
-    #   isdir1: False
-    #   isdir2: True
-    #   dim: time
-    #   group: month
+    # RPV yearly
+    - func: rpv
+      return_periods: [10, 100]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 24
+      dim: time
+      data_vars: [hs]
+      use_dask_cluster: False
+      # chunks: {}
+      # ystep: 50
 
-    # # RPV yearly
-    # - func: rpv
-    #   return_periods: [10, 100]
-    #   percentile: 95
-    #   distribution: gumbel_r
-    #   duration: 24
-    #   dim: time
-    #   data_vars: [hs]
-    #   use_dask_cluster: False
-    #   # chunks: {}
-    #   # ystep: 50
+    # RPV monthly
+    - func: rpv
+      return_periods: [10, 100]
+      percentile: 95
+      distribution: gumbel_r
+      duration: 24
+      dim: time
+      group: month
+      data_vars: [hs]
+      chunks: {}
+      ystep: 50
 
-    # # RPV monthly
-    # - func: rpv
-    #   return_periods: [10, 100]
-    #   percentile: 95
-    #   distribution: gumbel_r
-    #   duration: 24
-    #   dim: time
-    #   group: month
-    #   data_vars: [hs]
-    #   chunks: {}
-    #   ystep: 50
-
-    # # Mean yearly
-    # - func: mean
-    #   use_dask_cluster: False
-    #   dim: time
-    #   # group: month
-    #   data_vars: [hs]
-    #   chunks:
-    #     latitude: 100
-    #     longitude: 100
+    # Mean yearly
+    - func: mean
+      use_dask_cluster: False
+      dim: time
+      # group: month
+      data_vars: [hs]
+      chunks:
+        latitude: 100
+        longitude: 100
 
     # Mean montly
     - func: mean
@@ -130,32 +130,32 @@ kwds:
         latitude: 100
         longitude: 100
 
-    # # Mean yearly
-    # - func: min
-    #   dim: time
-    #   data_vars: [hs]
-    #   chunks:
-    #     latitude: 100
-    #     longitude: 100
+    # Mean yearly
+    - func: min
+      dim: time
+      data_vars: [hs]
+      chunks:
+        latitude: 100
+        longitude: 100
 
-    # # Max yearly
-    # - func: max
-    #   dim: time
-    #   data_vars: [hs]
-    #   chunks:
-    #     latitude: 100
-    #     longitude: 100
+    # Max yearly
+    - func: max
+      dim: time
+      data_vars: [hs]
+      chunks:
+        latitude: 100
+        longitude: 100
 
-    # # Quantile yearly
-    # - func: quantile
-    #   dim: time
-    #   q: [0.95, 0.99]
-    #   data_vars: [hs]
-    #   chunks:
-    #     time: -1
-    #     latitude: 50
-    #     longitude: 50
-    #   ystep: 10
-    #   xstep: null
-    #   yname: latitude
-    #   xname: longitude
+    # Quantile yearly
+    - func: quantile
+      dim: time
+      q: [0.95, 0.99]
+      data_vars: [hs]
+      chunks:
+        time: -1
+        latitude: 50
+        longitude: 50
+      ystep: 10
+      xstep: null
+      yname: latitude
+      xname: longitude
