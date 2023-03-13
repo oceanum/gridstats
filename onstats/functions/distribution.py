@@ -498,7 +498,7 @@ def _np_histogram_2d(arr1, arr2, bins1, bins2):
         - The multidimensional histogram of (arr1, arr2).
 
     """
-    dist, __, __ = np.histogram2d(x=arr1, y=arr2, bins=(bins1, bins2), normed=False)
+    dist, __, __ = np.histogram2d(x=arr1, y=arr2, bins=(bins1, bins2), density=False)
     return dist
 
 
@@ -518,7 +518,7 @@ def _np_histogram_3d(arr1, arr2, arr3, bins1, bins2, bins3):
 
     """
     dist, __ = np.histogramdd(
-        sample=(arr1, arr2, arr3), bins=(bins1, bins2, bins3), normed=False
+        sample=(arr1, arr2, arr3), bins=(bins1, bins2, bins3), density=False
     )
     return dist
 
