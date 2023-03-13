@@ -144,9 +144,9 @@ def _np_rpv(
     if peaks.size > 0:
         try:
             fits = func.fit(peaks, floc=height)
-        except TypeError:
+        except (TypeError, AttributeError):
             logger.error(
-                "TypeError when calling func.fit with "
+                "TypeError or AttributeError when calling func.fit with "
                 f"peaks={peaks} ({type(peaks)}), floc={height} ({type(height)})"
             )
             return np.array(rpvs)
