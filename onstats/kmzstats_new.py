@@ -334,7 +334,6 @@ class KMZ:
             cs = ax.contour(self.depth.lon, self.depth.lat, self.depth, levels=[level])
             paths = cs.collections[0].get_paths()
             # multipoint = self.group.newmultigeometry(name="{:0.0f} m".format(level))
-            paths = cs.collections[0].get_paths()
             # Collect all contour paths for level
             all_coords = []
             for ipath, path in enumerate(paths):
@@ -360,8 +359,8 @@ class KMZ:
         group1 = group.newfolder(name=f"{self.layer_val['name']} at depths")
 
         # Colorbar
-        if self.colorbar:
-            self._add_colorbar(group1)
+        # if self.colorbar:
+        #     self._add_colorbar(group1)
 
         # Loop over depth contours
         npoints = {}
@@ -625,7 +624,7 @@ class KMZ:
         self.ds = self.ds.sel(lon=slice(x0, x1), lat=slice(y0, y1))
 
         # Hacked for now, interpolating to improve land mask
-        res = np.float(np.diff(self.ds.lon[[0, 1]]))
+        res = float(np.diff(self.ds.lon[[0, 1]]))
         if self.resolution is not None and res > self.resolution:
             lons = np.arange(
                 self.ds.lon[0], self.ds.lon[-1] + self.resolution, self.resolution
@@ -795,8 +794,10 @@ class KMZ:
 
             units = self.layer_val.get("units", "m")
             precision = self.chart.get("precision", "0.0f")
-            multipoint = group.newmultigeometry(name=f"{level:{precision}} {units}")
             paths = cs.collections[0].get_paths()
+            if not paths:
+                continue
+            multipoint = group.newmultigeometry(name=f"{level:{precision}} {units}")
             for ipath, path in enumerate(paths):
                 coords = [
                     (path.vertices[ivert][0], path.vertices[ivert][1], 0)
