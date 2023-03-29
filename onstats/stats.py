@@ -379,7 +379,7 @@ class Stats(metaclass=Plugin):
             data_vars = [k for k in dset.data_vars]
         logger.debug(f"Calculating {func} for vars: {data_vars}")
         dset = dset[data_vars]
-        logger.info(dset)
+        logger.debug(dset)
 
         # Calculating stats
         with self.client(**self.cluster_kwargs) as client:
