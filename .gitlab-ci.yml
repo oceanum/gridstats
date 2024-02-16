@@ -1,12 +1,11 @@
 build_image:
-  image: registry.gitlab.com/citygro/docker-and-compose
+  image: tmaier/docker-compose:latest
   services:
   - docker:19.03.5-dind
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.com
     - docker-compose build
     - docker-compose push
   only:
-    - master
     - tags
-    - branches
+    - master
