@@ -28,6 +28,7 @@ def distribution3_timestep(
     dim="time",
     group="month",
     rechunk={},
+    outchunk={},
     loadstep=True,
 ):
     """3D Joint distribution over timesteps to handle memory.
@@ -47,6 +48,7 @@ def distribution3_timestep(
         - dim (str): Dimension to calculate distribution along.
         - group (str): Time grouping type, any valid time_{group} such as month, season.
         - rechunk (dict): Dimension: Size for rechunking each sliced time step.
+        - outchunk (dict): Dimension: Size for output dataset.
         - loadstep (bool): Load each step before moving to the next one.
 
     Returns:
@@ -172,8 +174,9 @@ def distribution3_timestep(
             dsout += ds.broadcast_like(dsout).fillna(0.)
 
     # Chunking output before saving to disk
-    chunks = {**dict(dsout.dims), **{bin1_name: 1, bin2_name: 1, bin3_name: 1}}
-    dsout = dsout.chunk(chunks)
+    # chunks = {**dict(dsout.dims), **{bin1_name: 1, bin2_name: 1, bin3_name: 1}}
+    # dsout = dsout.chunk(chunks)
+    dsout = dsout.chunk(outchunk)
 
     # Masking based on the first variable
     mask = da1.isel(**{dim: 0}, drop=True).notnull()
