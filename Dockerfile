@@ -1,17 +1,26 @@
-FROM registry.gitlab.com/oceanum/docker/core-ubuntu:v0.1.3
+FROM ubuntu:24.04
+
 LABEL maintainer "Oceanum Developers <developers@oceanum.science>"
 
-ENV REPOS="/source"
+# Set variables
+ARG DEBIAN_FRONTEND=noninteractive
+ARG TZ=Etc/UTC
+ARG REPOS="/source"
 
-RUN echo "--------------- System packages ---------------" && \
-    apt update && apt upgrade -y
+# Install system packages
+RUN apt update && apt -y upgrade && \
+    apt -y install \
+        curl \
+        git \
+        python3-dev \
+        python3-pip \
+        wget
 
-RUN echo "--------------- Conflicting libs ---------------" && \
-    pip install --no-cache-dir -U packaging
+# Set default python3 as python
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-RUN echo "--------------- Installing onstats ---------------"
+# Install onstats
 COPY setup.py README.rst HISTORY.rst $REPOS/onstats/
 COPY onstats $REPOS/onstats/onstats
 COPY tests $REPOS/onstats/tests
-RUN cd $REPOS/onstats && \
-    pip install -e . --no-cache-dir
+RUN pip install --break-system-packages -e $REPOS/onstats --no-cache-dir
