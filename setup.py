@@ -24,7 +24,7 @@ requirements = [
     "tqdm",
     "zarr",
     "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.28",
-    "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@v1.7.4",
+    "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@copernicus-marine",
     # "onstats @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/onstats@master",
 ]
 
