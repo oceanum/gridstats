@@ -113,12 +113,12 @@ data_vars:
     units: m
 
   wspd:
-    standard_name: wind_speed_at_10m_above_ground_level
+    standard_name: wind_speed
     long_name: wind speed
     units: m s-1
 
   wdir:
-    standard_name: wind_from_direction_at_10m_above_ground_level
+    standard_name: wind_from_direction
     long_name: wind direction in coming from convention
     units: degree
 
