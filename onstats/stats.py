@@ -181,7 +181,7 @@ class Stats(metaclass=Plugin):
             cat = open_catalog(self.catalog)
             if not cat:
                 raise ValueError(f"Cannot open intake catalog from {self.catalog}")
-            dset = cat[self.dataset_id](chunks=chunks).to_dask()
+            dset = cat[self.dataset_id].to_dask().chunk(chunks)
         else:
             raise ValueError("Cannot identify source dataset from input arguments")
 
