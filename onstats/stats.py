@@ -168,11 +168,6 @@ class Stats(metaclass=Plugin):
         if isinstance(self.dset, xr.Dataset):
             logger.debug("Dataset provided")
             dset = self.dset
-        elif isinstance(self.dset, str):
-            raise ValueError(
-                f"dset must be a dataset instance, got {self.dset}. Use 'urlpath' "
-                "and 'engine' to specify a dataset path to open"
-            )
         elif self.urlpath:
             logger.debug(f"Open dataset from urlpath: {self.urlpath}")
             dset = xr.open_dataset(self.urlpath, engine=self.engine, chunks=chunks)
@@ -181,7 +176,14 @@ class Stats(metaclass=Plugin):
             cat = open_catalog(self.catalog)
             if not cat:
                 raise ValueError(f"Cannot open intake catalog from {self.catalog}")
-            dset = cat[self.dataset_id].to_dask().chunk(chunks)
+            dset = cat[self.dataset_id].to_dask()
+            if chunks:
+                dset = dset.chunk(chunks)
+        elif isinstance(self.dset, str):
+            raise ValueError(
+                f"dset must be a dataset instance, got {self.dset}. Use 'urlpath' "
+                "and 'engine' to specify a dataset path to open"
+            )
         else:
             raise ValueError("Cannot identify source dataset from input arguments")
 
