@@ -443,6 +443,6 @@ class Stats(metaclass=Plugin):
         for data_var in self.dsout.data_vars:
             self.dsout[data_var].encoding.update({"_FillValue": _FillValue})
             self.dsout[data_var].encoding.pop("zlib", None)
-        self.dsout.to_zarr(outfile, **kwargs)
+        self.dsout.to_zarr(outfile, mode=mode, **kwargs)
         if self.updir:
             self._upload(outfile)

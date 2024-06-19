@@ -432,14 +432,16 @@ def set_variable_attributes(dsout, new_metadata={}):
     # Data variables
     for v, dvar in dsout.data_vars.items():
         var_parts = v.split("_")
+        var_name = "_".join(var_parts[:-1])
+        stat_name = var_parts[-1]
         logger.debug(f"Setting metadata for variable '{v}'")
         try:
             # # Do not override if variable already has all main attributes required
             # if all([attr in dvar.attrs for attr in ["standard_name", "long_name", "units"]]):
             #     logger.debug(f"All required attributes already available for {v}")
             #     continue
-            stat = METADATA["stats"][var_parts[1]]
-            attrs = copy.deepcopy(METADATA["data_vars"][var_parts[0]])
+            stat = METADATA["stats"][stat_name]
+            attrs = copy.deepcopy(METADATA["data_vars"][var_name])
             stdname = f"{attrs['standard_name']}"
             lngname = attrs.get("long_name", stdname.replace("_", " "))
             attrs["standard_name"] = f"{stdname}_{stat}"
