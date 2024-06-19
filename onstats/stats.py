@@ -23,7 +23,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 
-_FILLVALUE = np.int32(2 ** 32 / 2)
+_FILLVALUE = np.int32(2 ** 32 / 2 - 1)
 
 
 @contextmanager
