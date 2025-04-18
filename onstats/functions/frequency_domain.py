@@ -4,7 +4,7 @@ import dask.array as da
 import xarray as xr
 from scipy.signal import welch
 from scipy.interpolate import interp1d
-from scipy.integrate import simps
+from scipy.integrate import simpson
 
 
 BANDS = {
@@ -48,7 +48,7 @@ def _np_hs(x, fs, segsec, bands):
         ifreq = (freq > fmin) & (freq < fmax)
         freq_band = np.hstack((fmin, freq[ifreq], fmax))
         efth_band = f(freq_band)
-        hs.append(float(4 * np.sqrt(simps(efth_band, freq_band))))
+        hs.append(float(4 * np.sqrt(simpson(efth_band, freq_band))))
     return np.array(hs)
 
 
