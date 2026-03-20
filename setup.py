@@ -13,20 +13,16 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "bottleneck",
-    "cmocean",
     "dask",
     "distributed",
     "flox",
     "intake-forecast",
-    "matplotlib",
-    "nco",
+    "pydantic>=2",
     "pyyaml",
-    "simplekml",
-    "tqdm",
+    "scipy",
+    "typer",
+    "xarray",
     "zarr<3",
-    "oncore @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/oncore@v0.1.28",
-    # "intake-oceanum @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/intake/intake-oceanum@copernicus-marine",
-    # "onstats @ git+https://oceanum-dev:REDACTED@gitlab.com/oceanum/onstats@master",
 ]
 
 setup_requirements = ["pytest-runner"]

@@ -1,0 +1,105 @@
+"""Pydantic configuration models for onstats."""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Literal
+
+import yaml
+from pydantic import BaseModel, ConfigDict, model_validator
+
+
+class SourceConfig(BaseModel):
+    """Configuration for a single data source."""
+
+    urlpath: str | None = None
+    catalog: str | None = None
+    dataset_id: str | None = None
+    engine: str = "zarr"
+    mapping: dict[str, str] = {}
+    slice_dict: dict[str, Any] = {}
+    chunks: dict[str, int] = {}
+
+    @model_validator(mode="after")
+    def _check_source(self) -> SourceConfig:
+        has_urlpath = self.urlpath is not None
+        has_catalog = self.catalog is not None and self.dataset_id is not None
+        if not has_urlpath and not has_catalog:
+            raise ValueError(
+                "Provide either 'urlpath' or both 'catalog' and 'dataset_id'."
+            )
+        if has_urlpath and has_catalog:
+            raise ValueError(
+                "Provide either 'urlpath' or 'catalog'/'dataset_id', not both."
+            )
+        return self
+
+
+class OutputConfig(BaseModel):
+    """Configuration for pipeline output."""
+
+    outfile: str
+    updir: str | None = None
+
+
+class ClusterConfig(BaseModel):
+    """Dask cluster configuration."""
+
+    enabled: bool = False
+    n_workers: int | None = None
+    threads_per_worker: int = 1
+    processes: bool = True
+
+
+class CallConfig(BaseModel):
+    """Configuration for a single stat call.
+
+    Any extra fields are forwarded as keyword arguments to the stat function.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    func: str
+    data_vars: list[str] | Literal["all"] = "all"
+    dim: str = "time"
+    group: str | None = None
+    chunks: dict[str, int] = {}
+    tiles: dict[str, int] = {}
+    use_dask_cluster: bool = True
+    nsector: int | None = None
+    dir_var: str = "dpm"
+    suffix: str | None = None
+
+    def extra_kwargs(self) -> dict[str, Any]:
+        """Return function-specific kwargs (all fields beyond the base schema)."""
+        return self.model_extra or {}
+
+
+class PipelineConfig(BaseModel):
+    """Top-level pipeline configuration."""
+
+    source: SourceConfig | None = None
+    # Placeholder for future multi-source support.
+    # When implemented, each named source will map to a separate Zarr group
+    # in the output, so that datasets on different grids can coexist without
+    # requiring interpolation.
+    sources: dict[str, SourceConfig] | None = None
+    output: OutputConfig
+    calls: list[CallConfig]
+    cluster: ClusterConfig = ClusterConfig()
+    metadata: dict[str, Any] = {}
+
+    @model_validator(mode="after")
+    def _check_sources(self) -> PipelineConfig:
+        has_source = self.source is not None
+        has_sources = self.sources is not None
+        if not has_source and not has_sources:
+            raise ValueError("Either 'source' or 'sources' must be provided.")
+        if has_source and has_sources:
+            raise ValueError("Provide either 'source' or 'sources', not both.")
+        return self
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> PipelineConfig:
+        """Load and validate a pipeline config from a YAML file."""
+        raw = yaml.safe_load(Path(path).read_text())
+        return cls.model_validate(raw)
