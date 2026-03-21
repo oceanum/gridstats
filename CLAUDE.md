@@ -4,83 +4,82 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**onstats** is an Oceanum library for computing statistical summaries and derived variables from oceanographic datasets (wave, ocean, wind data). It uses xarray and dask for processing large gridded datasets.
+**onstats** is an Oceanum library for computing statistical summaries from oceanographic datasets (wave, wind, current, temperature). It processes large gridded datasets lazily with xarray + dask and writes results to NetCDF or Zarr.
 
 ## Commands
 
+All commands should be run inside the `onstats` virtual environment:
+
 ```bash
+source ~/.virtualenvs/onstats/bin/activate
+
 # Install for development
-pip install -e .
+pip install -e ".[dev]"
 
-# Run tests
-make test              # Quick pytest run
-pytest tests/          # Equivalent
-pytest tests/test_cli.py::test_name  # Single test
+# Run all tests
+pytest tests/
 
-# Lint
-make lint              # flake8 onstats tests
-flake8 onstats tests   # Equivalent
+# Run a single test
+pytest tests/test_ops.py::test_mean
 
-# Coverage
-make coverage
+# Build docs
+mkdocs build
+mkdocs serve        # live preview at http://127.0.0.1:8000
 
-# Build distribution
-make dist
-
-# Clean artifacts
-make clean
+# CLI
+onstats run config.yml
+onstats list-stats
 ```
 
 ## Architecture
 
-### Plugin System
+### Key modules
 
-The core design is a **plugin-based architecture** in [onstats/stats.py](onstats/stats.py). The `Stats` class uses a `Plugin` metaclass that automatically discovers and attaches all public functions from the `onstats/functions/` subpackage as methods at runtime. Functions prefixed with `_` are private and not attached.
+| Module | Role |
+|---|---|
+| `onstats/config.py` | Pydantic v2 models for all YAML config fields |
+| `onstats/registry.py` | Dict-based registry; `@register_stat` / `@register_loader` decorators |
+| `onstats/pipeline.py` | `Pipeline` class — loads data, runs calls, writes output |
+| `onstats/output.py` | `finalise()`, `write()`, CF attribute application |
+| `onstats/ops/` | Stat functions (one file per category) |
+| `onstats/loaders/` | `XarrayLoader` and `IntakeLoader` |
+| `onstats/cli.py` | typer CLI (`run`, `list-stats`) |
 
-Each plugin function signature must be: `func(self, dset, **kwargs)` where `dset` is an xarray Dataset.
+### Config flow
 
-### Key Classes
+A YAML config is parsed by `PipelineConfig.from_yaml()` into typed Pydantic models. `Pipeline` reads the config, selects a loader from the registry by inspecting which `source` fields are set (`urlpath` → xarray, `catalog+dataset_id` → intake), then iterates over the `calls` list. Each call looks up the function by `func` name in the registry and applies it to the data, optionally with spatial tiling (`tiles:`) or directional sectorisation (`nsector:`). Results are merged into a single output dataset, CF attributes are applied, and the dataset is written to disk.
 
-- **`Stats`** ([onstats/stats.py](onstats/stats.py)): Main entry point. Loads datasets (via xarray, intake catalog, or urlpath), sets up dask clusters for parallel processing, and executes a sequence of operations defined in the `calls` config list. Outputs NetCDF or Zarr.
+### Registry and plugins
 
-- **`DerivedVariable`** ([onstats/derived_variable.py](onstats/derived_variable.py)): Computes derived oceanographic variables (e.g., Douglas sea scale, wind speed from components) from raw dataset variables. Used inside Stats for variable mapping.
+`_STATS` and `_LOADERS` are plain dicts. Built-in ops register themselves via `@register_stat("name")` when their modules are imported. `onstats/__init__.py` imports `onstats.loaders` and `onstats.ops` to trigger registration, then calls `_load_entrypoint_plugins()` to discover third-party extensions declared under the `onstats.stats` or `onstats.loaders` entry-point groups.
 
-- **`KMZ`** ([onstats/kmzstats_new.py](onstats/kmzstats_new.py)): Generates KML/KMZ files for Google Earth visualization from statistical output. Driven by YAML config.
+### Stat function signature
 
-### Functions Subpackage ([onstats/functions/](onstats/functions/))
-
-Pluggable statistical operations auto-attached to `Stats`:
-- `distribution.py` — joint 2D/3D distributions
-- `exceedance.py` — probability of exceedance
-- `rpv.py` — return period values (extreme value analysis)
-- `frequency_domain.py` — wave spectral analysis
-- `directional.py` — directional statistics
-- `probability.py` — probability distributions
-- `windpower.py` — wind power calculations
-
-### Computation Stack
-
-- **xarray** — multi-dimensional data operations ([onstats/xarray_stats.py](onstats/xarray_stats.py) wraps NumPy with dask support)
-- **NumPy/SciPy** — low-level implementations ([onstats/numpy_stats.py](onstats/numpy_stats.py): peaks-over-threshold, histograms, return period values)
-- **dask/distributed** — parallel and out-of-core computation
-- **intake-forecast** — data catalog access
-
-### Configuration
-
-Operations are driven by YAML config files. See [onstats/stats.yml](onstats/stats.yml) for the template and [onstats/README.rst](onstats/README.rst) for examples. Key fields:
-- Data source: `dset`, `urlpath`, or `catalog` + `dataset_id`
-- Variable renaming: `mapping`
-- Output: `outfile`
-- Operations sequence: `calls` list
-
-Variable metadata (units, long names, etc.) is defined in [onstats/attributes.yml](onstats/attributes.yml).
-
-## CLI
-
-```bash
-# Run gridded statistics from YAML config
-onstats gridstats config.yml
-
-# Generate KMZ visualization
-onstats kmz config.yml -o ./output -k output.kmz
+```python
+def my_stat(data: xr.Dataset, *, dim: str = "time", group: str | None = None, **kwargs) -> xr.Dataset:
+    ...
 ```
+
+Extra call-level YAML keys (anything not in `CallConfig`'s explicit fields) are collected by `CallConfig.extra_kwargs()` and forwarded as `**kwargs`.
+
+### Spatial tiling
+
+When `tiles:` is set on a call, `_apply_tiled()` in `pipeline.py` iterates over lat/lon blocks, calls the stat function on each block, and `xr.combine_by_coords()` reassembles the result. This keeps peak memory bounded for large grids.
+
+### Output naming
+
+Each output variable is renamed with a suffix before merging:
+
+```
+{variable}_{func}[_{group}][_direc]
+```
+
+Override with `suffix:` on the call. The `exceedance` family appends the threshold value instead.
+
+### Variable metadata
+
+`onstats/attributes.yml` maps variable names to CF standard attributes (standard_name, long_name, units). `output.set_variable_attributes()` applies these after all calls complete.
+
+### Multi-source (placeholder)
+
+`PipelineConfig.sources` (dict) is accepted by the schema but raises `NotImplementedError` at runtime. Only single-source pipelines (`source:`) are currently implemented.

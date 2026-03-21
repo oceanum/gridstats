@@ -1,0 +1,76 @@
+site_name: onstats
+site_description: Gridded statistics for oceanographic datasets
+site_url: https://oceanum.gitlab.io/onstats
+repo_url: https://gitlab.com/oceanum/onstats
+repo_name: oceanum/onstats
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_signature_annotations: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Configuration: configuration.md
+  - Operations:
+      - Overview: ops/index.md
+      - Aggregations: ops/aggregations.md
+      - Exceedance: ops/exceedance.md
+      - Return Period Values: ops/rpv.md
+      - Distributions: ops/distribution.md
+      - Directional: ops/directional.md
+      - Frequency Domain: ops/frequency-domain.md
+      - Range Probability: ops/probability.md
+      - Wind Power: ops/windpower.md
+  - Data Loaders: loaders.md
+  - Custom Plugins: plugins.md
+  - API Reference:
+      - Config: api/config.md
+      - Pipeline: api/pipeline.md
+      - Registry: api/registry.md
+      - Output: api/output.md
