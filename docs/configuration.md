@@ -30,17 +30,56 @@ calls:
 
 ## `source`
 
-Defines the single input dataset. Provide either `urlpath` **or** `catalog` + `dataset_id`.
+Defines the single input dataset. The `type` field is required and selects the loader.
+
+### `type: xarray`
+
+Load from any file or URL supported by xarray (local NetCDF, Zarr, cloud storage, etc.).
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `urlpath` | string | — | Path or URI to the dataset file. Accepts local paths, `gs://`, `s3://`, `https://`, etc. |
-| `catalog` | string | — | Path or URI to an intake catalog YAML file. |
-| `dataset_id` | string | — | Dataset key within the intake catalog. |
-| `engine` | string | `zarr` | xarray engine: `zarr`, `netcdf4`, `h5netcdf`, `scipy`. |
+| `type` | `"xarray"` | — | Selects the xarray loader. **Required.** |
+| `urlpath` | string | — | Path or URI to the dataset. Accepts local paths, `gs://`, `s3://`, `https://`, etc. **Required.** |
+| `engine` | string | `"zarr"` | xarray engine: `zarr`, `netcdf4`, `h5netcdf`, `scipy`, `cfgrib`, … |
 | `mapping` | dict | `{}` | Rename variables on load: `{old_name: new_name}`. |
 | `slice_dict` | dict | `{}` | xarray slicing operations applied after load (see below). |
 | `chunks` | dict | `{}` | Dask chunk sizes applied on open: `{dim: size}`. |
+
+```yaml
+source:
+  type: xarray
+  urlpath: /data/wave_hindcast.zarr
+  engine: zarr
+  chunks:
+    time: 100
+    latitude: 50
+    longitude: 50
+  mapping:
+    Hs: hs
+    Tp: tp
+```
+
+### `type: intake`
+
+Load from an [intake-forecast](https://github.com/oceanum/intake-forecast) catalog. Requires the `intake-forecast` package.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `type` | `"intake"` | — | Selects the intake loader. **Required.** |
+| `catalog` | string | — | Path or URI to the intake catalog YAML file. **Required.** |
+| `dataset_id` | string | — | Entry name within the catalog. **Required.** |
+| `mapping` | dict | `{}` | Rename variables on load. |
+| `slice_dict` | dict | `{}` | xarray slicing operations applied after load. |
+| `chunks` | dict | `{}` | Dask chunk sizes. |
+
+```yaml
+source:
+  type: intake
+  catalog: /catalogs/oceanum.yaml
+  dataset_id: wave_global_era5
+  chunks:
+    time: 50
+```
 
 ### `slice_dict`
 
@@ -156,8 +195,10 @@ The `sources` field is a placeholder for a future feature. When implemented, eac
 # Not yet implemented — schema is validated but will raise NotImplementedError at runtime
 sources:
   waves:
+    type: xarray
     urlpath: gs://bucket/waves.zarr
   wind:
+    type: xarray
     urlpath: gs://bucket/wind.zarr
 
 output:

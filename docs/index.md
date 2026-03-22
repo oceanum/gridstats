@@ -16,6 +16,7 @@ Write a config file:
 
 ```yaml title="config.yml"
 source:
+  type: xarray
   urlpath: gs://my-bucket/hindcast.zarr
   engine: zarr
   mapping:

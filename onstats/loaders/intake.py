@@ -5,7 +5,7 @@ import logging
 
 import xarray as xr
 
-from onstats.config import SourceConfig
+from onstats.config import IntakeSourceConfig
 from onstats.registry import register_loader
 
 logger = logging.getLogger(__name__)
@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 class IntakeLoader:
     """Load datasets from an intake-forecast catalog."""
 
-    def load(self, config: SourceConfig) -> xr.Dataset:
+    def load(self, config: IntakeSourceConfig) -> xr.Dataset:
         """Open, rename, and slice a dataset from an intake catalog.
 
         Args:
-            config: Source configuration with catalog and dataset_id set.
+            config: Intake source configuration.
 
         Returns:
             Lazily loaded, preprocessed xarray Dataset.

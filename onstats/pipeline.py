@@ -147,10 +147,8 @@ def _apply_directional(
 # ---------------------------------------------------------------------------
 
 def _select_loader(config):
-    """Return the appropriate loader instance for the given SourceConfig."""
-    if config.catalog is not None:
-        return get_loader("intake")()
-    return get_loader("xarray")()
+    """Return the appropriate loader instance for the given source config."""
+    return get_loader(config.type)()
 
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@ Each call names a registered stat function (`func`) and passes parameters to it.
 
 ```yaml title="stats.yml"
 source:
+  type: xarray
   urlpath: /data/hindcast/waves.zarr
   engine: zarr
 
@@ -95,6 +96,7 @@ Use `mapping` to rename input variables before processing:
 
 ```yaml
 source:
+  type: xarray
   urlpath: /data/model.zarr
   engine: zarr
   mapping:
@@ -108,6 +110,7 @@ Restrict to specific variables per call with `data_vars`. Use `slice_dict` on th
 
 ```yaml
 source:
+  type: xarray
   urlpath: /data/hindcast.zarr
   engine: zarr
   slice_dict:

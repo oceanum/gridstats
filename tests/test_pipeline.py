@@ -41,10 +41,10 @@ def netcdf_source(tmp_path, sample_ds):
 
 @pytest.fixture
 def pipeline_config(tmp_path, netcdf_source):
-    from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+    from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
 
     return PipelineConfig(
-        source=SourceConfig(urlpath=netcdf_source, engine="netcdf4"),
+        source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
         output=OutputConfig(outfile=str(tmp_path / "out.nc")),
         calls=[
             CallConfig(func="mean", dim="time", data_vars=["hs"]),
@@ -70,11 +70,11 @@ class TestPipeline:
         assert "hs_mean" in dsout
 
     def test_run_custom_suffix(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from onstats.pipeline import Pipeline
 
         config = PipelineConfig(
-            source=SourceConfig(urlpath=netcdf_source, engine="netcdf4"),
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
             output=OutputConfig(outfile=str(tmp_path / "out.nc")),
             calls=[CallConfig(func="mean", dim="time", data_vars=["hs"], suffix="_avg")],
         )
@@ -82,11 +82,11 @@ class TestPipeline:
         assert "hs_avg" in dsout
 
     def test_run_multiple_calls(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from onstats.pipeline import Pipeline
 
         config = PipelineConfig(
-            source=SourceConfig(urlpath=netcdf_source, engine="netcdf4"),
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
             output=OutputConfig(outfile=str(tmp_path / "out.nc")),
             calls=[
                 CallConfig(func="mean", dim="time", data_vars=["hs"]),
@@ -98,11 +98,11 @@ class TestPipeline:
         assert "hs_max" in dsout
 
     def test_run_group_monthly(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from onstats.pipeline import Pipeline
 
         config = PipelineConfig(
-            source=SourceConfig(urlpath=netcdf_source, engine="netcdf4"),
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
             output=OutputConfig(outfile=str(tmp_path / "out.nc")),
             calls=[CallConfig(func="mean", dim="time", data_vars=["hs"], group="month")],
         )
@@ -111,11 +111,11 @@ class TestPipeline:
         assert "month" in dsout["hs_mean_month"].dims
 
     def test_run_zarr_output(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from onstats.pipeline import Pipeline
 
         config = PipelineConfig(
-            source=SourceConfig(urlpath=netcdf_source, engine="netcdf4"),
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
             output=OutputConfig(outfile=str(tmp_path / "out.zarr")),
             calls=[CallConfig(func="mean", dim="time", data_vars=["hs"])],
         )
@@ -129,6 +129,7 @@ class TestPipeline:
 
         yaml_content = textwrap.dedent(f"""\
             source:
+              type: xarray
               urlpath: {netcdf_source}
               engine: netcdf4
             output:
@@ -144,11 +145,11 @@ class TestPipeline:
         assert "hs_mean" in dsout
 
     def test_multi_source_raises_not_implemented(self, tmp_path):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from onstats.pipeline import Pipeline
 
         config = PipelineConfig(
-            sources={"wave": SourceConfig(urlpath="waves.zarr")},
+            sources={"wave": XarraySourceConfig(type="xarray", urlpath="waves.zarr")},
             output=OutputConfig(outfile=str(tmp_path / "out.nc")),
             calls=[CallConfig(func="mean")],
         )
@@ -156,11 +157,11 @@ class TestPipeline:
             Pipeline(config).run()
 
     def test_apply_tiled(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, SourceConfig
+        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from onstats.pipeline import Pipeline
 
         config = PipelineConfig(
-            source=SourceConfig(urlpath=netcdf_source, engine="netcdf4"),
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
             output=OutputConfig(outfile=str(tmp_path / "out.nc")),
             calls=[
                 CallConfig(

@@ -5,7 +5,7 @@ import logging
 
 import xarray as xr
 
-from onstats.config import SourceConfig
+from onstats.config import XarraySourceConfig, _BaseSourceConfig
 from onstats.registry import register_loader
 
 logger = logging.getLogger(__name__)
@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 class XarrayLoader:
     """Load datasets using xarray.open_dataset / open_zarr."""
 
-    def load(self, config: SourceConfig) -> xr.Dataset:
+    def load(self, config: XarraySourceConfig) -> xr.Dataset:
         """Open, rename, and slice a dataset from a file or URL.
 
         Args:
-            config: Source configuration with urlpath set.
+            config: xarray source configuration.
 
         Returns:
             Lazily loaded, preprocessed xarray Dataset.
@@ -32,7 +32,7 @@ class XarrayLoader:
         )
         return self._preprocess(dset, config)
 
-    def _preprocess(self, dset: xr.Dataset, config: SourceConfig) -> xr.Dataset:
+    def _preprocess(self, dset: xr.Dataset, config: _BaseSourceConfig) -> xr.Dataset:
         """Apply variable renaming and slicing from config."""
         mapping = {k: v for k, v in config.mapping.items() if k in dset}
         if mapping:

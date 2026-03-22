@@ -34,6 +34,7 @@ def config_file(tmp_path, source_file):
     out = tmp_path / "out.nc"
     content = textwrap.dedent(f"""\
         source:
+          type: xarray
           urlpath: {source_file}
           engine: netcdf4
         output:

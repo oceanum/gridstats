@@ -7,51 +7,94 @@ from pydantic import ValidationError
 from onstats.config import (
     CallConfig,
     ClusterConfig,
+    IntakeSourceConfig,
     OutputConfig,
     PipelineConfig,
-    SourceConfig,
+    XarraySourceConfig,
 )
 
 
-class TestSourceConfig:
-    def test_urlpath(self):
-        c = SourceConfig(urlpath="gs://bucket/data.zarr")
+class TestXarraySourceConfig:
+    def test_basic(self):
+        c = XarraySourceConfig(type="xarray", urlpath="gs://bucket/data.zarr")
         assert c.urlpath == "gs://bucket/data.zarr"
         assert c.engine == "zarr"
         assert c.mapping == {}
 
-    def test_catalog(self):
-        c = SourceConfig(catalog="gs://bucket/catalog.yml", dataset_id="wave_nz")
-        assert c.catalog == "gs://bucket/catalog.yml"
-        assert c.dataset_id == "wave_nz"
-
-    def test_missing_source_raises(self):
-        with pytest.raises(ValidationError, match="Provide either"):
-            SourceConfig()
-
-    def test_catalog_without_dataset_id_raises(self):
-        with pytest.raises(ValidationError, match="Provide either"):
-            SourceConfig(catalog="gs://bucket/catalog.yml")
-
-    def test_both_urlpath_and_catalog_raises(self):
-        with pytest.raises(ValidationError, match="not both"):
-            SourceConfig(
-                urlpath="gs://bucket/data.zarr",
-                catalog="gs://bucket/catalog.yml",
-                dataset_id="wave_nz",
-            )
+    def test_custom_engine(self):
+        c = XarraySourceConfig(type="xarray", urlpath="data.nc", engine="netcdf4")
+        assert c.engine == "netcdf4"
 
     def test_mapping(self):
-        c = SourceConfig(urlpath="data.zarr", mapping={"tps": "tp"})
+        c = XarraySourceConfig(type="xarray", urlpath="data.zarr", mapping={"tps": "tp"})
         assert c.mapping == {"tps": "tp"}
 
     def test_slice_dict(self):
-        c = SourceConfig(urlpath="data.zarr", slice_dict={"sel": {"latitude": 0}})
+        c = XarraySourceConfig(type="xarray", urlpath="data.zarr", slice_dict={"sel": {"latitude": 0}})
         assert "sel" in c.slice_dict
 
     def test_chunks(self):
-        c = SourceConfig(urlpath="data.zarr", chunks={"time": 100})
+        c = XarraySourceConfig(type="xarray", urlpath="data.zarr", chunks={"time": 100})
         assert c.chunks == {"time": 100}
+
+    def test_missing_urlpath_raises(self):
+        with pytest.raises(ValidationError):
+            XarraySourceConfig(type="xarray")
+
+
+class TestIntakeSourceConfig:
+    def test_basic(self):
+        c = IntakeSourceConfig(
+            type="intake", catalog="gs://bucket/catalog.yml", dataset_id="wave_nz"
+        )
+        assert c.catalog == "gs://bucket/catalog.yml"
+        assert c.dataset_id == "wave_nz"
+
+    def test_missing_catalog_raises(self):
+        with pytest.raises(ValidationError):
+            IntakeSourceConfig(type="intake", dataset_id="wave_nz")
+
+    def test_missing_dataset_id_raises(self):
+        with pytest.raises(ValidationError):
+            IntakeSourceConfig(type="intake", catalog="gs://bucket/catalog.yml")
+
+
+class TestSourceConfigDiscriminator:
+    """The SourceConfig discriminated union selects the right type from 'type'."""
+
+    def test_xarray_via_pipeline(self):
+        config = PipelineConfig(
+            source={"type": "xarray", "urlpath": "data.zarr"},
+            output={"outfile": "out.zarr"},
+            calls=[{"func": "mean"}],
+        )
+        assert isinstance(config.source, XarraySourceConfig)
+        assert config.source.urlpath == "data.zarr"
+
+    def test_intake_via_pipeline(self):
+        config = PipelineConfig(
+            source={"type": "intake", "catalog": "cat.yml", "dataset_id": "wave_nz"},
+            output={"outfile": "out.zarr"},
+            calls=[{"func": "mean"}],
+        )
+        assert isinstance(config.source, IntakeSourceConfig)
+        assert config.source.dataset_id == "wave_nz"
+
+    def test_unknown_type_raises(self):
+        with pytest.raises(ValidationError):
+            PipelineConfig(
+                source={"type": "unknown", "urlpath": "data.zarr"},
+                output={"outfile": "out.zarr"},
+                calls=[{"func": "mean"}],
+            )
+
+    def test_missing_type_raises(self):
+        with pytest.raises(ValidationError):
+            PipelineConfig(
+                source={"urlpath": "data.zarr"},
+                output={"outfile": "out.zarr"},
+                calls=[{"func": "mean"}],
+            )
 
 
 class TestCallConfig:
@@ -110,7 +153,7 @@ class TestClusterConfig:
 class TestPipelineConfig:
     def test_basic(self):
         config = PipelineConfig(
-            source={"urlpath": "data.zarr"},
+            source={"type": "xarray", "urlpath": "data.zarr"},
             output={"outfile": "out.zarr"},
             calls=[{"func": "mean"}],
         )
@@ -128,23 +171,24 @@ class TestPipelineConfig:
     def test_no_both_sources(self):
         with pytest.raises(ValidationError, match="not both"):
             PipelineConfig(
-                source={"urlpath": "data.zarr"},
-                sources={"wave": {"urlpath": "waves.zarr"}},
+                source={"type": "xarray", "urlpath": "data.zarr"},
+                sources={"wave": {"type": "xarray", "urlpath": "waves.zarr"}},
                 output={"outfile": "out.zarr"},
                 calls=[{"func": "mean"}],
             )
 
     def test_sources_placeholder(self):
         config = PipelineConfig(
-            sources={"wave": {"urlpath": "waves.zarr"}},
+            sources={"wave": {"type": "xarray", "urlpath": "waves.zarr"}},
             output={"outfile": "out.zarr"},
             calls=[{"func": "mean"}],
         )
         assert "wave" in config.sources
+        assert isinstance(config.sources["wave"], XarraySourceConfig)
 
     def test_cluster_defaults(self):
         config = PipelineConfig(
-            source={"urlpath": "data.zarr"},
+            source={"type": "xarray", "urlpath": "data.zarr"},
             output={"outfile": "out.zarr"},
             calls=[{"func": "mean"}],
         )
@@ -153,6 +197,7 @@ class TestPipelineConfig:
     def test_from_yaml(self, tmp_path):
         yaml_content = textwrap.dedent("""\
             source:
+              type: xarray
               urlpath: gs://bucket/data.zarr
               engine: zarr
               mapping:
@@ -173,15 +218,35 @@ class TestPipelineConfig:
 
         config = PipelineConfig.from_yaml(config_file)
 
+        assert isinstance(config.source, XarraySourceConfig)
         assert config.source.urlpath == "gs://bucket/data.zarr"
         assert config.source.mapping == {"tps": "tp"}
         assert len(config.calls) == 2
         assert config.calls[0].func == "mean"
         assert config.calls[1].extra_kwargs() == {"q": [0.5, 0.95]}
 
+    def test_from_yaml_intake(self, tmp_path):
+        yaml_content = textwrap.dedent("""\
+            source:
+              type: intake
+              catalog: /catalogs/oceanum.yaml
+              dataset_id: wave_nz
+            output:
+              outfile: ./results.zarr
+            calls:
+              - func: mean
+        """)
+        config_file = tmp_path / "config.yml"
+        config_file.write_text(yaml_content)
+
+        config = PipelineConfig.from_yaml(config_file)
+        assert isinstance(config.source, IntakeSourceConfig)
+        assert config.source.catalog == "/catalogs/oceanum.yaml"
+        assert config.source.dataset_id == "wave_nz"
+
     def test_metadata(self):
         config = PipelineConfig(
-            source={"urlpath": "data.zarr"},
+            source={"type": "xarray", "urlpath": "data.zarr"},
             output={"outfile": "out.zarr"},
             calls=[{"func": "mean"}],
             metadata={"institution": "Test"},

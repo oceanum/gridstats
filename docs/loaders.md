@@ -1,26 +1,16 @@
 # Data Loaders
 
-Loaders are responsible for opening a data source and returning a preprocessed `xr.Dataset`. The loader used for a pipeline is selected automatically based on the `source` configuration.
+Loaders open a data source and return a preprocessed `xr.Dataset`. The `type` field in the `source` block selects which loader to use.
 
 ---
 
-## Loader selection
+## `type: xarray`
 
-The pipeline selects a loader based on which fields are set in the `source` block:
-
-| Condition | Loader used |
-|---|---|
-| `urlpath` is set | `xarray` |
-| `catalog` and `dataset_id` are set | `intake` |
-
----
-
-## `xarray` loader
-
-Opens any file format supported by `xarray.open_dataset`: NetCDF, Zarr, GRIB, HDF5, etc.
+Opens any file format supported by `xarray.open_dataset`: NetCDF, Zarr, GRIB, HDF5, and more. Accepts local paths, `gs://`, `s3://`, `https://`, or any fsspec-compatible URI.
 
 ```yaml
 source:
+  type: xarray
   urlpath: /data/wave_hindcast.zarr
   engine: zarr
   chunks:
@@ -38,7 +28,7 @@ source:
 
 | Field | Description |
 |---|---|
-| `urlpath` | Path or URL to the dataset (local file, S3, etc.). |
+| `urlpath` | Path or URL to the dataset. **Required.** |
 | `engine` | xarray engine to use: `zarr` (default), `netcdf4`, `scipy`, `cfgrib`, … |
 | `chunks` | Dask chunk sizes for lazy loading. |
 | `mapping` | Dict of `{source_name: target_name}` variable renames applied after opening. |
@@ -46,12 +36,13 @@ source:
 
 ---
 
-## `intake` loader
+## `type: intake`
 
 Opens a dataset from an [intake-forecast](https://github.com/oceanum/intake-forecast) catalog. Requires the `intake-forecast` package.
 
 ```yaml
 source:
+  type: intake
   catalog: /catalogs/oceanum.yaml
   dataset_id: wave_global_era5
   chunks:
@@ -65,11 +56,11 @@ source:
 
 | Field | Description |
 |---|---|
-| `catalog` | Path or URL to the intake catalog file. |
-| `dataset_id` | Entry name within the catalog. |
+| `catalog` | Path or URL to the intake catalog file. **Required.** |
+| `dataset_id` | Entry name within the catalog. **Required.** |
 | `chunks`, `mapping`, `slice_dict` | Same preprocessing as the xarray loader. |
 
-After loading, the intake loader delegates preprocessing (renaming and slicing) to the xarray loader.
+After loading, the intake loader delegates preprocessing (renaming and slicing) to the xarray loader's `_preprocess` method.
 
 ---
 

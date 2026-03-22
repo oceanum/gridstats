@@ -2,37 +2,50 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class SourceConfig(BaseModel):
-    """Configuration for a single data source."""
+# ---------------------------------------------------------------------------
+# Source configs — one concrete class per loader type
+# ---------------------------------------------------------------------------
 
-    urlpath: str | None = None
-    catalog: str | None = None
-    dataset_id: str | None = None
-    engine: str = "zarr"
+class _BaseSourceConfig(BaseModel):
+    """Shared pre-processing fields for all source types."""
+
     mapping: dict[str, str] = {}
     slice_dict: dict[str, Any] = {}
     chunks: dict[str, int] = {}
 
-    @model_validator(mode="after")
-    def _check_source(self) -> SourceConfig:
-        has_urlpath = self.urlpath is not None
-        has_catalog = self.catalog is not None and self.dataset_id is not None
-        if not has_urlpath and not has_catalog:
-            raise ValueError(
-                "Provide either 'urlpath' or both 'catalog' and 'dataset_id'."
-            )
-        if has_urlpath and has_catalog:
-            raise ValueError(
-                "Provide either 'urlpath' or 'catalog'/'dataset_id', not both."
-            )
-        return self
 
+class XarraySourceConfig(_BaseSourceConfig):
+    """Load data with xarray (local files, cloud storage, any xarray engine)."""
+
+    type: Literal["xarray"]
+    urlpath: str
+    engine: str = "zarr"
+
+
+class IntakeSourceConfig(_BaseSourceConfig):
+    """Load data from an intake-forecast catalog."""
+
+    type: Literal["intake"]
+    catalog: str
+    dataset_id: str
+
+
+#: Discriminated union — Pydantic selects the concrete type from the ``type`` field.
+SourceConfig = Annotated[
+    Union[XarraySourceConfig, IntakeSourceConfig],
+    Field(discriminator="type"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Other config models
+# ---------------------------------------------------------------------------
 
 class OutputConfig(BaseModel):
     """Configuration for pipeline output."""
