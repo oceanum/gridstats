@@ -38,7 +38,7 @@ Examples:
 |---|---|---|
 | `func: mean` | `hs` | `hs_mean` |
 | `func: mean, group: month` | `hs` | `hs_mean_month` |
-| `func: rpv, nsector: 8` | `hs` | `hs_mean_direc` |
+| `func: rpv, nsector: 8` | `hs` | `hs_rpv_direc` |
 | `func: rpv, suffix: _100yr` | `hs` | `hs_100yr` |
 
 ## Grouping

@@ -46,31 +46,58 @@ After installing your package, `my_stat` is available in any pipeline config:
 
 ## Custom loaders
 
-A loader is a class with a `load(config: SourceConfig) -> xr.Dataset` method:
+A loader consists of two parts: a **config model** (a Pydantic class defining the fields your source type accepts) and a **loader class** with a `load(config) -> xr.Dataset` method.
+
+### 1. Define a config model
+
+Subclass `_BaseSourceConfig` (which provides `mapping`, `sel`, `isel`, and `chunks`) and add any fields your source needs:
+
+```python
+# my_package/config.py
+from typing import Literal
+from onstats.config import _BaseSourceConfig
+
+class DatameshSourceConfig(_BaseSourceConfig):
+    type: Literal["datamesh"]
+    token: str
+    dataset_id: str
+    server: str = "https://datamesh.oceanum.io"
+```
+
+### 2. Implement the loader
 
 ```python
 # my_package/loaders.py
 import xarray as xr
-from onstats.config import SourceConfig
+from onstats.loaders.xarray import XarrayLoader
 from onstats.registry import register_loader
+from my_package.config import DatameshSourceConfig
 
-@register_loader("my_loader")
-class MyLoader:
-    def load(self, config: SourceConfig) -> xr.Dataset:
-        # config.model_extra contains any extra fields from the YAML
-        conn_str = config.model_extra.get("connection_string")
-        dset = my_open_function(conn_str)
-        return dset
+@register_loader("datamesh")
+class DatameshLoader:
+    def load(self, config: DatameshSourceConfig) -> xr.Dataset:
+        dset = my_datamesh_open(config.token, config.dataset_id, config.server)
+        # Delegate renaming and sel/isel to the shared _preprocess helper
+        return XarrayLoader()._preprocess(dset, config)
 ```
 
-Register the entry point:
+### 3. Register entry points
 
 ```toml
 [project.entry-points."onstats.loaders"]
-my_loader = "my_package.loaders:MyLoader"
+datamesh = "my_package.loaders:DatameshLoader"
 ```
 
-Extra fields in the `source` block that are not part of the standard `SourceConfig` schema are accessible via `config.model_extra`.
+The new source type is then available in any pipeline config:
+
+```yaml
+source:
+  type: datamesh
+  token: my-api-token
+  dataset_id: wave_nz_hindcast
+  sel:
+    time: {start: "2000-01-01", stop: "2020-12-31"}
+```
 
 ---
 

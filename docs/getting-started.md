@@ -106,7 +106,7 @@ source:
 
 ## Selecting variables and slicing
 
-Restrict to specific variables per call with `data_vars`. Use `slice_dict` on the source to crop the spatial or temporal domain before any statistics are computed:
+Restrict to specific variables per call with `data_vars`. Use `sel` on the source to crop the spatial or temporal domain before any statistics are computed:
 
 ```yaml
 source:
