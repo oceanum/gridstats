@@ -29,9 +29,13 @@ class TestXarraySourceConfig:
         c = XarraySourceConfig(type="xarray", urlpath="data.zarr", mapping={"tps": "tp"})
         assert c.mapping == {"tps": "tp"}
 
-    def test_slice_dict(self):
-        c = XarraySourceConfig(type="xarray", urlpath="data.zarr", slice_dict={"sel": {"latitude": 0}})
-        assert "sel" in c.slice_dict
+    def test_sel(self):
+        c = XarraySourceConfig(type="xarray", urlpath="data.zarr", sel={"latitude": {"start": -50, "stop": -30}})
+        assert "latitude" in c.sel
+
+    def test_isel(self):
+        c = XarraySourceConfig(type="xarray", urlpath="data.zarr", isel={"depth": 0})
+        assert c.isel == {"depth": 0}
 
     def test_chunks(self):
         c = XarraySourceConfig(type="xarray", urlpath="data.zarr", chunks={"time": 100})

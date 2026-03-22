@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import xarray as xr
 
@@ -9,6 +10,22 @@ from onstats.config import XarraySourceConfig, _BaseSourceConfig
 from onstats.registry import register_loader
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_sel_value(val: Any) -> Any:
+    """Convert a ``{start, stop}`` dict to a :class:`slice`; pass everything else through.
+
+    This allows YAML range specifications like ``{start: -50, stop: -30}`` to
+    be used in ``sel`` without serialising Python ``slice`` objects. Either key
+    may be omitted: ``{stop: 0}`` becomes ``slice(None, 0)``.
+
+    Anything that is not a dict with at least one of ``start`` / ``stop`` is
+    returned unchanged, so scalar values, lists, and other types keep their
+    xarray-native semantics.
+    """
+    if isinstance(val, dict) and ("start" in val or "stop" in val):
+        return slice(val.get("start"), val.get("stop"))
+    return val
 
 
 @register_loader("xarray")
@@ -34,19 +51,27 @@ class XarrayLoader:
         return self._preprocess(dset, config)
 
     def _preprocess(self, dset: xr.Dataset, config: _BaseSourceConfig) -> xr.Dataset:
-        """Apply variable renaming and slicing from config."""
+        """Apply variable renaming, label selection, and index selection from config."""
         mapping = {k: v for k, v in config.mapping.items() if k in dset}
         if mapping:
             logger.debug("Renaming variables: %s", mapping)
             dset = dset.rename(mapping)
 
-        for method, kwargs in config.slice_dict.items():
-            dset = getattr(dset, method)(**kwargs)
-            for coord, arr in dset.coords.items():
-                if arr.size == 0:
-                    raise ValueError(
-                        f"Slicing with {method}({kwargs}) produced empty "
-                        f"coordinate '{coord}'"
-                    )
+        if config.sel:
+            sel_kwargs = {k: _parse_sel_value(v) for k, v in config.sel.items()}
+            logger.debug("Applying sel: %s", sel_kwargs)
+            dset = dset.sel(**sel_kwargs)
+
+        if config.isel:
+            isel_kwargs = {k: _parse_sel_value(v) for k, v in config.isel.items()}
+            logger.debug("Applying isel: %s", isel_kwargs)
+            dset = dset.isel(**isel_kwargs)
+
+        for dim, arr in dset.coords.items():
+            if arr.size == 0:
+                raise ValueError(
+                    f"Selection produced an empty coordinate '{dim}'. "
+                    "Check your sel/isel values."
+                )
 
         return dset

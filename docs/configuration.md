@@ -43,7 +43,8 @@ Load from any file or URL supported by xarray (local NetCDF, Zarr, cloud storage
 | `engine` | string | `"zarr"` | xarray engine: `zarr`, `netcdf4`, `h5netcdf`, `scipy`, `cfgrib`, … |
 | `open_kwargs` | dict | `{}` | Extra keyword arguments forwarded verbatim to `xarray.open_dataset`. |
 | `mapping` | dict | `{}` | Rename variables on load: `{old_name: new_name}`. |
-| `slice_dict` | dict | `{}` | xarray slicing operations applied after load (see below). |
+| `sel` | dict | `{}` | Label-based selection applied after load (see [sel / isel](#sel-isel) below). |
+| `isel` | dict | `{}` | Index-based selection applied after load (see [sel / isel](#sel-isel) below). |
 | `chunks` | dict | `{}` | Dask chunk sizes applied on open: `{dim: size}`. |
 
 ```yaml
@@ -58,6 +59,9 @@ source:
   mapping:
     Hs: hs
     Tp: tp
+  sel:
+    latitude: {start: -50, stop: -30}
+    time: {start: "2000-01-01", stop: "2020-12-31"}
 ```
 
 ### `type: intake`
@@ -70,7 +74,8 @@ Load from an [intake-forecast](https://github.com/oceanum/intake-forecast) catal
 | `catalog` | string | — | Path or URI to the intake catalog YAML file. **Required.** |
 | `dataset_id` | string | — | Entry name within the catalog. **Required.** |
 | `mapping` | dict | `{}` | Rename variables on load. |
-| `slice_dict` | dict | `{}` | xarray slicing operations applied after load. |
+| `sel` | dict | `{}` | Label-based selection applied after load. |
+| `isel` | dict | `{}` | Index-based selection applied after load. |
 | `chunks` | dict | `{}` | Dask chunk sizes. |
 
 ```yaml
@@ -82,22 +87,37 @@ source:
     time: 50
 ```
 
-### `slice_dict`
+### `sel` / `isel`
 
-Each key is an xarray Dataset method name; its value is passed as keyword arguments:
+`sel` selects by coordinate label, `isel` by integer index — exactly as in
+[`xr.Dataset.sel`](https://docs.xarray.dev/en/stable/generated/xarray.Dataset.sel.html) and
+[`xr.Dataset.isel`](https://docs.xarray.dev/en/stable/generated/xarray.Dataset.isel.html).
+
+Each dimension value can be:
+
+| Value type | Behaviour | Example |
+|---|---|---|
+| Scalar | Select a single coordinate value | `depth: 0.0` |
+| List | Select those specific coordinate values | `level: [500, 850, 1000]` |
+| `{start, stop}` dict | Select a **range** — converted to `slice(start, stop)` | `latitude: {start: -50, stop: -30}` |
+
+!!! warning "Range dicts vs. lists"
+    A `{start, stop}` dict is the only way to specify a range. A list like
+    `[-50, -30]` selects **exactly those two coordinate values**, not all values
+    between them — consistent with xarray's own behaviour.
+    Either key may be omitted: `{stop: -30}` → `slice(None, -30)`.
 
 ```yaml
 source:
-  slice_dict:
-    sel:
-      latitude: slice(-50, -30)
-      longitude: slice(160, 180)
-      time: slice("2000-01-01", "2020-12-31")
-    isel:
-      depth: 0     # select the surface level by index
+  sel:
+    latitude: {start: -50, stop: -30}         # range: all latitudes in [-50, -30]
+    time: {start: "2000-01-01", stop: "2020-12-31"}
+    depth: 0.0                                 # single value
+    level: [500, 850, 1000]                    # exact list of values
+  isel:
+    member: 0                                  # first ensemble member by index
+    x: {start: 100, stop: 200}                # index range
 ```
-
-Supported methods: `sel`, `isel`, `drop_vars`, `squeeze`, and any other `xr.Dataset` method that returns a Dataset.
 
 ---
 

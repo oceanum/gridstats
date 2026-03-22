@@ -33,7 +33,8 @@ source:
 | `open_kwargs` | Extra keyword arguments forwarded verbatim to `xarray.open_dataset`. |
 | `chunks` | Dask chunk sizes for lazy loading. |
 | `mapping` | Dict of `{source_name: target_name}` variable renames applied after opening. |
-| `slice_dict` | Dict of `{method: kwargs}` applied sequentially (e.g. `sel`, `isel`, `where`). |
+| `sel` | Label-based selection. Values can be scalars, lists, or `{start, stop}` dicts (converted to `slice`). |
+| `isel` | Integer-index selection. Same value types as `sel`. |
 
 ---
 
@@ -59,9 +60,9 @@ source:
 |---|---|
 | `catalog` | Path or URL to the intake catalog file. **Required.** |
 | `dataset_id` | Entry name within the catalog. **Required.** |
-| `chunks`, `mapping`, `slice_dict` | Same preprocessing as the xarray loader. |
+| `mapping`, `sel`, `isel`, `chunks` | Same preprocessing as the xarray loader. |
 
-After loading, the intake loader delegates preprocessing (renaming and slicing) to the xarray loader's `_preprocess` method.
+After loading, the intake loader delegates preprocessing (renaming and selection) to the xarray loader's `_preprocess` method.
 
 ---
 

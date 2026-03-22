@@ -16,7 +16,8 @@ class _BaseSourceConfig(BaseModel):
     """Shared pre-processing fields for all source types."""
 
     mapping: dict[str, str] = {}
-    slice_dict: dict[str, Any] = {}
+    sel: dict[str, Any] = {}
+    isel: dict[str, Any] = {}
     chunks: dict[str, int] = {}
 
 

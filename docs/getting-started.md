@@ -113,11 +113,10 @@ source:
   type: xarray
   urlpath: /data/hindcast.zarr
   engine: zarr
-  slice_dict:
-    sel:
-      latitude: slice(-50, -30)
-      longitude: slice(160, 180)
-      time: slice("2000-01-01", "2020-12-31")
+  sel:
+    latitude: {start: -50, stop: -30}
+    longitude: {start: 160, stop: 180}
+    time: {start: "2000-01-01", stop: "2020-12-31"}
 
 calls:
   - func: mean
