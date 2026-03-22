@@ -26,6 +26,7 @@ class XarraySourceConfig(_BaseSourceConfig):
     type: Literal["xarray"]
     urlpath: str
     engine: str = "zarr"
+    open_kwargs: dict[str, Any] = {}
 
 
 class IntakeSourceConfig(_BaseSourceConfig):

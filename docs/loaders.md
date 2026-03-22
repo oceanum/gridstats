@@ -30,6 +30,7 @@ source:
 |---|---|
 | `urlpath` | Path or URL to the dataset. **Required.** |
 | `engine` | xarray engine to use: `zarr` (default), `netcdf4`, `scipy`, `cfgrib`, … |
+| `open_kwargs` | Extra keyword arguments forwarded verbatim to `xarray.open_dataset`. |
 | `chunks` | Dask chunk sizes for lazy loading. |
 | `mapping` | Dict of `{source_name: target_name}` variable renames applied after opening. |
 | `slice_dict` | Dict of `{method: kwargs}` applied sequentially (e.g. `sel`, `isel`, `where`). |

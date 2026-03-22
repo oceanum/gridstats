@@ -41,6 +41,7 @@ Load from any file or URL supported by xarray (local NetCDF, Zarr, cloud storage
 | `type` | `"xarray"` | — | Selects the xarray loader. **Required.** |
 | `urlpath` | string | — | Path or URI to the dataset. Accepts local paths, `gs://`, `s3://`, `https://`, etc. **Required.** |
 | `engine` | string | `"zarr"` | xarray engine: `zarr`, `netcdf4`, `h5netcdf`, `scipy`, `cfgrib`, … |
+| `open_kwargs` | dict | `{}` | Extra keyword arguments forwarded verbatim to `xarray.open_dataset`. |
 | `mapping` | dict | `{}` | Rename variables on load: `{old_name: new_name}`. |
 | `slice_dict` | dict | `{}` | xarray slicing operations applied after load (see below). |
 | `chunks` | dict | `{}` | Dask chunk sizes applied on open: `{dim: size}`. |

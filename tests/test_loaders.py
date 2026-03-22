@@ -91,6 +91,16 @@ class TestXarrayLoader:
         dset = XarrayLoader().load(config)
         assert dset.chunks["time"] == (5, 5)
 
+    def test_open_kwargs_forwarded(self, netcdf_file):
+        config = XarraySourceConfig(
+            type="xarray",
+            urlpath=str(netcdf_file),
+            engine="netcdf4",
+            open_kwargs={"decode_times": False},
+        )
+        dset = XarrayLoader().load(config)
+        assert "hs" in dset
+
     def test_dataset_is_lazy(self, netcdf_file):
         config = XarraySourceConfig(
             type="xarray", urlpath=str(netcdf_file), engine="netcdf4", chunks={"time": 10}

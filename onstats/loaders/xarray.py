@@ -29,6 +29,7 @@ class XarrayLoader:
             config.urlpath,
             engine=config.engine,
             chunks=config.chunks or {},
+            **config.open_kwargs,
         )
         return self._preprocess(dset, config)
 
