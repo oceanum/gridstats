@@ -104,3 +104,22 @@ All parameters are the same as `distribution3`, plus:
 
 !!! tip
     Prefer `distribution3` for datasets that fit comfortably in memory — it is faster because it avoids repeated I/O. Use `distribution3_timestep` only for multi-decade datasets.
+
+---
+
+## API reference
+
+::: onstats.ops.distribution.distribution2
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.distribution.distribution3
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.distribution.distribution3_timestep
+    options:
+      show_source: false
+      heading_level: 3

@@ -50,3 +50,12 @@ Any distribution available in `scipy.stats` can be used. Common choices:
 2. Peaks above the threshold are extracted, requiring at least `duration` hours between peaks (to ensure independence).
 3. The chosen `scipy.stats` distribution is fitted to the peaks.
 4. Values at each return period are computed from the fitted distribution's inverse survival function.
+
+---
+
+## API reference
+
+::: onstats.ops.rpv.rpv
+    options:
+      show_source: false
+      heading_level: 3

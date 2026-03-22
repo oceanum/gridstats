@@ -4,25 +4,25 @@ An **operation** (or "op") is a function that reduces an `xr.Dataset` along one 
 
 ## Built-in operations
 
-| `func` | Module | Description |
-|---|---|---|
-| `mean` | aggregations | Arithmetic mean |
-| `max` | aggregations | Maximum value |
-| `min` | aggregations | Minimum value |
-| `std` | aggregations | Standard deviation |
-| `count` | aggregations | Count of non-NaN values |
-| `quantile` | aggregations | Quantiles at specified levels |
-| `pcount` | aggregations | Percentage of non-NaN values |
-| `exceedance` | exceedance | Probability that values exceed a threshold |
-| `nonexceedance` | exceedance | Probability that values stay below a threshold |
-| `rpv` | rpv | Return period values via extreme-value analysis |
-| `distribution3` | distribution | 3-D joint histogram (Hs × Tp × Dir) |
-| `distribution2` | distribution | 2-D joint histogram (speed × direction) |
-| `distribution3_timestep` | distribution | Memory-efficient 3-D histogram (accumulated in time chunks) |
-| `statdir` | directional | Apply multiple functions over directional sectors |
-| `hmo` | frequency_domain | Frequency-domain Hs in spectral bands |
-| `range_probability` | probability | Probability of values falling within specified ranges |
-| `winpow` | windpower | Wind turbine power from wind speed |
+| `func` | Description |
+|---|---|
+| [`mean`](aggregations.md#onstats.ops.aggregations.mean) | Arithmetic mean |
+| [`max`](aggregations.md#onstats.ops.aggregations.max) | Maximum value |
+| [`min`](aggregations.md#onstats.ops.aggregations.min) | Minimum value |
+| [`std`](aggregations.md#onstats.ops.aggregations.std) | Standard deviation |
+| [`count`](aggregations.md#onstats.ops.aggregations.count) | Count of non-NaN values |
+| [`quantile`](aggregations.md#onstats.ops.aggregations.quantile) | Quantiles at specified levels |
+| [`pcount`](aggregations.md#onstats.ops.aggregations.pcount) | Percentage of non-NaN values |
+| [`exceedance`](exceedance.md#onstats.ops.exceedance.exceedance) | Probability that values exceed a threshold |
+| [`nonexceedance`](exceedance.md#onstats.ops.exceedance.nonexceedance) | Probability that values stay below a threshold |
+| [`rpv`](rpv.md#onstats.ops.rpv.rpv) | Return period values via extreme-value analysis |
+| [`distribution3`](distribution.md#onstats.ops.distribution.distribution3) | 3-D joint histogram (Hs × Tp × Dir) |
+| [`distribution2`](distribution.md#onstats.ops.distribution.distribution2) | 2-D joint histogram (speed × direction) |
+| [`distribution3_timestep`](distribution.md#onstats.ops.distribution.distribution3_timestep) | Memory-efficient 3-D histogram (accumulated in time chunks) |
+| [`statdir`](directional.md#onstats.ops.directional.statdir) | Apply multiple functions over directional sectors |
+| [`hmo`](frequency-domain.md#onstats.ops.frequency_domain.hmo) | Frequency-domain Hs in spectral bands |
+| [`range_probability`](probability.md#onstats.ops.probability.range_probability) | Probability of values falling within specified ranges |
+| [`winpow`](windpower.md#onstats.ops.windpower.winpow) | Wind turbine power from wind speed |
 
 ## Output variable naming
 

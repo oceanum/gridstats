@@ -68,3 +68,17 @@ Duration strings use pandas `Timedelta` notation:
 | `"6h"` | 6 hours |
 | `"1d"` | 1 day |
 | `"7d"` | 1 week |
+
+---
+
+## API reference
+
+::: onstats.ops.exceedance.exceedance
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.exceedance.nonexceedance
+    options:
+      show_source: false
+      heading_level: 3

@@ -56,3 +56,12 @@ Setting `nsector` on a regular call (e.g. `func: mean, nsector: 8`) is handled a
   funcs: [mean, max, quantile]
   q: [0.90, 0.99]
 ```
+
+---
+
+## API reference
+
+::: onstats.ops.directional.statdir
+    options:
+      show_source: false
+      heading_level: 3

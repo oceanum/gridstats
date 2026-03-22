@@ -20,7 +20,7 @@ def statdir(
     dir_var: str = "dpm",
     nsector: int = 4,
     dim: str = "time",
-    **kwargs,
+    **kwargs: Any,
 ) -> xr.Dataset:
     """Apply multiple stat functions over directional sectors.
 

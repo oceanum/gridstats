@@ -86,32 +86,38 @@ def distribution3(
     var1: str = "hs",
     var2: str = "tp",
     var3: str = "dpm",
-    bins1: dict | list = {"start": 0, "step": 0.5},
-    bins2: dict | list = {"start": 0, "step": 1.0},
-    bins3: dict | list = {"start": 0, "stop": 360, "step": 45},
+    bins1: dict[str, Any] | list = {"start": 0, "step": 0.5},
+    bins2: dict[str, Any] | list = {"start": 0, "step": 1.0},
+    bins3: dict[str, Any] | list = {"start": 0, "stop": 360, "step": 45},
     isdir1: bool = False,
     isdir2: bool = False,
     isdir3: bool = True,
     group: str | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> xr.Dataset:
-    """Compute a 3-D joint histogram (e.g. Hs × Tp × Dir).
+    """3-D joint histogram over three variables (e.g. Hs × Tp × Dir).
+
+    Results are raw integer counts (not normalised). Bin specifications can
+    be a dict with `start`, `stop` (optional, inferred from data max), and
+    `step` keys, or a plain list of explicit bin edges.
 
     Args:
-        data: Input dataset containing var1, var2, var3.
+        data: Input dataset containing `var1`, `var2`, `var3`.
         dim: Time dimension name.
-        var1: Name of the first variable (e.g. 'hs').
-        var2: Name of the second variable (e.g. 'tp').
-        var3: Name of the third variable, often directional (e.g. 'dpm').
-        bins1/2/3: Bin specifications as dicts with 'start', 'stop', 'step'
-            or as plain arrays.
-        isdir1/2/3: Whether each variable is directional (wraps values > max
-            to negative to avoid discontinuity at 0/360).
-        group: Time component to group by (e.g. 'month').
+        var1: Name of the first variable (default `'hs'`).
+        var2: Name of the second variable (default `'tp'`).
+        var3: Name of the third variable, often directional (default `'dpm'`).
+        bins1: Bin specification for `var1`.
+        bins2: Bin specification for `var2`.
+        bins3: Bin specification for `var3`.
+        isdir1: Whether `var1` is directional (wraps at 360°).
+        isdir2: Whether `var2` is directional.
+        isdir3: Whether `var3` is directional (default `True`).
+        group: Time component to group by (e.g. `'month'`).
 
     Returns:
-        Dataset with variable 'dist' and dimensions (var1, var2, var3) plus
-        bin-centre coordinates.
+        Dataset with variable `dist` and dimensions `(var1, var2, var3)`.
+        Coordinates are bin-centre values.
     """
     b1 = _make_bins(bins1, data[var1])
     b2 = _make_bins(bins2, data[var2])
@@ -142,26 +148,31 @@ def distribution2(
     dim: str = "time",
     var1: str = "wspd",
     var2: str = "wdir",
-    bins1: dict | list = {"start": 0, "step": 1.0},
-    bins2: dict | list = {"start": 0, "stop": 360, "step": 45},
+    bins1: dict[str, Any] | list = {"start": 0, "step": 1.0},
+    bins2: dict[str, Any] | list = {"start": 0, "stop": 360, "step": 45},
     isdir1: bool = False,
     isdir2: bool = True,
     group: str | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> xr.Dataset:
-    """Compute a 2-D joint histogram (e.g. speed × direction).
+    """2-D joint histogram over two variables (e.g. speed × direction).
+
+    Results are raw integer counts (not normalised).
 
     Args:
-        data: Input dataset containing var1, var2.
+        data: Input dataset containing `var1`, `var2`.
         dim: Time dimension name.
-        var1: Name of the first variable (e.g. 'wspd').
-        var2: Name of the second variable, often directional (e.g. 'wdir').
-        bins1/2: Bin specifications.
-        isdir1/2: Whether each variable is directional.
-        group: Time component to group by (e.g. 'month').
+        var1: Name of the first variable (default `'wspd'`).
+        var2: Name of the second variable, often directional (default `'wdir'`).
+        bins1: Bin specification for `var1`.
+        bins2: Bin specification for `var2`.
+        isdir1: Whether `var1` is directional.
+        isdir2: Whether `var2` is directional (default `True`).
+        group: Time component to group by (e.g. `'month'`).
 
     Returns:
-        Dataset with variable 'dist2' and dimensions (var1, var2).
+        Dataset with variable `dist2` and dimensions `(var1, var2)`.
+        Coordinates are bin-centre values.
     """
     b1 = _make_bins(bins1, data[var1])
     b2 = _make_bins(bins2, data[var2])
@@ -210,33 +221,43 @@ def distribution3_timestep(
     var1: str = "hs",
     var2: str = "tp",
     var3: str = "dpm",
-    bins1: dict | list = {"start": 0, "step": 0.5},
-    bins2: dict | list = {"start": 0, "step": 1.0},
-    bins3: dict | list = {"start": 0, "stop": 360, "step": 45},
+    bins1: dict[str, Any] | list = {"start": 0, "step": 0.5},
+    bins2: dict[str, Any] | list = {"start": 0, "step": 1.0},
+    bins3: dict[str, Any] | list = {"start": 0, "stop": 360, "step": 45},
     isdir1: bool = False,
     isdir2: bool = False,
     isdir3: bool = True,
     freq: str = "30d",
     group: str | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> xr.Dataset:
-    """3-D joint histogram computed in time chunks to limit memory use.
+    """3-D joint histogram accumulated over time chunks to limit memory use.
 
-    Accumulates histogram counts over successive time windows of size `freq`
-    then sums them. Useful for very long timeseries that cannot be fully
-    rechunked into memory.
+    Splits the time axis into windows of size `freq`, computes a histogram
+    for each window, then sums the counts. Suitable for multi-decade datasets
+    that cannot be fully rechunked into memory.
+
+    Prefer `distribution3` when the dataset fits comfortably in memory — it
+    is faster because it avoids repeated I/O.
 
     Args:
-        data: Input dataset containing var1, var2, var3.
+        data: Input dataset containing `var1`, `var2`, `var3`.
         dim: Time dimension name.
-        var1/2/3: Variable names.
-        bins1/2/3: Bin specifications.
-        isdir1/2/3: Whether each variable is directional.
-        freq: Pandas-compatible frequency string for time chunking (e.g. '30d').
-        group: Time component to group by (e.g. 'month').
+        var1: Name of the first variable (default `'hs'`).
+        var2: Name of the second variable (default `'tp'`).
+        var3: Name of the third variable (default `'dpm'`).
+        bins1: Bin specification for `var1`.
+        bins2: Bin specification for `var2`.
+        bins3: Bin specification for `var3`.
+        isdir1: Whether `var1` is directional.
+        isdir2: Whether `var2` is directional.
+        isdir3: Whether `var3` is directional (default `True`).
+        freq: Pandas-compatible frequency string for time-chunking (e.g. `'30d'`, `'1ME'`).
+        group: Time component to group by (e.g. `'month'`).
 
     Returns:
-        Dataset with accumulated joint distribution counts.
+        Dataset with accumulated joint distribution counts, same structure as
+        `distribution3`.
     """
     b1 = _make_bins(bins1, data[var1])
     b2 = _make_bins(bins2, data[var2])

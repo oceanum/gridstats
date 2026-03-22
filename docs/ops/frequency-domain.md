@@ -65,3 +65,12 @@ Override with custom bands:
 
 !!! note
     `hmo` expects a regularly sampled time series of surface elevation (or equivalent). Gaps or irregular sampling will produce inaccurate PSD estimates.
+
+---
+
+## API reference
+
+::: onstats.ops.frequency_domain.hmo
+    options:
+      show_source: false
+      heading_level: 3

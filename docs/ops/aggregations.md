@@ -103,3 +103,42 @@ Percentage of non-NaN values (0–100). Indicates data coverage.
   dim: time
   data_vars: [hs, tp]
 ```
+
+---
+
+## API reference
+
+::: onstats.ops.aggregations.mean
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.aggregations.max
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.aggregations.min
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.aggregations.std
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.aggregations.count
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.aggregations.quantile
+    options:
+      show_source: false
+      heading_level: 3
+
+::: onstats.ops.aggregations.pcount
+    options:
+      show_source: false
+      heading_level: 3

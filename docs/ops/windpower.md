@@ -73,3 +73,12 @@ Return the full instantaneous power time series (no aggregation):
 
 !!! note
     `winpow` operates on the first variable in `data_vars`. Pass a single wind-speed variable per call.
+
+---
+
+## API reference
+
+::: onstats.ops.windpower.winpow
+    options:
+      show_source: false
+      heading_level: 3

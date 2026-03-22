@@ -68,3 +68,12 @@ Multiple ranges with custom labels:
       left: open
       label: wspd_strong         # > 10 m/s
 ```
+
+---
+
+## API reference
+
+::: onstats.ops.probability.range_probability
+    options:
+      show_source: false
+      heading_level: 3
