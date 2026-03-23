@@ -47,8 +47,8 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "git@github.com:oceanum/gridstats.git"
-Repository = "git@github.com:oceanum/gridstats.git"
+Homepage = "https://github.com/oceanum/gridstats"
+Repository = "https://github.com/oceanum/gridstats"
 
 [project.scripts]
 gridstats = "gridstats.cli:main"
