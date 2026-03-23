@@ -1,9 +1,0 @@
-version: '2'
-
-services:
-
-  gridstats:
-    image: registry.gitlab.com/oceanum/gridstats/gridstats:$CI_COMMIT_REF_NAME
-    build:
-      context: .
-      dockerfile: Dockerfile
