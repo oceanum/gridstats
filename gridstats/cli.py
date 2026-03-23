@@ -1,4 +1,4 @@
-"""Command-line interface for onstats."""
+"""Command-line interface for gridstats."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import typer
 
 app = typer.Typer(
-    name="onstats",
+    name="gridstats",
     help="Compute gridded statistics on oceanographic datasets.",
     add_completion=False,
 )
@@ -22,9 +22,9 @@ def run(
     ),
 ) -> None:
     """Run a stats pipeline from a YAML configuration file."""
-    import onstats  # trigger plugin registration
+    import gridstats  # trigger plugin registration
 
-    from onstats.pipeline import Pipeline
+    from gridstats.pipeline import Pipeline
 
     Pipeline.from_yaml(config).run()
 
@@ -32,9 +32,9 @@ def run(
 @app.command("list-stats")
 def list_stats() -> None:
     """List all registered stat functions."""
-    import onstats  # trigger plugin registration
+    import gridstats  # trigger plugin registration
 
-    from onstats.registry import list_stats as _list
+    from gridstats.registry import list_stats as _list
 
     names = _list()
     if names:
@@ -44,5 +44,5 @@ def list_stats() -> None:
 
 
 def main() -> None:
-    """Entry point for the onstats CLI."""
+    """Entry point for the gridstats CLI."""
     app()

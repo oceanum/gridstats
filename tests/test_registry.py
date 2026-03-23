@@ -1,8 +1,8 @@
-"""Tests for onstats.registry."""
+"""Tests for gridstats.registry."""
 import pytest
 import xarray as xr
 
-from onstats.registry import (
+from gridstats.registry import (
     _LOADERS,
     _STATS,
     get_loader,

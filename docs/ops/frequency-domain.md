@@ -70,7 +70,7 @@ Override with custom bands:
 
 ## API reference
 
-::: onstats.ops.frequency_domain.hmo
+::: gridstats.ops.frequency_domain.hmo
     options:
       show_source: false
       heading_level: 3

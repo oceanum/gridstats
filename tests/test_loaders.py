@@ -1,10 +1,10 @@
-"""Tests for onstats.loaders."""
+"""Tests for gridstats.loaders."""
 import numpy as np
 import pytest
 import xarray as xr
 
-from onstats.config import XarraySourceConfig
-from onstats.loaders.xarray import XarrayLoader, _parse_sel_value
+from gridstats.config import XarraySourceConfig
+from gridstats.loaders.xarray import XarrayLoader, _parse_sel_value
 
 
 @pytest.fixture

@@ -1,12 +1,12 @@
 """Registry for stat functions and data loaders.
 
-Third-party packages can extend onstats without modifying library code by
+Third-party packages can extend gridstats without modifying library code by
 declaring entry points in their package metadata:
 
-    [project.entry-points."onstats.stats"]
+    [project.entry-points."gridstats.stats"]
     my_stat = "my_package.module:my_stat_function"
 
-    [project.entry-points."onstats.loaders"]
+    [project.entry-points."gridstats.loaders"]
     my_loader = "my_package.module:MyLoaderClass"
 
 Built-in ops and loaders self-register via the @register_stat and
@@ -97,7 +97,7 @@ def _load_entrypoint_plugins() -> None:
     """Discover and register plugins declared via package entry points."""
     from importlib.metadata import entry_points
 
-    for ep in entry_points(group="onstats.stats"):
+    for ep in entry_points(group="gridstats.stats"):
         try:
             func = ep.load()
             register_stat(ep.name)(func)
@@ -105,7 +105,7 @@ def _load_entrypoint_plugins() -> None:
         except Exception as exc:
             logger.warning("Failed to load stat plugin '%s': %s", ep.name, exc)
 
-    for ep in entry_points(group="onstats.loaders"):
+    for ep in entry_points(group="gridstats.loaders"):
         try:
             cls = ep.load()
             register_loader(ep.name)(cls)

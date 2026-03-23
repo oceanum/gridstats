@@ -1,6 +1,6 @@
-# onstats
+# gridstats
 
-**onstats** is an Oceanum library for computing gridded statistics over large oceanographic and climate datasets. It is built on [xarray](https://xarray.dev) and [dask](https://dask.org) for lazy, out-of-core computation and is driven entirely by YAML configuration files.
+**gridstats** is an Oceanum library for computing gridded statistics over large oceanographic and climate datasets. It is built on [xarray](https://xarray.dev) and [dask](https://dask.org) for lazy, out-of-core computation and is driven entirely by YAML configuration files.
 
 ## Key features
 
@@ -46,19 +46,19 @@ calls:
 Run it:
 
 ```bash
-onstats run config.yml
+gridstats run config.yml
 ```
 
 ## Installation
 
 ```bash
-pip install onstats
+pip install gridstats
 ```
 
 To include intake catalog support:
 
 ```bash
-pip install "onstats[intake]"
+pip install "gridstats[intake]"
 ```
 
 ## Next steps

@@ -1,12 +1,12 @@
-"""Tests for onstats.pipeline."""
+"""Tests for gridstats.pipeline."""
 import textwrap
 
 import numpy as np
 import pytest
 import xarray as xr
 
-import onstats.loaders  # ensure loaders are registered
-import onstats.ops  # ensure ops are registered
+import gridstats.loaders  # ensure loaders are registered
+import gridstats.ops  # ensure ops are registered
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def netcdf_source(tmp_path, sample_ds):
 
 @pytest.fixture
 def pipeline_config(tmp_path, netcdf_source):
-    from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+    from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
 
     return PipelineConfig(
         source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
@@ -54,7 +54,7 @@ def pipeline_config(tmp_path, netcdf_source):
 
 class TestPipeline:
     def test_run_produces_output_file(self, pipeline_config):
-        from onstats.pipeline import Pipeline
+        from gridstats.pipeline import Pipeline
 
         p = Pipeline(pipeline_config)
         dsout = p.run()
@@ -64,14 +64,14 @@ class TestPipeline:
         assert Path(pipeline_config.output.outfile).exists()
 
     def test_run_variable_suffix(self, pipeline_config):
-        from onstats.pipeline import Pipeline
+        from gridstats.pipeline import Pipeline
 
         dsout = Pipeline(pipeline_config).run()
         assert "hs_mean" in dsout
 
     def test_run_custom_suffix(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
-        from onstats.pipeline import Pipeline
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
 
         config = PipelineConfig(
             source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
@@ -82,8 +82,8 @@ class TestPipeline:
         assert "hs_avg" in dsout
 
     def test_run_multiple_calls(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
-        from onstats.pipeline import Pipeline
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
 
         config = PipelineConfig(
             source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
@@ -98,8 +98,8 @@ class TestPipeline:
         assert "hs_max" in dsout
 
     def test_run_group_monthly(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
-        from onstats.pipeline import Pipeline
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
 
         config = PipelineConfig(
             source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
@@ -111,8 +111,8 @@ class TestPipeline:
         assert "month" in dsout["hs_mean_month"].dims
 
     def test_run_zarr_output(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
-        from onstats.pipeline import Pipeline
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
 
         config = PipelineConfig(
             source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
@@ -125,7 +125,7 @@ class TestPipeline:
         assert os.path.isdir(str(tmp_path / "out.zarr"))
 
     def test_from_yaml(self, tmp_path, netcdf_source):
-        from onstats.pipeline import Pipeline
+        from gridstats.pipeline import Pipeline
 
         yaml_content = textwrap.dedent(f"""\
             source:
@@ -145,8 +145,8 @@ class TestPipeline:
         assert "hs_mean" in dsout
 
     def test_multi_source_raises_not_implemented(self, tmp_path):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
-        from onstats.pipeline import Pipeline
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
 
         config = PipelineConfig(
             sources={"wave": XarraySourceConfig(type="xarray", urlpath="waves.zarr")},
@@ -157,8 +157,8 @@ class TestPipeline:
             Pipeline(config).run()
 
     def test_apply_tiled(self, tmp_path, netcdf_source):
-        from onstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
-        from onstats.pipeline import Pipeline
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
 
         config = PipelineConfig(
             source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),

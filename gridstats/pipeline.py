@@ -1,4 +1,4 @@
-"""Pipeline orchestration for onstats.
+"""Pipeline orchestration for gridstats.
 
 The Pipeline class loads data, applies a sequence of stat operations defined
 in a PipelineConfig, finalises the result, and writes it to disk.
@@ -13,9 +13,9 @@ from typing import Generator
 import numpy as np
 import xarray as xr
 
-from onstats.config import CallConfig, PipelineConfig
-from onstats.output import finalise, write
-from onstats.registry import get_loader, get_stat
+from gridstats.config import CallConfig, PipelineConfig
+from gridstats.output import finalise, write
+from gridstats.registry import get_loader, get_stat
 
 logger = logging.getLogger(__name__)
 

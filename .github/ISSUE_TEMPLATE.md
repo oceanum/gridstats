@@ -1,4 +1,4 @@
-* onstats version:
+* gridstats version:
 * Python version:
 * Operating System:
 

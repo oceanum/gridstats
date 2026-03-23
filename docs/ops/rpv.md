@@ -55,7 +55,7 @@ Any distribution available in `scipy.stats` can be used. Common choices:
 
 ## API reference
 
-::: onstats.ops.rpv.rpv
+::: gridstats.ops.rpv.rpv
     options:
       show_source: false
       heading_level: 3

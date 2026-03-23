@@ -1,4 +1,4 @@
-"""Output writers and dataset finalisation for onstats."""
+"""Output writers and dataset finalisation for gridstats."""
 from __future__ import annotations
 
 import copy
@@ -89,7 +89,7 @@ def set_global_attributes(source_ds: xr.Dataset, dsout: xr.Dataset) -> xr.Datase
     dsout.attrs = {
         "title": "Data stats",
         "institution": "Oceanum",
-        "source": "onstats",
+        "source": "gridstats",
         "date_created": f"{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}",
     }
     if "time" in source_ds:

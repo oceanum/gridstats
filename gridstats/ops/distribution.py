@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from onstats.registry import register_stat
+from gridstats.registry import register_stat
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
-"""Tests for onstats.config."""
+"""Tests for gridstats.config."""
 import textwrap
 
 import pytest
 from pydantic import ValidationError
 
-from onstats.config import (
+from gridstats.config import (
     CallConfig,
     ClusterConfig,
     IntakeSourceConfig,

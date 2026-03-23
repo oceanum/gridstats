@@ -1,4 +1,4 @@
-"""Tests for onstats.cli."""
+"""Tests for gridstats.cli."""
 import textwrap
 
 import numpy as np
@@ -6,7 +6,7 @@ import pytest
 import xarray as xr
 from typer.testing import CliRunner
 
-from onstats.cli import app
+from gridstats.cli import app
 
 
 @pytest.fixture

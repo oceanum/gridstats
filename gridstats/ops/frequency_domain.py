@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d
 from scipy.signal import welch
 import xarray as xr
 
-from onstats.registry import register_stat
+from gridstats.registry import register_stat
 
 logger = logging.getLogger(__name__)
 

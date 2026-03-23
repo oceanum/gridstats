@@ -73,7 +73,7 @@ Multiple ranges with custom labels:
 
 ## API reference
 
-::: onstats.ops.probability.range_probability
+::: gridstats.ops.probability.range_probability
     options:
       show_source: false
       heading_level: 3

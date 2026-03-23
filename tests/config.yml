@@ -1,6 +1,6 @@
-!!python/object/apply:onstats.stats.Stats
+!!python/object/apply:gridstats.stats.Stats
 kwds:
-  outfile: /source/onstats/tests/tmp2.nc
+  outfile: /source/gridstats/tests/tmp2.nc
   # urlpath: /data/forecast/glob-20211214T12.nc
   # urlpath: /data/forecast/ww3-test.nc
   urlpath: /data/forecast/rosssea/noice/ross-grid-20220202T18.zarr

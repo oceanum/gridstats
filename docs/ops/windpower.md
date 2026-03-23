@@ -78,7 +78,7 @@ Return the full instantaneous power time series (no aggregation):
 
 ## API reference
 
-::: onstats.ops.windpower.winpow
+::: gridstats.ops.windpower.winpow
     options:
       show_source: false
       heading_level: 3

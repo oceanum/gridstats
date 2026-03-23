@@ -19,8 +19,8 @@ RUN apt update && apt -y upgrade && \
 # Set default python3 as python
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-# Install onstats
-COPY setup.py README.rst HISTORY.rst $REPOS/onstats/
-COPY onstats $REPOS/onstats/onstats
-COPY tests $REPOS/onstats/tests
-RUN pip install --break-system-packages -e $REPOS/onstats --no-cache-dir
+# Install gridstats
+COPY setup.py README.rst HISTORY.rst $REPOS/gridstats/
+COPY gridstats $REPOS/gridstats/gridstats
+COPY tests $REPOS/gridstats/tests
+RUN pip install --break-system-packages -e $REPOS/gridstats --no-cache-dir

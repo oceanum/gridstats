@@ -61,7 +61,7 @@ Setting `nsector` on a regular call (e.g. `func: mean, nsector: 8`) is handled a
 
 ## API reference
 
-::: onstats.ops.directional.statdir
+::: gridstats.ops.directional.statdir
     options:
       show_source: false
       heading_level: 3

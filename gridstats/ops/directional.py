@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 
-from onstats.registry import register_stat
+from gridstats.registry import register_stat
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def statdir(
     Returns:
         Dataset with a 'direction' dimension containing sector-centre values.
     """
-    from onstats.registry import get_stat
+    from gridstats.registry import get_stat
 
     if dir_var not in data:
         raise ValueError(

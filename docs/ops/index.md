@@ -6,23 +6,23 @@ An **operation** (or "op") is a function that reduces an `xr.Dataset` along one 
 
 | `func` | Description |
 |---|---|
-| [`mean`](aggregations.md#onstats.ops.aggregations.mean) | Arithmetic mean |
-| [`max`](aggregations.md#onstats.ops.aggregations.max) | Maximum value |
-| [`min`](aggregations.md#onstats.ops.aggregations.min) | Minimum value |
-| [`std`](aggregations.md#onstats.ops.aggregations.std) | Standard deviation |
-| [`count`](aggregations.md#onstats.ops.aggregations.count) | Count of non-NaN values |
-| [`quantile`](aggregations.md#onstats.ops.aggregations.quantile) | Quantiles at specified levels |
-| [`pcount`](aggregations.md#onstats.ops.aggregations.pcount) | Percentage of non-NaN values |
-| [`exceedance`](exceedance.md#onstats.ops.exceedance.exceedance) | Probability that values exceed a threshold |
-| [`nonexceedance`](exceedance.md#onstats.ops.exceedance.nonexceedance) | Probability that values stay below a threshold |
-| [`rpv`](rpv.md#onstats.ops.rpv.rpv) | Return period values via extreme-value analysis |
-| [`distribution3`](distribution.md#onstats.ops.distribution.distribution3) | 3-D joint histogram (Hs × Tp × Dir) |
-| [`distribution2`](distribution.md#onstats.ops.distribution.distribution2) | 2-D joint histogram (speed × direction) |
-| [`distribution3_timestep`](distribution.md#onstats.ops.distribution.distribution3_timestep) | Memory-efficient 3-D histogram (accumulated in time chunks) |
-| [`statdir`](directional.md#onstats.ops.directional.statdir) | Apply multiple functions over directional sectors |
-| [`hmo`](frequency-domain.md#onstats.ops.frequency_domain.hmo) | Frequency-domain Hs in spectral bands |
-| [`range_probability`](probability.md#onstats.ops.probability.range_probability) | Probability of values falling within specified ranges |
-| [`winpow`](windpower.md#onstats.ops.windpower.winpow) | Wind turbine power from wind speed |
+| [`mean`](aggregations.md#gridstats.ops.aggregations.mean) | Arithmetic mean |
+| [`max`](aggregations.md#gridstats.ops.aggregations.max) | Maximum value |
+| [`min`](aggregations.md#gridstats.ops.aggregations.min) | Minimum value |
+| [`std`](aggregations.md#gridstats.ops.aggregations.std) | Standard deviation |
+| [`count`](aggregations.md#gridstats.ops.aggregations.count) | Count of non-NaN values |
+| [`quantile`](aggregations.md#gridstats.ops.aggregations.quantile) | Quantiles at specified levels |
+| [`pcount`](aggregations.md#gridstats.ops.aggregations.pcount) | Percentage of non-NaN values |
+| [`exceedance`](exceedance.md#gridstats.ops.exceedance.exceedance) | Probability that values exceed a threshold |
+| [`nonexceedance`](exceedance.md#gridstats.ops.exceedance.nonexceedance) | Probability that values stay below a threshold |
+| [`rpv`](rpv.md#gridstats.ops.rpv.rpv) | Return period values via extreme-value analysis |
+| [`distribution3`](distribution.md#gridstats.ops.distribution.distribution3) | 3-D joint histogram (Hs × Tp × Dir) |
+| [`distribution2`](distribution.md#gridstats.ops.distribution.distribution2) | 2-D joint histogram (speed × direction) |
+| [`distribution3_timestep`](distribution.md#gridstats.ops.distribution.distribution3_timestep) | Memory-efficient 3-D histogram (accumulated in time chunks) |
+| [`statdir`](directional.md#gridstats.ops.directional.statdir) | Apply multiple functions over directional sectors |
+| [`hmo`](frequency-domain.md#gridstats.ops.frequency_domain.hmo) | Frequency-domain Hs in spectral bands |
+| [`range_probability`](probability.md#gridstats.ops.probability.range_probability) | Probability of values falling within specified ranges |
+| [`winpow`](windpower.md#gridstats.ops.windpower.winpow) | Wind turbine power from wind speed |
 
 ## Output variable naming
 

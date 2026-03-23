@@ -109,17 +109,17 @@ All parameters are the same as `distribution3`, plus:
 
 ## API reference
 
-::: onstats.ops.distribution.distribution2
+::: gridstats.ops.distribution.distribution2
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.distribution.distribution3
+::: gridstats.ops.distribution.distribution3
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.distribution.distribution3_timestep
+::: gridstats.ops.distribution.distribution3_timestep
     options:
       show_source: false
       heading_level: 3

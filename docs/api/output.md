@@ -2,7 +2,7 @@
 
 Functions for finalising and writing output datasets.
 
-::: onstats.output
+::: gridstats.output
     options:
       members:
         - finalise

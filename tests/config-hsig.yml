@@ -1,6 +1,6 @@
-!!python/object/apply:onstats.stats.Stats
+!!python/object/apply:gridstats.stats.Stats
 kwds:
-  outfile: /source/onstats/tests/tmp.nc
+  outfile: /source/gridstats/tests/tmp.nc
   urlpath: /data/funwave/funwave-test.zarr
   engine: zarr
   # slice_dict:

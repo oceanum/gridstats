@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-pip install onstats
+pip install gridstats
 ```
 
 Requires Python ≥ 3.10.
@@ -11,7 +11,7 @@ Requires Python ≥ 3.10.
 For intake catalog support (loading data from an intake catalog):
 
 ```bash
-pip install "onstats[intake]"
+pip install "gridstats[intake]"
 ```
 
 ## How it works
@@ -51,7 +51,7 @@ calls:
 ### 2. Run it
 
 ```bash
-onstats run stats.yml
+gridstats run stats.yml
 ```
 
 The output file `wave_stats.nc` will contain:
@@ -166,7 +166,7 @@ calls:
 ## CLI reference
 
 ```
-Usage: onstats [OPTIONS] COMMAND [ARGS]...
+Usage: gridstats [OPTIONS] COMMAND [ARGS]...
 
   Compute gridded statistics on oceanographic datasets.
 

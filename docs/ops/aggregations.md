@@ -108,37 +108,37 @@ Percentage of non-NaN values (0–100). Indicates data coverage.
 
 ## API reference
 
-::: onstats.ops.aggregations.mean
+::: gridstats.ops.aggregations.mean
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.aggregations.max
+::: gridstats.ops.aggregations.max
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.aggregations.min
+::: gridstats.ops.aggregations.min
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.aggregations.std
+::: gridstats.ops.aggregations.std
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.aggregations.count
+::: gridstats.ops.aggregations.count
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.aggregations.quantile
+::: gridstats.ops.aggregations.quantile
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.aggregations.pcount
+::: gridstats.ops.aggregations.pcount
     options:
       show_source: false
       heading_level: 3

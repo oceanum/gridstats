@@ -1,9 +1,9 @@
-"""Tests for onstats.output."""
+"""Tests for gridstats.output."""
 import numpy as np
 import pytest
 import xarray as xr
 
-from onstats.output import (
+from gridstats.output import (
     finalise,
     set_global_attributes,
     set_variable_attributes,

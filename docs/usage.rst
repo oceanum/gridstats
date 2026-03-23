@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use onstats in a project::
+To use gridstats in a project::
 
-    import onstats
+    import gridstats

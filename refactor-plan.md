@@ -5,7 +5,7 @@
 Before making any changes, thoroughly review the existing code:
 
 - Read every Python file in the package
-- Read all config files and example configs to understand usage patterns. several configs are available in /config/hindcast/ontask/tasks/onstats and /config/hindcast/ontask/tasks/stats, but keep in mind some of these may be outdated, and that they also contain specification to run this in our argo cluster.
+- Read all config files and example configs to understand usage patterns. several configs are available in /config/hindcast/ontask/tasks/gridstats and /config/hindcast/ontask/tasks/stats, but keep in mind some of these may be outdated, and that they also contain specification to run this in our argo cluster.
 - Read any existing tests
 - Read the README and any documentation
 

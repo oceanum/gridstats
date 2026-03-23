@@ -1,8 +1,8 @@
-site_name: onstats
+site_name: gridstats
 site_description: Gridded statistics for oceanographic datasets
-site_url: https://oceanum.gitlab.io/onstats
-repo_url: https://gitlab.com/oceanum/onstats
-repo_name: oceanum/onstats
+site_url: https://oceanum.gitlab.io/gridstats
+repo_url: https://gitlab.com/oceanum/gridstats
+repo_name: oceanum/gridstats
 
 theme:
   name: material

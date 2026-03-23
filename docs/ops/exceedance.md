@@ -73,12 +73,12 @@ Duration strings use pandas `Timedelta` notation:
 
 ## API reference
 
-::: onstats.ops.exceedance.exceedance
+::: gridstats.ops.exceedance.exceedance
     options:
       show_source: false
       heading_level: 3
 
-::: onstats.ops.exceedance.nonexceedance
+::: gridstats.ops.exceedance.nonexceedance
     options:
       show_source: false
       heading_level: 3

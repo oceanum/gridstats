@@ -1,8 +1,8 @@
-"""Built-in statistical operations for onstats.
+"""Built-in statistical operations for gridstats.
 
 All ops self-register via @register_stat on import.
 """
-from onstats.ops import (
+from gridstats.ops import (
     aggregations,
     directional,
     distribution,

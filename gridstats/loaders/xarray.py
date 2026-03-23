@@ -6,8 +6,8 @@ from typing import Any
 
 import xarray as xr
 
-from onstats.config import XarraySourceConfig, _BaseSourceConfig
-from onstats.registry import register_loader
+from gridstats.config import XarraySourceConfig, _BaseSourceConfig
+from gridstats.registry import register_loader
 
 logger = logging.getLogger(__name__)
 

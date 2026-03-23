@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import xarray as xr
 
-from onstats.registry import register_stat
+from gridstats.registry import register_stat
 
 
 def _pol3(x: np.ndarray, a: float, b: float, c: float, d: float) -> np.ndarray:

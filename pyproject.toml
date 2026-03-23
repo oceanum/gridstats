@@ -3,7 +3,7 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "onstats"
+name = "gridstats"
 version = "2.0.0"
 description = "Oceanum library for computing gridded statistics on oceanographic datasets"
 authors = [{ name = "Oceanum Developers", email = "developers@oceanum.science" }]
@@ -26,7 +26,6 @@ dependencies = [
     "dask",
     "distributed",
     "flox",
-    "intake-forecast",
     "pydantic>=2",
     "pyyaml",
     "scipy",
@@ -36,7 +35,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-intake = ["intake-forecast"]
+intake = ["intake"]
 dev = [
     "pytest",
     "pytest-cov",
@@ -48,21 +47,21 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://gitlab.com/oceanum/onstats"
-Repository = "https://gitlab.com/oceanum/onstats"
+Homepage = "https://gitlab.com/oceanum/gridstats"
+Repository = "https://gitlab.com/oceanum/gridstats"
 
 [project.scripts]
-onstats = "onstats.cli:main"
+gridstats = "gridstats.cli:main"
 
 # Entry points for third-party plugin packages.
-# Stat functions: [project.entry-points."onstats.stats"]
-# Loaders:        [project.entry-points."onstats.loaders"]
+# Stat functions: [project.entry-points."gridstats.stats"]
+# Loaders:        [project.entry-points."gridstats.loaders"]
 
 [tool.setuptools.packages.find]
-include = ["onstats*"]
+include = ["gridstats*"]
 
 [tool.setuptools.package-data]
-onstats = ["attributes.yml"]
+gridstats = ["attributes.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

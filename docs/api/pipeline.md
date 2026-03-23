@@ -1,8 +1,8 @@
 # pipeline
 
-The `Pipeline` class is the main entry point for running an onstats config.
+The `Pipeline` class is the main entry point for running an gridstats config.
 
-::: onstats.pipeline
+::: gridstats.pipeline
     options:
       members:
         - Pipeline

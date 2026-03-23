@@ -1,6 +1,6 @@
 # Custom Plugins
 
-onstats has two extension points: **stat functions** and **data loaders**. Both are registered in a central registry and discovered automatically via Python package entry points.
+gridstats has two extension points: **stat functions** and **data loaders**. Both are registered in a central registry and discovered automatically via Python package entry points.
 
 ---
 
@@ -18,7 +18,7 @@ Register it with the `@register_stat` decorator:
 ```python
 # my_package/stats.py
 import xarray as xr
-from onstats.registry import register_stat
+from gridstats.registry import register_stat
 
 @register_stat("my_stat")
 def my_stat(data: xr.Dataset, *, dim: str = "time", threshold: float = 0.0, **kwargs) -> xr.Dataset:
@@ -29,7 +29,7 @@ def my_stat(data: xr.Dataset, *, dim: str = "time", threshold: float = 0.0, **kw
 Then declare the entry point in your package's `pyproject.toml`:
 
 ```toml
-[project.entry-points."onstats.stats"]
+[project.entry-points."gridstats.stats"]
 my_stat = "my_package.stats:my_stat"
 ```
 
@@ -55,7 +55,7 @@ Subclass `_BaseSourceConfig` (which provides `mapping`, `sel`, `isel`, and `chun
 ```python
 # my_package/config.py
 from typing import Literal
-from onstats.config import _BaseSourceConfig
+from gridstats.config import _BaseSourceConfig
 
 class DatameshSourceConfig(_BaseSourceConfig):
     type: Literal["datamesh"]
@@ -69,8 +69,8 @@ class DatameshSourceConfig(_BaseSourceConfig):
 ```python
 # my_package/loaders.py
 import xarray as xr
-from onstats.loaders.xarray import XarrayLoader
-from onstats.registry import register_loader
+from gridstats.loaders.xarray import XarrayLoader
+from gridstats.registry import register_loader
 from my_package.config import DatameshSourceConfig
 
 @register_loader("datamesh")
@@ -84,7 +84,7 @@ class DatameshLoader:
 ### 3. Register entry points
 
 ```toml
-[project.entry-points."onstats.loaders"]
+[project.entry-points."gridstats.loaders"]
 datamesh = "my_package.loaders:DatameshLoader"
 ```
 
@@ -107,8 +107,8 @@ If you don't need a separate package, you can register functions directly before
 
 ```python
 import xarray as xr
-from onstats.registry import register_stat
-from onstats.pipeline import Pipeline
+from gridstats.registry import register_stat
+from gridstats.pipeline import Pipeline
 
 @register_stat("custom_mean")
 def custom_mean(data: xr.Dataset, *, dim: str = "time", **kwargs) -> xr.Dataset:
@@ -123,14 +123,14 @@ result = pipeline.run()
 ## Listing registered functions
 
 ```bash
-onstats list-stats
+gridstats list-stats
 ```
 
 Or from Python:
 
 ```python
-import onstats
-from onstats.registry import list_stats, list_loaders
+import gridstats
+from gridstats.registry import list_stats, list_loaders
 
 print(list_stats())
 print(list_loaders())
