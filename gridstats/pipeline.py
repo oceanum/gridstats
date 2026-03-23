@@ -164,7 +164,6 @@ class Pipeline:
 
     def __init__(self, config: PipelineConfig) -> None:
         self.config = config
-        self._source_ds: xr.Dataset | None = None
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Pipeline:
@@ -191,12 +190,11 @@ class Pipeline:
         logger.info("Pipeline starting.")
 
         source_ds = self._load()
-        self._source_ds = source_ds
 
         dsout = xr.Dataset()
         for call in self.config.calls:
             logger.info("Applying stat: %s", call.func)
-            result = self._apply(call, source_ds)
+            result = self._apply(call)
             dsout = dsout.merge(result)
 
         dsout = finalise(
@@ -214,30 +212,34 @@ class Pipeline:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load(self) -> xr.Dataset:
-        """Load the source dataset according to config."""
+    def _load(self, chunks: dict[str, int] | None = None) -> xr.Dataset:
+        """Load the source dataset, optionally overriding chunk sizes.
+
+        Args:
+            chunks: Chunk sizes to use when opening the dataset. Merged on top of
+                any chunks defined in the source config; call-level chunks take
+                priority.
+        """
         if self.config.source is None:
             raise NotImplementedError(
                 "Multi-source pipelines (config.sources) are not yet implemented. "
                 "Use config.source for a single source."
             )
-        loader = _select_loader(self.config.source)
-        return loader.load(self.config.source)
+        source = self.config.source
+        if chunks:
+            source = source.model_copy(update={"chunks": {**source.chunks, **chunks}})
+        loader = _select_loader(source)
+        return loader.load(source)
 
-    def _apply(self, call: CallConfig, source_ds: xr.Dataset) -> xr.Dataset:
+    def _apply(self, call: CallConfig) -> xr.Dataset:
         """Run a single stat call and return the renamed result dataset."""
         fn = get_stat(call.func)
 
-        # --- Variable selection ---
-        if call.data_vars == "all":
-            data = source_ds
-        else:
-            data = source_ds[call.data_vars]
+        data = self._load(chunks=call.chunks or None)
 
-        # --- Per-call chunking ---
-        if call.chunks:
-            active = {k: v for k, v in call.chunks.items() if k in data.dims}
-            data = data.chunk(active)
+        # --- Variable selection ---
+        if call.data_vars != "all":
+            data = data[call.data_vars]
 
         # --- Build kwargs for the stat function ---
         fn_kwargs = dict(
