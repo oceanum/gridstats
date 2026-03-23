@@ -20,7 +20,7 @@ RUN apt update && apt -y upgrade && \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # Install gridstats
-COPY setup.py README.rst HISTORY.rst $REPOS/gridstats/
+COPY pyproject.toml README.md $REPOS/gridstats/
 COPY gridstats $REPOS/gridstats/gridstats
 COPY tests $REPOS/gridstats/tests
 RUN pip install --break-system-packages -e $REPOS/gridstats --no-cache-dir
