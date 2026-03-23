@@ -1,7 +1,9 @@
 """Command-line interface for gridstats."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -20,8 +22,14 @@ def run(
         readable=True,
         help="Path to a YAML pipeline configuration file.",
     ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable DEBUG logging."),
 ) -> None:
     """Run a stats pipeline from a YAML configuration file."""
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
     import gridstats  # trigger plugin registration
 
     from gridstats.pipeline import Pipeline
