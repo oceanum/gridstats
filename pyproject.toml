@@ -38,7 +38,7 @@ dependencies = [
 extra = [
     "gcsfs",
     "intake",
-    "intake-onzarr",
+    "intake-forecast",
 ]
 dev = [
     "pytest",
