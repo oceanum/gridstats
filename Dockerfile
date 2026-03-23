@@ -23,4 +23,4 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 COPY pyproject.toml README.md $REPOS/gridstats/
 COPY gridstats $REPOS/gridstats/gridstats
 COPY tests $REPOS/gridstats/tests
-RUN pip install --break-system-packages -e $REPOS/gridstats[intake] --no-cache-dir
+RUN pip install --break-system-packages -e $REPOS/gridstats[extra] --no-cache-dir

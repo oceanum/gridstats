@@ -35,7 +35,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-intake = ["intake"]
+extra = [
+    "gcsfs",
+    "intake",
+]
 dev = [
     "pytest",
     "pytest-cov",
