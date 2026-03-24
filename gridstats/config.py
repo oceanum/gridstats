@@ -59,7 +59,7 @@ class OutputConfig(BaseModel):
 class ClusterConfig(BaseModel):
     """Dask cluster configuration."""
 
-    enabled: bool = False
+    enabled: bool = True
     n_workers: int | None = None
     threads_per_worker: int = 1
     processes: bool = True

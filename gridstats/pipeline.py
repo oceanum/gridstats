@@ -189,13 +189,13 @@ class Pipeline:
         """
         logger.info("Pipeline starting.")
 
-        source_ds = self._load()
-
         dsout = xr.Dataset()
         for call in self.config.calls:
             logger.info("Applying stat: %s", call.func)
             result = self._apply(call)
             dsout = dsout.merge(result)
+
+        source_ds = self._load()
 
         dsout = finalise(
             dsout,
