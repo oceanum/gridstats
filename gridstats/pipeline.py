@@ -250,7 +250,13 @@ class Pipeline:
 
         # --- Dask cluster ---
         cluster_ctx = (
-            _local_cluster(**self.config.cluster.model_dump(exclude={"enabled"}))
+            _local_cluster(
+                **{
+                    k: v
+                    for k, v in self.config.cluster.model_dump(exclude={"enabled"}).items()
+                    if v is not None
+                }
+            )
             if self.config.cluster.enabled and call.use_dask_cluster
             else _dummy_client()
         )

@@ -42,9 +42,10 @@ class IntakeLoader:
         )
         cat = open_catalog(config.catalog)
         dset = cat[config.dataset_id].to_dask()
-        if config.chunks:
-            dset = dset.chunk(config.chunks)
 
         from gridstats.loaders.xarray import XarrayLoader
 
-        return XarrayLoader()._preprocess(dset, config)
+        dset = XarrayLoader()._preprocess(dset, config)
+        if config.chunks:
+            dset = dset.chunk(config.chunks)
+        return dset

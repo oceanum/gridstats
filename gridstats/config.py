@@ -57,11 +57,17 @@ class OutputConfig(BaseModel):
 
 
 class ClusterConfig(BaseModel):
-    """Dask cluster configuration."""
+    """Dask cluster configuration.
 
-    enabled: bool = True
+    Defaults are tuned for cloud environments where CPUs are virtual (hyperthreaded).
+    ``threads_per_worker=2`` maps two vCPUs to one worker process (one physical core's
+    worth of compute), giving fewer workers with more memory each — important for
+    memory-intensive operations like quantile.
+    """
+
+    enabled: bool = False
     n_workers: int | None = None
-    threads_per_worker: int = 1
+    threads_per_worker: int = 2
     processes: bool = True
 
 
