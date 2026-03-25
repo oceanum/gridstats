@@ -19,10 +19,10 @@ Requires Python ≥ 3.10.
 pip install gridstats
 ```
 
-For loading data from an [intake](https://intake.readthedocs.io) catalog:
+For intake catalog support and cloud storage (GCS):
 
 ```bash
-pip install "gridstats[intake]"
+pip install "gridstats[extra]"
 ```
 
 ## Quick start
@@ -87,12 +87,12 @@ print(ds)
 | `exceedance` / `nonexceedance` | Probability of exceeding a threshold |
 | `range_probability` | Probability of a value falling in a range |
 | `rpv` | Return period values via extreme value fitting |
-| `distribution2` / `distribution3` | 2- and 3-parameter distribution fitting |
+| `distribution2` / `distribution3` | 2-D and 3-D joint histograms |
 | `statdir` | Directional statistics (sector-binned) |
 | `hmo` | Significant wave height from spectral moments |
 | `winpow` | Wind power density |
 
-All calls accept a `group:` key (`month`, `season`, `hour`, …) to compute statistics per calendar period.
+All calls accept a `group:` key (`month`, `season`, `year`) to compute statistics per calendar period.
 
 ## Grouping and spatial tiling
 
