@@ -145,7 +145,7 @@ class TestClusterConfig:
         c = ClusterConfig()
         assert c.enabled is False
         assert c.n_workers is None
-        assert c.threads_per_worker == 1
+        assert c.threads_per_worker == 2
         assert c.processes is True
 
     def test_enabled(self):
