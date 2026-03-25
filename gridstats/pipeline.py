@@ -246,15 +246,20 @@ class Pipeline:
         # the required variables before applying call-level rechunking.  This
         # avoids creating rechunk tasks for variables that are not needed by
         # this call, reducing peak dask graph size and intermediate memory.
+        from gridstats.loaders.xarray import _ds_summary
+
         data = self._load()
+        logger.info("[%s] After load: %s", call.func, _ds_summary(data))
 
         # --- Variable selection (before rechunking) ---
         if call.data_vars != "all":
             data = data[call.data_vars]
+            logger.info("[%s] After var selection %s: %s", call.func, call.data_vars, _ds_summary(data))
 
         # --- Apply call-level rechunking to selected variables only ---
         if call.chunks:
             data = data.chunk(call.chunks)
+            logger.info("[%s] After call-level chunk %s: %s", call.func, call.chunks, _ds_summary(data))
 
         # --- Build kwargs for the stat function ---
         fn_kwargs = dict(
@@ -292,7 +297,9 @@ class Pipeline:
             else:
                 result = fn(data, **fn_kwargs)
 
+            logger.info("[%s] Triggering compute (result.load()): %s", call.func, _ds_summary(result))
             result = result.load()
+            logger.info("[%s] Compute complete: %s", call.func, _ds_summary(result))
 
         # --- Rename output variables with suffix ---
         suffix = call.suffix

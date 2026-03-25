@@ -12,6 +12,16 @@ from gridstats.registry import register_loader
 logger = logging.getLogger(__name__)
 
 
+def _ds_summary(dset: xr.Dataset) -> str:
+    """Return a one-line summary of dataset shape and chunking for logging."""
+    sizes = dict(dset.sizes)
+    if dset.chunks:
+        chunks = {d: sorted(set(c)) for d, c in dset.chunks.items()}
+    else:
+        chunks = "not chunked"
+    return f"vars={list(dset.data_vars)}, sizes={sizes}, chunks={chunks}"
+
+
 def _parse_sel_value(val: Any) -> Any:
     """Convert a ``{start, stop}`` dict to a :class:`slice`; pass everything else through.
 
@@ -48,7 +58,10 @@ class XarrayLoader:
             chunks=config.chunks or {},
             **config.open_kwargs,
         )
-        return self._preprocess(dset, config)
+        logger.info("After open: %s", _ds_summary(dset))
+        dset = self._preprocess(dset, config)
+        logger.info("After preprocess (sel/isel): %s", _ds_summary(dset))
+        return dset
 
     def _preprocess(self, dset: xr.Dataset, config: _BaseSourceConfig) -> xr.Dataset:
         """Apply variable renaming, label selection, and index selection from config."""
