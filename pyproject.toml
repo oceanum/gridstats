@@ -26,6 +26,7 @@ dependencies = [
     "dask",
     "distributed",
     "flox",
+    "netcdf4",
     "pydantic>=2",
     "pyyaml",
     "scipy",
