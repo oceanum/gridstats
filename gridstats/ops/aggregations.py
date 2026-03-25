@@ -140,7 +140,11 @@ def quantile(
     Returns:
         Reduced dataset with a `quantile` dimension. Gains a `group` dimension when `group` is set.
     """
-    return _groupby(data, group).quantile(q=q, dim=dim, **kwargs)
+    # flox doubles peak memory for groupby().quantile() vs the native xarray path
+    # (flox builds the full quantile array in a different layout requiring an extra copy).
+    # Disable it explicitly so that large-grid quantile calls match old memory behaviour.
+    with xr.set_options(use_flox=False):
+        return _groupby(data, group).quantile(q=q, dim=dim, **kwargs)
 
 
 @register_stat("pcount")
