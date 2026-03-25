@@ -33,7 +33,7 @@ class IntakeLoader:
         except ImportError as exc:
             raise ImportError(
                 "intake is required for catalog loading: "
-                "pip install gridstats[intake]"
+                "pip install gridstats[extra]"
             ) from exc
 
         logger.info(

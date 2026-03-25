@@ -55,10 +55,10 @@ gridstats run config.yml
 pip install gridstats
 ```
 
-To include intake catalog support:
+To include intake catalog support and cloud storage (GCS):
 
 ```bash
-pip install "gridstats[intake]"
+pip install "gridstats[extra]"
 ```
 
 ## Next steps

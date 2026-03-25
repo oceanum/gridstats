@@ -20,10 +20,9 @@ source:
   mapping:
     Hs: hs
     Tp: tp
-  slice_dict:
-    sel:
-      latitude: slice(-50, -10)
-      longitude: slice(110, 180)
+  sel:
+    latitude: {start: -50, stop: -10}
+    longitude: {start: 110, stop: 180}
 ```
 
 | Field | Description |
@@ -40,7 +39,7 @@ source:
 
 ## `type: intake`
 
-Opens a dataset from an [intake-forecast](https://github.com/oceanum/intake-forecast) catalog. Requires the `intake-forecast` package.
+Opens a dataset from an [intake-forecast](https://github.com/oceanum/intake-forecast) catalog. Requires `pip install "gridstats[extra]"`.
 
 ```yaml
 source:
@@ -51,9 +50,8 @@ source:
     time: 50
   mapping:
     significant_wave_height: hs
-  slice_dict:
-    sel:
-      time: slice("2000-01-01", "2020-12-31")
+  sel:
+    time: {start: "2000-01-01", stop: "2020-12-31"}
 ```
 
 | Field | Description |

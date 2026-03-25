@@ -11,7 +11,7 @@ Requires Python ≥ 3.10.
 For intake catalog support (loading data from an intake catalog):
 
 ```bash
-pip install "gridstats[intake]"
+pip install "gridstats[extra]"
 ```
 
 ## How it works
