@@ -86,6 +86,7 @@ class CallConfig(BaseModel):
     chunks: dict[str, int] = {}
     tiles: dict[str, int] = {}
     use_dask_cluster: bool = True
+    use_flox: bool = True
     nsector: int | None = None
     dir_var: str = "dpm"
     suffix: str | None = None

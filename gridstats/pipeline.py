@@ -281,7 +281,7 @@ class Pipeline:
             else _dummy_client()
         )
 
-        with cluster_ctx:
+        with cluster_ctx, xr.set_options(use_flox=call.use_flox):
             # --- Directional sectorisation ---
             if call.nsector is not None:
                 result = _apply_directional(

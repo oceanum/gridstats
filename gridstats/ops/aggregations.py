@@ -128,7 +128,9 @@ def quantile(
     Note:
         Quantile computation requires the entire time axis to be in memory.
         Use `chunks: {time: -1}` together with `tiles` on the call to control
-        peak memory usage on large grids.
+        peak memory usage on large grids. On large grids also set
+        ``use_flox: false`` on the call — flox's quantile path uses roughly 2×
+        the memory of the native xarray implementation.
 
     Args:
         data: Input dataset.
@@ -140,11 +142,7 @@ def quantile(
     Returns:
         Reduced dataset with a `quantile` dimension. Gains a `group` dimension when `group` is set.
     """
-    # flox doubles peak memory for groupby().quantile() vs the native xarray path
-    # (flox builds the full quantile array in a different layout requiring an extra copy).
-    # Disable it explicitly so that large-grid quantile calls match old memory behaviour.
-    with xr.set_options(use_flox=False):
-        return _groupby(data, group).quantile(q=q, dim=dim, **kwargs)
+    return _groupby(data, group).quantile(q=q, dim=dim, **kwargs)
 
 
 @register_stat("pcount")
