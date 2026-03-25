@@ -138,7 +138,7 @@ Optional Dask LocalCluster configuration. If `enabled: false` (the default), com
 |---|---|---|---|
 | `enabled` | bool | `false` | Whether to start a local Dask cluster. |
 | `n_workers` | int | `null` | Number of workers (defaults to number of CPUs). |
-| `threads_per_worker` | int | `1` | Threads per worker. |
+| `threads_per_worker` | int | `2` | Threads per worker. |
 | `processes` | bool | `true` | Use separate processes (recommended for CPU-bound work). |
 
 ---
@@ -173,6 +173,7 @@ An ordered list of stat operations. Each call is a dict with a `func` field nami
 | `chunks` | dict | `{}` | Rechunk the data before this call: `{dim: size}`. |
 | `tiles` | dict | `{}` | Process in spatial tiles: `{dim: tile_size}`. Useful for memory-intensive stats like `quantile` or `rpv`. |
 | `use_dask_cluster` | bool | `true` | Whether to use the Dask cluster for this call (if `cluster.enabled: true`). |
+| `use_flox` | bool | `true` | Whether to use [flox](https://flox.readthedocs.io) for groupby reductions. Efficient for most operations, but set to `false` for `quantile` on large grids — flox's quantile path uses ~2× the memory of the native xarray implementation. |
 | `nsector` | int | `null` | If set, bin the data into this many directional sectors and apply the function to each. |
 | `dir_var` | string | `"dpm"` | Directional variable used for sectorisation when `nsector` is set. |
 | `suffix` | string | `null` | Override the auto-generated output variable suffix. Default: `_{func}` (plus `_{group}` and `_direc` if applicable). |
@@ -196,6 +197,7 @@ calls:
     tiles:
       latitude: 10
     use_dask_cluster: true
+    use_flox: true
     nsector: 8
     dir_var: dpm
     suffix: _return_period

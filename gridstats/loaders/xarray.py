@@ -58,9 +58,9 @@ class XarrayLoader:
             chunks=config.chunks or {},
             **config.open_kwargs,
         )
-        logger.info("After open: %s", _ds_summary(dset))
+        logger.debug("After open: %s", _ds_summary(dset))
         dset = self._preprocess(dset, config)
-        logger.info("After preprocess (sel/isel): %s", _ds_summary(dset))
+        logger.debug("After preprocess (sel/isel): %s", _ds_summary(dset))
         return dset
 
     def _preprocess(self, dset: xr.Dataset, config: _BaseSourceConfig) -> xr.Dataset:

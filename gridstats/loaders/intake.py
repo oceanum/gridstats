@@ -6,6 +6,7 @@ import logging
 import xarray as xr
 
 from gridstats.config import IntakeSourceConfig
+from gridstats.loaders.xarray import XarrayLoader, _ds_summary
 from gridstats.registry import register_loader
 
 logger = logging.getLogger(__name__)
@@ -42,13 +43,10 @@ class IntakeLoader:
         )
         cat = open_catalog(config.catalog)
         dset = cat[config.dataset_id].to_dask()
-
-        from gridstats.loaders.xarray import XarrayLoader, _ds_summary
-
-        logger.info("After to_dask: %s", _ds_summary(dset))
+        logger.debug("After to_dask: %s", _ds_summary(dset))
         dset = XarrayLoader()._preprocess(dset, config)
-        logger.info("After preprocess (sel/isel): %s", _ds_summary(dset))
+        logger.debug("After preprocess (sel/isel): %s", _ds_summary(dset))
         if config.chunks:
             dset = dset.chunk(config.chunks)
-            logger.info("After source-level chunk: %s", _ds_summary(dset))
+            logger.debug("After source-level chunk: %s", _ds_summary(dset))
         return dset

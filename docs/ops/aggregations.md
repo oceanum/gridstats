@@ -87,10 +87,14 @@ The output has a `quantile` dimension.
     longitude: 50
   tiles:
     latitude: 10     # process 10 rows at a time if memory is tight
+  use_flox: false    # flox uses ~2× memory for quantile; disable on large grids
 ```
 
 !!! note
     `quantile` loads the entire time axis into memory per spatial chunk. Use `tiles` to limit peak memory usage on large grids.
+
+!!! warning "flox memory usage"
+    When [flox](https://flox.readthedocs.io) is installed, xarray uses it for groupby reductions by default. For most operations this is faster, but for `quantile` flox's implementation uses approximately **2× more memory** than the native xarray path. On large grids (e.g. global or regional hindcasts) this can cause out-of-memory errors. Set `use_flox: false` on any `quantile` call that processes a large dataset.
 
 ---
 

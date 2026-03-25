@@ -141,6 +141,7 @@ calls:
     tiles:
       latitude: 10      # process 10 rows at a time
       longitude: 10
+    use_flox: false     # flox uses ~2× memory for quantile; disable on large grids
 ```
 
 ## Using a Dask cluster
