@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
+import dask
 import numpy as np
 import xarray as xr
 
@@ -164,6 +165,12 @@ class Pipeline:
 
     def __init__(self, config: PipelineConfig) -> None:
         self.config = config
+        # Match old onstats behaviour: do not auto-split large chunks during
+        # rechunking or groupby operations.  Without this, newer dask versions
+        # default to split_large_chunks=True and may create unexpectedly large
+        # intermediate arrays when rechunking a time=-1 dataset for grouped
+        # quantile computations.
+        dask.config.set({"array.slicing.split_large_chunks": False})
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Pipeline:
@@ -235,11 +242,19 @@ class Pipeline:
         """Run a single stat call and return the renamed result dataset."""
         fn = get_stat(call.func)
 
-        data = self._load(chunks=call.chunks or None)
+        # Load with source-level chunks only (native zarr chunks), then select
+        # the required variables before applying call-level rechunking.  This
+        # avoids creating rechunk tasks for variables that are not needed by
+        # this call, reducing peak dask graph size and intermediate memory.
+        data = self._load()
 
-        # --- Variable selection ---
+        # --- Variable selection (before rechunking) ---
         if call.data_vars != "all":
             data = data[call.data_vars]
+
+        # --- Apply call-level rechunking to selected variables only ---
+        if call.chunks:
+            data = data.chunk(call.chunks)
 
         # --- Build kwargs for the stat function ---
         fn_kwargs = dict(
