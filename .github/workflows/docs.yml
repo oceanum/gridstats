@@ -6,16 +6,16 @@ on:
       - master
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # full history for git-revision-date plugin if added later
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,7 +24,24 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e ".[docs]"
+        run: pip install -e ".[docs,dev]"
 
+      - name: Build docs
+        run: mkdocs build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
+        id: deploy
+        uses: actions/deploy-pages@v4
