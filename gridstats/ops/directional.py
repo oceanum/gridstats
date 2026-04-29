@@ -12,50 +12,69 @@ from gridstats.registry import register_stat
 logger = logging.getLogger(__name__)
 
 
-def _modal_direction_da(
-    direction: xr.DataArray,
-    weight: xr.DataArray | None,
-    dim: str,
+def _np_modal_direction(
+    direction: np.ndarray,
+    weight: np.ndarray,
+    n_bins: int,
     bin_width_deg: float,
+    bin_centres: np.ndarray,
     smooth: bool,
-) -> xr.DataArray:
-    """Compute modal direction for a single DataArray over *dim*."""
-    if 360.0 % bin_width_deg != 0:
-        raise ValueError("bin_width_deg must divide 360 evenly.")
+) -> np.float32:
+    """Compute modal direction from 1-D direction and weight arrays.
 
-    n_bins = int(round(360.0 / bin_width_deg))
-    bin_edges = np.linspace(0.0, 360.0, n_bins + 1)
-    bin_centres = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    Returns NaN when all values are missing or total weight is zero.
+    """
+    valid = np.isfinite(direction) & np.isfinite(weight)
+    d = direction[valid] % 360.0
+    w = weight[valid]
 
-    dir_wrapped = direction % 360.0
-    bin_idx = (dir_wrapped // bin_width_deg).astype("int16")
-    bin_idx = bin_idx.where(bin_idx < n_bins, 0)
+    if d.size == 0:
+        return np.float32(np.nan)
 
-    if weight is None:
-        w = xr.ones_like(direction, dtype="float32")
-    else:
-        w = weight.astype("float32")
+    bin_idx = (d // bin_width_deg).astype(int)
+    np.clip(bin_idx, 0, n_bins - 1, out=bin_idx)
 
-    valid = direction.notnull() & w.notnull()
-    w = w.where(valid, 0.0)
+    hist = np.zeros(n_bins, dtype="float32")
+    np.add.at(hist, bin_idx, w)
 
-    hist_layers = []
-    for b in range(n_bins):
-        hist_layers.append(w.where(bin_idx == b, 0.0).sum(dim=dim))
-    hist = xr.concat(hist_layers, dim="bin").assign_coords(bin=bin_centres)
+    if hist.sum() == 0:
+        return np.float32(np.nan)
 
     if smooth:
-        padded = xr.concat(
-            [hist.isel(bin=[-1]), hist, hist.isel(bin=[0])], dim="bin"
-        )
-        smoothed = padded.rolling(bin=3, center=True).mean().isel(bin=slice(1, -1))
-        hist = smoothed.assign_coords(bin=bin_centres)
+        padded = np.concatenate([hist[-1:], hist, hist[:1]])
+        hist = np.convolve(padded, np.ones(3, dtype="float32") / 3, mode="valid")
 
-    winning = hist.argmax(dim="bin")
-    modal = xr.DataArray(bin_centres, dims="bin").isel(bin=winning)
+    return bin_centres[np.argmax(hist)].astype("float32")
 
-    total = hist.sum(dim="bin")
-    return modal.where(total > 0)
+
+def _apply_modal_direction(
+    direction: xr.DataArray,
+    weight: xr.DataArray,
+    dim: str,
+    n_bins: int,
+    bin_width_deg: float,
+    bin_centres: np.ndarray,
+    smooth: bool,
+) -> xr.DataArray:
+    """Apply modal direction computation via apply_ufunc (dask-compatible)."""
+    return xr.apply_ufunc(
+        _np_modal_direction,
+        direction,
+        weight,
+        kwargs={
+            "n_bins": n_bins,
+            "bin_width_deg": bin_width_deg,
+            "bin_centres": bin_centres,
+            "smooth": smooth,
+        },
+        input_core_dims=[[dim], [dim]],
+        output_core_dims=[[]],
+        exclude_dims={dim},
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=["float32"],
+        dask_gufunc_kwargs={"allow_rechunk": True},
+    )
 
 
 @register_stat("modal_direction")
@@ -99,33 +118,38 @@ def modal_direction(
         bin at every grid cell. Gains a group dimension when *group* is set.
 
     Note:
-        For large grids set ``tiles:`` on the call to bound peak memory — each
-        bin pass requires a full-grid ``where`` + ``sum``.
+        ``apply_ufunc`` with ``allow_rechunk=True`` handles the single-chunk
+        requirement along *dim* automatically in the dask graph, so manual
+        rechunking is not needed before calling this stat.
     """
-    weight = data[weight_var] if weight_var is not None else None
+    if 360.0 % bin_width_deg != 0:
+        raise ValueError("bin_width_deg must divide 360 evenly.")
+
+    n_bins = int(round(360.0 / bin_width_deg))
+    bin_edges = np.linspace(0.0, 360.0, n_bins + 1)
+    bin_centres = (0.5 * (bin_edges[:-1] + bin_edges[1:])).astype("float32")
+
     dir_vars = [v for v in data.data_vars if v != weight_var]
 
-    if group is not None:
-        grouped = data.groupby(f"time.{group}")
-        group_results = []
-        group_keys = []
-        for key, group_ds in grouped:
-            w = group_ds[weight_var] if weight_var is not None else None
-            out_vars = {
-                v: _modal_direction_da(group_ds[v], w, dim, bin_width_deg, smooth)
+    def _compute(ds: xr.Dataset) -> xr.Dataset:
+        w = ds[weight_var].astype("float32") if weight_var is not None else xr.ones_like(ds[dir_vars[0]], dtype="float32")
+        return xr.Dataset(
+            {
+                v: _apply_modal_direction(
+                    ds[v], w, dim, n_bins, bin_width_deg, bin_centres, smooth
+                )
                 for v in dir_vars
             }
-            group_results.append(xr.Dataset(out_vars))
-            group_keys.append(key)
-        dsout = xr.concat(group_results, dim=group)
-        dsout[group] = group_keys
-        return dsout
+        )
 
-    out_vars = {
-        v: _modal_direction_da(data[v], weight, dim, bin_width_deg, smooth)
-        for v in dir_vars
-    }
-    return xr.Dataset(out_vars)
+    if group is not None:
+        parts = [
+            _compute(group_ds).expand_dims({group: [key]})
+            for key, group_ds in data.groupby(f"{dim}.{group}")
+        ]
+        return xr.concat(parts, dim=group)
+
+    return _compute(data)
 
 
 @register_stat("statdir")
