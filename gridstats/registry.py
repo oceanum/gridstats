@@ -23,9 +23,11 @@ logger = logging.getLogger(__name__)
 
 # Type aliases
 StatFn = Callable[..., xr.Dataset]
+DerivedFn = Callable[..., xr.DataArray]
 LoaderCls = type
 
 _STATS: dict[str, StatFn] = {}
+_DERIVED: dict[str, DerivedFn] = {}
 _LOADERS: dict[str, LoaderCls] = {}
 
 
@@ -39,6 +41,38 @@ def register_stat(name: str) -> Callable[[StatFn], StatFn]:
         return func
 
     return decorator
+
+
+def register_derived(name: str) -> Callable[[DerivedFn], DerivedFn]:
+    """Decorator to register a derived variable function under a given name."""
+
+    def decorator(func: DerivedFn) -> DerivedFn:
+        if name in _DERIVED:
+            logger.warning("Derived '%s' is already registered; overwriting.", name)
+        _DERIVED[name] = func
+        return func
+
+    return decorator
+
+
+def get_derived(name: str) -> DerivedFn:
+    """Return the registered derived variable function for the given name.
+
+    Raises:
+        KeyError: If no derived function is registered under that name.
+    """
+    try:
+        return _DERIVED[name]
+    except KeyError:
+        available = list(_DERIVED)
+        raise KeyError(
+            f"Derived variable '{name}' not registered. Available: {available}"
+        ) from None
+
+
+def list_derived() -> list[str]:
+    """Return sorted names of all registered derived variable functions."""
+    return sorted(_DERIVED)
 
 
 def register_loader(name: str) -> Callable[[LoaderCls], LoaderCls]:

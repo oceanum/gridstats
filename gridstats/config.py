@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +71,50 @@ class ClusterConfig(BaseModel):
     processes: bool = True
 
 
+class DerivedVarConfig(BaseModel):
+    """Configuration for a single derived variable.
+
+    Specifies which registered derived function to call and the names of the
+    dataset variables to use as inputs.  The result is added to the dataset
+    under ``name`` before any stat function runs.
+
+    In YAML, the most concise form is a bare string when the output variable
+    name, the function name, and all input variable defaults are the same::
+
+        derived_vars:
+          - wspd           # equivalent to {name: wspd, func: wspd}
+
+    Override input variable names as extra fields::
+
+        derived_vars:
+          - name: wspd
+            func: wspd
+            uwnd: u10      # dataset variable to use for the 'uwnd' parameter
+            vwnd: v10
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str
+    func: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _expand_shorthand(cls, v: Any) -> Any:
+        """Allow a bare string ``"wspd"`` as shorthand for ``{name: wspd, func: wspd}``."""
+        if isinstance(v, str):
+            return {"name": v, "func": v}
+        if isinstance(v, dict) and "func" not in v and "name" in v:
+            return {**v, "func": v["name"]}
+        if isinstance(v, dict) and "name" not in v and "func" in v:
+            return {**v, "name": v["func"]}
+        return v
+
+    def input_kwargs(self) -> dict[str, Any]:
+        """Return input variable name overrides (all extra fields)."""
+        return self.model_extra or {}
+
+
 class CallConfig(BaseModel):
     """Configuration for a single stat call.
 
@@ -81,6 +125,7 @@ class CallConfig(BaseModel):
 
     func: str
     data_vars: list[str] | Literal["all"] = "all"
+    derived_vars: list[DerivedVarConfig] = []
     dim: str = "time"
     group: str | None = None
     chunks: dict[str, int] = {}

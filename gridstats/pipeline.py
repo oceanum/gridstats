@@ -250,6 +250,14 @@ class Pipeline:
         data = self._load()
         logger.debug("[%s] After load: %s", call.func, _ds_summary(data))
 
+        # --- Derived variables (computed on full dataset before selection) ---
+        if call.derived_vars:
+            from gridstats.registry import get_derived
+            for dvc in call.derived_vars:
+                logger.debug("[%s] Computing derived variable '%s' via '%s'", call.func, dvc.name, dvc.func)
+                fn_derived = get_derived(dvc.func)
+                data[dvc.name] = fn_derived(data, **dvc.input_kwargs())
+
         # --- Variable selection (before rechunking) ---
         if call.data_vars != "all":
             data = data[call.data_vars]

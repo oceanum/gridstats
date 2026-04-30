@@ -239,3 +239,105 @@ class TestProbability:
             data_ranges=[{"var": "hs", "start": 2.0, "stop": None, "label": "hs_above_2"}],
         )
         assert "hs_above_2" in out
+
+
+# ---------------------------------------------------------------------------
+# Derived variables
+# ---------------------------------------------------------------------------
+
+class TestDerivedVariables:
+    @pytest.fixture
+    def ds_wind(self):
+        """Dataset with u/v wind components."""
+        rng = np.random.default_rng(0)
+        nt, ny, nx = 24, 3, 3
+        return xr.Dataset(
+            {
+                "uwnd": (["time", "lat", "lon"], rng.uniform(-10, 10, (nt, ny, nx)).astype("float32")),
+                "vwnd": (["time", "lat", "lon"], rng.uniform(-10, 10, (nt, ny, nx)).astype("float32")),
+                "ucur": (["time", "lat", "lon"], rng.uniform(-2, 2, (nt, ny, nx)).astype("float32")),
+                "vcur": (["time", "lat", "lon"], rng.uniform(-2, 2, (nt, ny, nx)).astype("float32")),
+                "cloud_cover": (["time", "lat", "lon"], rng.uniform(0, 1, (nt, ny, nx)).astype("float32")),
+                "fp": (["time", "lat", "lon"], rng.uniform(0.05, 0.25, (nt, ny, nx)).astype("float32")),
+                "hs_sea": (["time", "lat", "lon"], rng.uniform(0, 5, (nt, ny, nx)).astype("float32")),
+                "hs_sw1": (["time", "lat", "lon"], rng.uniform(0, 3, (nt, ny, nx)).astype("float32")),
+                "lp_sw1": (["time", "lat", "lon"], rng.uniform(50, 400, (nt, ny, nx)).astype("float32")),
+            },
+            coords={
+                "time": xr.date_range("2020-01-01", periods=nt, freq="1h"),
+                "lat": [0.0, 1.0, 2.0],
+                "lon": [100.0, 101.0, 102.0],
+            },
+        )
+
+    def test_wspd(self, ds_wind):
+        from gridstats.ops.derived import wspd
+        out = wspd(ds_wind)
+        assert out.dims == ("time", "lat", "lon")
+        # Speed must be non-negative
+        assert float(out.min()) >= 0.0
+        # Check values match manual calculation at one point
+        u0 = float(ds_wind["uwnd"].isel(time=0, lat=0, lon=0))
+        v0 = float(ds_wind["vwnd"].isel(time=0, lat=0, lon=0))
+        expected = float(np.sqrt(u0**2 + v0**2))
+        assert abs(float(out.isel(time=0, lat=0, lon=0)) - expected) < 1e-4
+
+    def test_wspd_custom_var_names(self, ds_wind):
+        from gridstats.ops.derived import wspd
+        ds = ds_wind.rename({"uwnd": "u10", "vwnd": "v10"})
+        out = wspd(ds, uwnd="u10", vwnd="v10")
+        assert float(out.min()) >= 0.0
+
+    def test_wdir_range(self, ds_wind):
+        from gridstats.ops.derived import wdir
+        out = wdir(ds_wind)
+        assert float(out.min()) >= 0.0
+        assert float(out.max()) < 360.0
+
+    def test_cspd(self, ds_wind):
+        from gridstats.ops.derived import cspd
+        out = cspd(ds_wind)
+        assert float(out.min()) >= 0.0
+
+    def test_cdir_range(self, ds_wind):
+        from gridstats.ops.derived import cdir
+        out = cdir(ds_wind)
+        assert float(out.min()) >= 0.0
+        assert float(out.max()) < 360.0
+
+    def test_tp(self, ds_wind):
+        from gridstats.ops.derived import tp
+        out = tp(ds_wind)
+        # Period should be the inverse of frequency (0.05–0.25 Hz → 4–20 s)
+        assert float(out.min()) > 3.0
+        assert float(out.max()) < 21.0
+
+    def test_douglas_sea_range(self, ds_wind):
+        from gridstats.ops.derived import douglas_sea
+        out = douglas_sea(ds_wind)
+        assert float(out.min()) >= 0.0
+        assert float(out.max()) <= 9.0
+
+    def test_douglas_swell_range(self, ds_wind):
+        from gridstats.ops.derived import douglas_swell
+        out = douglas_swell(ds_wind)
+        assert float(out.min()) >= 0.0
+        assert float(out.max()) <= 9.0
+
+    def test_clear_sky(self, ds_wind):
+        from gridstats.ops.derived import clear_sky
+        out = clear_sky(ds_wind)
+        assert out.dtype == bool
+
+    def test_covered_sky(self, ds_wind):
+        from gridstats.ops.derived import covered_sky
+        out = covered_sky(ds_wind)
+        assert out.dtype == bool
+
+    def test_derived_with_dask(self, ds_wind):
+        from gridstats.ops.derived import wspd
+        ds_dask = ds_wind.chunk({"time": 6})
+        out = wspd(ds_dask)
+        assert hasattr(out.data, "dask")
+        result = out.compute()
+        assert float(result.min()) >= 0.0

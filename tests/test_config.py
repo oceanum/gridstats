@@ -256,3 +256,46 @@ class TestPipelineConfig:
             metadata={"institution": "Test"},
         )
         assert config.metadata == {"institution": "Test"}
+
+
+class TestDerivedVarConfig:
+    def test_shorthand_string(self):
+        from gridstats.config import DerivedVarConfig
+        dvc = DerivedVarConfig.model_validate("wspd")
+        assert dvc.name == "wspd"
+        assert dvc.func == "wspd"
+        assert dvc.input_kwargs() == {}
+
+    def test_full_dict(self):
+        from gridstats.config import DerivedVarConfig
+        dvc = DerivedVarConfig.model_validate({"name": "wspd", "func": "wspd", "uwnd": "u10", "vwnd": "v10"})
+        assert dvc.name == "wspd"
+        assert dvc.func == "wspd"
+        assert dvc.input_kwargs() == {"uwnd": "u10", "vwnd": "v10"}
+
+    def test_func_defaults_to_name(self):
+        from gridstats.config import DerivedVarConfig
+        dvc = DerivedVarConfig.model_validate({"name": "wspd"})
+        assert dvc.func == "wspd"
+
+    def test_name_defaults_to_func(self):
+        from gridstats.config import DerivedVarConfig
+        dvc = DerivedVarConfig.model_validate({"func": "wspd"})
+        assert dvc.name == "wspd"
+
+    def test_call_config_derived_vars_empty_by_default(self):
+        c = CallConfig(func="mean")
+        assert c.derived_vars == []
+
+    def test_call_config_derived_vars_shorthand(self):
+        c = CallConfig(func="mean", derived_vars=["wspd"])
+        assert len(c.derived_vars) == 1
+        assert c.derived_vars[0].name == "wspd"
+        assert c.derived_vars[0].func == "wspd"
+
+    def test_call_config_derived_vars_full(self):
+        c = CallConfig(
+            func="mean",
+            derived_vars=[{"name": "wspd", "func": "wspd", "uwnd": "u10", "vwnd": "v10"}],
+        )
+        assert c.derived_vars[0].input_kwargs() == {"uwnd": "u10", "vwnd": "v10"}
