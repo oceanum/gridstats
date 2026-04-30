@@ -63,7 +63,13 @@ extra_javascript:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - Configuration: configuration.md
+  - Configuration:
+      - Overview: configuration/index.md
+      - Source: configuration/source.md
+      - Output: configuration/output.md
+      - Calls: configuration/calls.md
+      - Cluster: configuration/cluster.md
+      - Metadata: configuration/metadata.md
   - Operations:
       - Overview: ops/index.md
       - Aggregations: ops/aggregations.md

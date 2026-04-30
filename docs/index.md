@@ -64,6 +64,6 @@ pip install "gridstats[extra]"
 ## Next steps
 
 - [Getting Started](getting-started.md) — a complete walkthrough
-- [Configuration](configuration.md) — full YAML schema reference
+- [Configuration](configuration/index.md) — full YAML schema reference
 - [Operations](ops/index.md) — all built-in stat functions
 - [Custom Plugins](plugins.md) — add your own loaders and stats
