@@ -86,7 +86,10 @@ nav:
       - Ocean Current: derived/current.md
       - Wave Parameters: derived/wave.md
       - Wave Orbital Velocity: derived/uorb.md
-  - Data Loaders: loaders.md
+  - Data Loaders:
+      - Overview: loaders/index.md
+      - xarray: loaders/xarray.md
+      - intake: loaders/intake.md
   - Custom Plugins: plugins.md
   - API Reference:
       - Config: api/config.md
