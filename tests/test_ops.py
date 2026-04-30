@@ -341,3 +341,134 @@ class TestDerivedVariables:
         assert hasattr(out.data, "dask")
         result = out.compute()
         assert float(result.min()) >= 0.0
+
+    def test_uorb_seabed(self, ds_wind):
+        """Near-bed orbital velocity is positive and physically reasonable."""
+        from gridstats.ops.derived import uorb
+        ds_wind = ds_wind.assign({"hs": ds_wind["hs_sea"], "tp": ds_wind["fp"].pipe(lambda x: 1.0 / x)})
+        out = uorb(ds_wind, hs="hs", tp="tp", depth=20.0, z=0.0)
+        assert float(out.min()) >= 0.0
+        assert out.attrs["units"] == "m/s"
+
+    def test_uorb_deep_water_decays_with_depth(self, ds_wind):
+        """Velocity in deep water decreases from surface to seabed."""
+        from gridstats.ops.derived import uorb
+        ds = ds_wind.assign({
+            "hs": ds_wind["hs_sea"].clip(min=0.5),
+            "tp": xr.full_like(ds_wind["hs_sea"], 10.0),
+        })
+        u_bed = uorb(ds, hs="hs", tp="tp", depth=200.0, z=0.0)
+        u_surf = uorb(ds, hs="hs", tp="tp", depth=200.0, z=200.0)
+        # In deep water, surface velocity must exceed seabed velocity
+        assert float(u_surf.mean()) > float(u_bed.mean())
+
+    def test_uorb_shallow_water_uniform(self, ds_wind):
+        """In very shallow water, velocity is nearly depth-uniform."""
+        from gridstats.ops.derived import uorb
+        ds = ds_wind.assign({
+            "hs": xr.full_like(ds_wind["hs_sea"], 0.5),
+            "tp": xr.full_like(ds_wind["hs_sea"], 20.0),
+        })
+        u_bed = uorb(ds, hs="hs", tp="tp", depth=1.0, z=0.0)
+        u_mid = uorb(ds, hs="hs", tp="tp", depth=1.0, z=0.5)
+        # In shallow water, profile should be very uniform (ratio close to 1)
+        ratio = float(u_mid.mean()) / float(u_bed.mean())
+        assert 0.95 < ratio < 1.05
+
+    def test_uorb_soulsby_formula(self):
+        """Verify against the Soulsby (1997) eq. 2.44 analytical value."""
+        import math
+        from gridstats.ops.derived import uorb, _wavenumber
+        # Set up: Hs=2 m, Tp=10 s, depth=25 m, z=0 (seabed)
+        Hs, Tp, h = 2.0, 10.0, 25.0
+        omega = 2.0 * math.pi / Tp
+        k_da = _wavenumber(xr.DataArray([omega]), xr.DataArray([float(h)]))
+        k = float(k_da[0])
+        U_expected = math.pi * Hs / (Tp * math.sinh(k * h))
+        ds = xr.Dataset(
+            {"hs": (["t"], [Hs]), "tp": (["t"], [Tp])},
+            coords={"t": [0]},
+        )
+        out = uorb(ds, hs="hs", tp="tp", depth=h, z=0.0)
+        assert abs(float(out[0]) - U_expected) < 1e-4
+
+    def test_uorb_dask(self, ds_wind):
+        """uorb is dask-compatible and produces the same result as eager mode."""
+        from gridstats.ops.derived import uorb
+        ds = ds_wind.assign({
+            "hs": ds_wind["hs_sea"].clip(min=0.1),
+            "tp": xr.full_like(ds_wind["hs_sea"], 8.0),
+        })
+        ds_dask = ds.chunk({"time": 6})
+        out_eager = uorb(ds, hs="hs", tp="tp", depth=30.0, z=0.0)
+        out_dask = uorb(ds_dask, hs="hs", tp="tp", depth=30.0, z=0.0)
+        assert hasattr(out_dask.data, "dask")
+        np.testing.assert_allclose(out_dask.compute().values, out_eager.values, rtol=1e-5)
+
+    def test_uorb_nan_for_zero_depth(self, ds_wind):
+        """Zero or negative depth cells return NaN."""
+        from gridstats.ops.derived import uorb
+        ds = ds_wind.assign({
+            "hs": ds_wind["hs_sea"],
+            "tp": xr.full_like(ds_wind["hs_sea"], 8.0),
+        })
+        out = uorb(ds, hs="hs", tp="tp", depth=0.0, z=0.0)
+        assert np.all(np.isnan(out.values))
+
+    def test_uorb_solver_exact_vs_explicit(self):
+        """The two solvers agree to within the documented 0.2 % tolerance."""
+        from gridstats.ops.derived import uorb
+        ds = xr.Dataset(
+            {"hs": (["t"], [2.0]), "tp": (["t"], [10.0])},
+            coords={"t": [0]},
+        )
+        u_explicit = float(uorb(ds, depth=25.0, z=0.0, solver="explicit")[0])
+        u_exact    = float(uorb(ds, depth=25.0, z=0.0, solver="exact")[0])
+        assert abs(u_explicit - u_exact) / u_exact < 0.002
+
+    def test_uorb_invalid_solver_raises(self):
+        from gridstats.ops.derived import uorb
+        ds = xr.Dataset({"hs": (["t"], [1.0]), "tp": (["t"], [8.0])}, coords={"t": [0]})
+        with pytest.raises(ValueError, match="solver"):
+            uorb(ds, depth=20.0, solver="bad")
+
+    def test_uorb_reference_surface_equals_bed_conversion(self, ds_wind):
+        """reference='surface' with z=0 should equal reference='bed' with z=depth."""
+        from gridstats.ops.derived import uorb
+        h = 30.0
+        ds_w = ds_wind.assign({
+            "hs": ds_wind["hs_sea"],
+            "tp": ds_wind["fp"].pipe(lambda x: 1.0 / x),
+        })
+        # z=0 from surface = still-water level = z=h from bed
+        u_surface = uorb(ds_w, depth=h, z=0.0, reference="surface")
+        u_bed_top = uorb(ds_w, depth=h, z=h, reference="bed")
+        np.testing.assert_allclose(u_surface.values, u_bed_top.values, rtol=1e-5)
+
+    def test_uorb_reference_surface_midwater(self, ds_wind):
+        """reference='surface' with z=z0 equals reference='bed' with z=depth-z0."""
+        from gridstats.ops.derived import uorb
+        h, z_surf = 40.0, 10.0
+        ds_w = ds_wind.assign({
+            "hs": ds_wind["hs_sea"],
+            "tp": ds_wind["fp"].pipe(lambda x: 1.0 / x),
+        })
+        u_from_surface = uorb(ds_w, depth=h, z=z_surf, reference="surface")
+        u_from_bed = uorb(ds_w, depth=h, z=h - z_surf, reference="bed")
+        np.testing.assert_allclose(u_from_surface.values, u_from_bed.values, rtol=1e-5)
+
+    def test_uorb_reference_surface_long_name(self, ds_wind):
+        """long_name reflects 'below surface' when reference='surface'."""
+        from gridstats.ops.derived import uorb
+        ds_w = ds_wind.assign({
+            "hs": ds_wind["hs_sea"],
+            "tp": ds_wind["fp"].pipe(lambda x: 1.0 / x),
+        })
+        out = uorb(ds_w, depth=20.0, z=5.0, reference="surface")
+        assert "below surface" in out.attrs["long_name"]
+
+    def test_uorb_invalid_reference_raises(self):
+        from gridstats.ops.derived import uorb
+        ds = xr.Dataset({"hs": (["t"], [1.0]), "tp": (["t"], [8.0])}, coords={"t": [0]})
+        with pytest.raises(ValueError, match="reference"):
+            uorb(ds, depth=20.0, reference="bad")

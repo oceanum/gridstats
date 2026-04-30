@@ -20,6 +20,7 @@ An **operation** (or "op") is a function that reduces an `xr.Dataset` along one 
 | [`distribution2`](distribution.md#gridstats.ops.distribution.distribution2) | 2-D joint histogram (speed × direction) |
 | [`distribution3_timestep`](distribution.md#gridstats.ops.distribution.distribution3_timestep) | Memory-efficient 3-D histogram (accumulated in time chunks) |
 | [`statdir`](directional.md#gridstats.ops.directional.statdir) | Apply multiple functions over directional sectors |
+| [`modal_direction`](directional.md#modal_direction) | Per-cell modal direction from a weighted circular histogram |
 | [`hmo`](frequency-domain.md#gridstats.ops.frequency_domain.hmo) | Frequency-domain Hs in spectral bands |
 | [`range_probability`](probability.md#gridstats.ops.probability.range_probability) | Probability of values falling within specified ranges |
 | [`winpow`](windpower.md#gridstats.ops.windpower.winpow) | Wind turbine power from wind speed |
@@ -56,6 +57,24 @@ All operations that accept a `group` parameter will compute the statistic separa
 Setting `nsector` on any call bins the data by direction before applying the function. For example, `nsector: 8` creates 8 × 45° sectors. The output gains a `direction` dimension with sector-centre values (0°, 45°, …, 315°).
 
 The `dir_var` field (default: `dpm`) names the directional variable used for binning. It must be present in the dataset alongside the `data_vars`.
+
+## Derived variables
+
+Derived variables are pre-computed quantities added to the dataset before any stat function runs. They are specified per call via `derived_vars:` and are *not* stat functions themselves — they transform raw variables (e.g. u/v components) into derived quantities (e.g. wind speed) that can then be used as `data_vars`.
+
+| Derived function | Description |
+|---|---|
+| [`wspd`](derived.md#wind) | Wind speed from u/v components |
+| [`wdir`](derived.md#wind) | Wind coming-from direction |
+| [`cspd`](derived.md#ocean-current) | Sea water speed from current components |
+| [`cdir`](derived.md#ocean-current) | Sea water going-to direction |
+| [`tp`](derived.md#wave) | Peak wave period from peak frequency |
+| [`douglas_sea`](derived.md#wave) | Douglas sea scale (0–9) |
+| [`douglas_swell`](derived.md#wave) | Douglas swell scale (0–9) |
+| [`crossing_seas`](derived.md#wave) | Boolean crossing-seas flag |
+| [`uorb`](derived.md#uorb) | Significant horizontal wave orbital velocity |
+
+See [Derived Variables](derived.md) for full documentation and usage examples.
 
 ## Custom operations
 

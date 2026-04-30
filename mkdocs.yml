@@ -40,6 +40,7 @@ plugins:
             members_order: source
 
 markdown_extensions:
+  - attr_list
   - admonition
   - pymdownx.details
   - pymdownx.superfences
@@ -67,6 +68,7 @@ nav:
       - Frequency Domain: ops/frequency-domain.md
       - Range Probability: ops/probability.md
       - Wind Power: ops/windpower.md
+      - Derived Variables: ops/derived.md
   - Data Loaders: loaders.md
   - Custom Plugins: plugins.md
   - API Reference:

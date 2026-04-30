@@ -65,3 +65,46 @@ Setting `nsector` on a regular call (e.g. `func: mean, nsector: 8`) is handled a
     options:
       show_source: false
       heading_level: 3
+
+---
+
+## `modal_direction`
+
+Per-cell modal (most frequent) direction from a weighted circular histogram. Uses a histogram-based mode rather than a vector mean, making it robust to bimodal and anti-parallel direction distributions (e.g. monsoon reversals where the arithmetic mean of 90° and 270° is meaningless).
+
+All direction variables in `data_vars` are processed; the optional `weight_var` is excluded from output but used to weight the histogram.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `weight_var` | str \| None | `None` | Variable name for histogram weights. `None` = unweighted frequency. |
+| `bin_width_deg` | float | `10.0` | Histogram bin width (degrees). Must divide 360 evenly. |
+| `smooth` | bool | `True` | Apply 3-bin circular moving average before taking the mode, stabilising against single-bin noise. |
+
+```yaml
+- func: modal_direction
+  dim: time
+  data_vars: [dpm, dp_sea, dp_sw1]
+  weight_var: hs           # weight by wave energy
+  bin_width_deg: 10.0
+  smooth: true
+```
+
+With monthly grouping:
+
+```yaml
+- func: modal_direction
+  dim: time
+  group: month
+  data_vars: [dpm]
+  weight_var: hs
+```
+
+!!! note
+    `apply_ufunc` with `allow_rechunk=True` handles the single-chunk requirement along `dim` automatically in the dask graph — no manual rechunking needed before calling this stat.
+
+### API reference
+
+::: gridstats.ops.directional.modal_direction
+    options:
+      show_source: false
+      heading_level: 4
