@@ -60,21 +60,9 @@ The `dir_var` field (default: `dpm`) names the directional variable used for bin
 
 ## Derived variables
 
-Derived variables are pre-computed quantities added to the dataset before any stat function runs. They are specified per call via `derived_vars:` and are *not* stat functions themselves — they transform raw variables (e.g. u/v components) into derived quantities (e.g. wind speed) that can then be used as `data_vars`.
+Derived variables are pre-computed quantities added to the dataset before any stat function runs. They transform raw input variables (e.g. u/v components) into derived quantities (e.g. wind speed) that can then be used as `data_vars`.
 
-| Derived function | Description |
-|---|---|
-| [`wspd`](derived.md#wind) | Wind speed from u/v components |
-| [`wdir`](derived.md#wind) | Wind coming-from direction |
-| [`cspd`](derived.md#ocean-current) | Sea water speed from current components |
-| [`cdir`](derived.md#ocean-current) | Sea water going-to direction |
-| [`tp`](derived.md#wave) | Peak wave period from peak frequency |
-| [`douglas_sea`](derived.md#wave) | Douglas sea scale (0–9) |
-| [`douglas_swell`](derived.md#wave) | Douglas swell scale (0–9) |
-| [`crossing_seas`](derived.md#wave) | Boolean crossing-seas flag |
-| [`uorb`](derived.md#uorb) | Significant horizontal wave orbital velocity |
-
-See [Derived Variables](derived.md) for full documentation and usage examples.
+See the [Derived Variables](../derived/index.md) section for the full function reference.
 
 ## Custom operations
 
