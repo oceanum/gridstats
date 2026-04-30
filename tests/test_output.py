@@ -113,3 +113,41 @@ class TestWriters:
     def test_write_bad_extension_raises(self, dsout):
         with pytest.raises(ValueError, match="'.nc' or '.zarr'"):
             write(dsout, "output.hdf5")
+
+    def test_write_zarr_append_creates_store_when_missing(self, tmp_path, dsout):
+        path = str(tmp_path / "out.zarr")
+        write_zarr(dsout, path, append=True)
+        loaded = xr.open_zarr(path)
+        assert "hs_mean" in loaded
+
+    def test_write_zarr_append_adds_new_variable(self, tmp_path, dsout):
+        path = str(tmp_path / "out.zarr")
+        ds1 = dsout[["hs_mean"]]
+        ds2 = dsout[["tp_max"]]
+        write_zarr(ds1, path, append=True)
+        write_zarr(ds2, path, append=True)
+        loaded = xr.open_zarr(path, consolidated=False)
+        assert "hs_mean" in loaded
+        assert "tp_max" in loaded
+
+    def test_write_zarr_append_overwrites_existing_variable(self, tmp_path):
+        path = str(tmp_path / "out.zarr")
+        ds1 = xr.Dataset(
+            {"hs_mean": (["x"], np.array([1.0, 2.0], dtype="float32"))},
+            coords={"x": [0, 1]},
+        )
+        ds2 = xr.Dataset(
+            {"hs_mean": (["x"], np.array([9.0, 8.0], dtype="float32"))},
+            coords={"x": [0, 1]},
+        )
+        write_zarr(ds1, path, append=True)
+        write_zarr(ds2, path, append=True)
+        loaded = xr.open_zarr(path, consolidated=False)
+        np.testing.assert_array_equal(loaded["hs_mean"].values, [9.0, 8.0])
+
+    def test_write_zarr_consolidate(self, tmp_path, dsout):
+        path = str(tmp_path / "out.zarr")
+        write_zarr(dsout, path, consolidate=True)
+        import zarr
+        store = zarr.open_consolidated(path)
+        assert "hs_mean" in store

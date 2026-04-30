@@ -54,6 +54,8 @@ class OutputConfig(BaseModel):
 
     outfile: str
     updir: str | None = None
+    append: bool = False
+    consolidate: bool = False
 
 
 class ClusterConfig(BaseModel):

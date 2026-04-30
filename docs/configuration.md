@@ -127,6 +127,46 @@ source:
 |---|---|---|---|
 | `outfile` | string | — | Output file path. Extension determines format: `.nc` for NetCDF4, `.zarr` for Zarr. Supports remote paths (`gs://`, `s3://`). |
 | `updir` | string | `null` | *Deprecated.* Write directly to a remote path via `outfile` instead. |
+| `append` | bool | `false` | Append variables to an existing Zarr store instead of overwriting it. If the store does not exist it is created. Variables already present in the store are deleted and rewritten; all other variables are left untouched. Consolidated metadata is intentionally skipped when writing — use `consolidate: true` in a dependent finalisation task. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
+| `consolidate` | bool | `false` | Run `zarr.consolidate_metadata()` after writing. Use this in a final task that depends on all parallel writers to produce a consolidated `.zmetadata` file for fast client-side opening. |
+
+### Parallel Zarr writes
+
+When computing different statistics in separate parallel tasks and writing them all to the same Zarr archive, set `append: true` on each task. Each task writes only its own variables; all other variables in the store are left untouched.
+
+```yaml
+# Task A — computes hs stats
+output:
+  outfile: gs://my-bucket/stats.zarr
+  append: true
+
+# Task B — computes tp stats (runs in parallel with Task A)
+output:
+  outfile: gs://my-bucket/stats.zarr
+  append: true
+
+# Task C — consolidates metadata (runs after A and B complete)
+output:
+  outfile: gs://my-bucket/stats.zarr
+  append: true
+  consolidate: true
+```
+
+!!! warning "Parallel write safety"
+    Different tasks **must** write different variables. If two tasks attempt to write the
+    same variable simultaneously the result is undefined. Rerunning a single task
+    (e.g., after a failure) is safe — the existing variable is deleted and rewritten.
+
+!!! note "Reading before consolidation"
+    Until the consolidation task runs, open the store with `consolidated=False`:
+
+    ```python
+    import xarray as xr
+    ds = xr.open_zarr("gs://my-bucket/stats.zarr", consolidated=False)
+    ```
+
+    After `consolidate: true` has run, the standard `xr.open_zarr(...)` call works
+    without any extra arguments.
 
 ---
 

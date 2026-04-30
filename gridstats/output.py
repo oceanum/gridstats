@@ -187,7 +187,8 @@ def write_zarr(
     dsout: xr.Dataset,
     path: str,
     fill_value: int = int(_FILLVALUE_ZARR),
-    mode: str = "w",
+    append: bool = False,
+    consolidate: bool = False,
     **kwargs,
 ) -> None:
     """Write the dataset to a Zarr store.
@@ -196,22 +197,55 @@ def write_zarr(
         dsout: Dataset to write.
         path: Output Zarr store path or URL.
         fill_value: Fill value applied to all data variables.
-        mode: Write mode ('w' to overwrite, 'a' to append).
+        append: If True, add variables to an existing store (creating it if needed)
+            rather than overwriting. Variables that already exist are deleted and
+            rewritten. Coordinates shared across parallel tasks are handled safely
+            via zarr's ``require_dataset``. Consolidated metadata is intentionally
+            skipped so that parallel writers do not race on ``.zmetadata`` — use
+            ``consolidate=True`` in a final dependent task to produce it.
+        consolidate: If True, call ``zarr.consolidate_metadata`` after writing.
+            Use this on the final task that depends on all parallel writers.
         **kwargs: Forwarded to ``Dataset.to_zarr``.
     """
-    logger.info("Writing Zarr: %s", path)
     for varname in dsout.data_vars:
         dsout[varname].encoding.update({"_FillValue": fill_value})
         dsout[varname].encoding.pop("zlib", None)
-    dsout.to_zarr(path, mode=mode, **kwargs)
+
+    if append:
+        import zarr
+
+        logger.info("Writing Zarr (append): %s", path)
+        store = zarr.open_group(path, mode="a")
+        for var in dsout.data_vars:
+            if var in store:
+                logger.info("Removing existing variable '%s' before overwrite", var)
+                del store[var]
+        dsout.to_zarr(path, mode="a", consolidated=False, **kwargs)
+    else:
+        logger.info("Writing Zarr: %s", path)
+        dsout.to_zarr(path, mode="w", **kwargs)
+
+    if consolidate:
+        import zarr
+
+        logger.info("Consolidating Zarr metadata: %s", path)
+        zarr.consolidate_metadata(path)
 
 
-def write(dsout: xr.Dataset, path: str, **kwargs) -> None:
+def write(
+    dsout: xr.Dataset,
+    path: str,
+    append: bool = False,
+    consolidate: bool = False,
+    **kwargs,
+) -> None:
     """Dispatch to write_netcdf or write_zarr based on the file extension.
 
     Args:
         dsout: Dataset to write.
         path: Output path. Must end in '.nc' or '.zarr'.
+        append: Passed to ``write_zarr`` (ignored for NetCDF).
+        consolidate: Passed to ``write_zarr`` (ignored for NetCDF).
         **kwargs: Forwarded to the chosen writer.
 
     Raises:
@@ -220,7 +254,7 @@ def write(dsout: xr.Dataset, path: str, **kwargs) -> None:
     if path.endswith(".nc"):
         write_netcdf(dsout, path, **kwargs)
     elif path.endswith(".zarr"):
-        write_zarr(dsout, path, **kwargs)
+        write_zarr(dsout, path, append=append, consolidate=consolidate, **kwargs)
     else:
         raise ValueError(
             f"Output path must end with '.nc' or '.zarr', got: {path!r}"

@@ -180,6 +180,54 @@ class TestPipeline:
         assert "tp_mean" in dsout
         assert "uorb_bed_mean" in dsout
 
+    def test_run_zarr_append_two_tasks(self, tmp_path, netcdf_source):
+        """Two sequential pipelines writing different variables to the same Zarr store."""
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
+
+        outfile = str(tmp_path / "shared.zarr")
+        config1 = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=outfile, append=True),
+            calls=[CallConfig(func="mean", dim="time", data_vars=["hs"])],
+        )
+        config2 = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=outfile, append=True),
+            calls=[CallConfig(func="mean", dim="time", data_vars=["tp"])],
+        )
+        Pipeline(config1).run()
+        Pipeline(config2).run()
+        import xarray as xr
+        result = xr.open_zarr(outfile, consolidated=False)
+        assert "hs_mean" in result
+        assert "tp_mean" in result
+
+    def test_run_zarr_append_overwrite(self, tmp_path, netcdf_source):
+        """Re-running a task with append=True overwrites the variable, not the whole store."""
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
+
+        outfile = str(tmp_path / "shared.zarr")
+        config_hs = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=outfile, append=True),
+            calls=[CallConfig(func="mean", dim="time", data_vars=["hs"])],
+        )
+        config_tp = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=outfile, append=True),
+            calls=[CallConfig(func="mean", dim="time", data_vars=["tp"])],
+        )
+        Pipeline(config_hs).run()
+        Pipeline(config_tp).run()
+        # Re-run hs task — tp_mean must still be present after overwrite
+        Pipeline(config_hs).run()
+        import xarray as xr
+        result = xr.open_zarr(outfile, consolidated=False)
+        assert "hs_mean" in result
+        assert "tp_mean" in result
+
     def test_apply_tiled(self, tmp_path, netcdf_source):
         from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from gridstats.pipeline import Pipeline

@@ -212,7 +212,12 @@ class Pipeline:
             metadata=self.config.metadata,
         )
 
-        write(dsout, self.config.output.outfile)
+        write(
+            dsout,
+            self.config.output.outfile,
+            append=self.config.output.append,
+            consolidate=self.config.output.consolidate,
+        )
         logger.info("Pipeline complete. Output: %s", self.config.output.outfile)
         return dsout
 
