@@ -134,7 +134,7 @@ $$
 
 ## API reference
 
-::: gridstats.ops.derived.uorb
+::: gridstats.derived.uorb.uorb
     options:
       show_source: false
       heading_level: 3

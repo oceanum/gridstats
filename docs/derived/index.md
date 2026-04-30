@@ -65,3 +65,5 @@ calls:
 | [`douglas_swell`](wave.md) | Wave Parameters | Douglas swell scale (0–9) |
 | [`crossing_seas`](wave.md) | Wave Parameters | Boolean crossing-seas flag |
 | [`uorb`](uorb.md) | Wave Orbital Velocity | Significant horizontal wave orbital velocity |
+| [`clear_sky`](sky.md) | Sky Conditions | Boolean clear-sky mask from cloud fraction |
+| [`covered_sky`](sky.md) | Sky Conditions | Boolean overcast mask from cloud fraction |

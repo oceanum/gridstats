@@ -44,12 +44,12 @@ derived_vars:
 
 ## API reference
 
-::: gridstats.ops.derived.cspd
+::: gridstats.derived.current.cspd
     options:
       show_source: false
       heading_level: 3
 
-::: gridstats.ops.derived.cdir
+::: gridstats.derived.current.cdir
     options:
       show_source: false
       heading_level: 3

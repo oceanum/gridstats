@@ -271,7 +271,7 @@ class TestDerivedVariables:
         )
 
     def test_wspd(self, ds_wind):
-        from gridstats.ops.derived import wspd
+        from gridstats.derived.wind import wspd
         out = wspd(ds_wind)
         assert out.dims == ("time", "lat", "lon")
         # Speed must be non-negative
@@ -283,59 +283,59 @@ class TestDerivedVariables:
         assert abs(float(out.isel(time=0, lat=0, lon=0)) - expected) < 1e-4
 
     def test_wspd_custom_var_names(self, ds_wind):
-        from gridstats.ops.derived import wspd
+        from gridstats.derived.wind import wspd
         ds = ds_wind.rename({"uwnd": "u10", "vwnd": "v10"})
         out = wspd(ds, uwnd="u10", vwnd="v10")
         assert float(out.min()) >= 0.0
 
     def test_wdir_range(self, ds_wind):
-        from gridstats.ops.derived import wdir
+        from gridstats.derived.wind import wdir
         out = wdir(ds_wind)
         assert float(out.min()) >= 0.0
         assert float(out.max()) < 360.0
 
     def test_cspd(self, ds_wind):
-        from gridstats.ops.derived import cspd
+        from gridstats.derived.current import cspd
         out = cspd(ds_wind)
         assert float(out.min()) >= 0.0
 
     def test_cdir_range(self, ds_wind):
-        from gridstats.ops.derived import cdir
+        from gridstats.derived.current import cdir
         out = cdir(ds_wind)
         assert float(out.min()) >= 0.0
         assert float(out.max()) < 360.0
 
     def test_tp(self, ds_wind):
-        from gridstats.ops.derived import tp
+        from gridstats.derived.wave import tp
         out = tp(ds_wind)
         # Period should be the inverse of frequency (0.05–0.25 Hz → 4–20 s)
         assert float(out.min()) > 3.0
         assert float(out.max()) < 21.0
 
     def test_douglas_sea_range(self, ds_wind):
-        from gridstats.ops.derived import douglas_sea
+        from gridstats.derived.wave import douglas_sea
         out = douglas_sea(ds_wind)
         assert float(out.min()) >= 0.0
         assert float(out.max()) <= 9.0
 
     def test_douglas_swell_range(self, ds_wind):
-        from gridstats.ops.derived import douglas_swell
+        from gridstats.derived.wave import douglas_swell
         out = douglas_swell(ds_wind)
         assert float(out.min()) >= 0.0
         assert float(out.max()) <= 9.0
 
     def test_clear_sky(self, ds_wind):
-        from gridstats.ops.derived import clear_sky
+        from gridstats.derived.sky import clear_sky
         out = clear_sky(ds_wind)
         assert out.dtype == bool
 
     def test_covered_sky(self, ds_wind):
-        from gridstats.ops.derived import covered_sky
+        from gridstats.derived.sky import covered_sky
         out = covered_sky(ds_wind)
         assert out.dtype == bool
 
     def test_derived_with_dask(self, ds_wind):
-        from gridstats.ops.derived import wspd
+        from gridstats.derived.wind import wspd
         ds_dask = ds_wind.chunk({"time": 6})
         out = wspd(ds_dask)
         assert hasattr(out.data, "dask")
@@ -344,7 +344,7 @@ class TestDerivedVariables:
 
     def test_uorb_seabed(self, ds_wind):
         """Near-bed orbital velocity is positive and physically reasonable."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds_wind = ds_wind.assign({"hs": ds_wind["hs_sea"], "tp": ds_wind["fp"].pipe(lambda x: 1.0 / x)})
         out = uorb(ds_wind, hs="hs", tp="tp", depth=20.0, z=0.0)
         assert float(out.min()) >= 0.0
@@ -352,7 +352,7 @@ class TestDerivedVariables:
 
     def test_uorb_deep_water_decays_with_depth(self, ds_wind):
         """Velocity in deep water decreases from surface to seabed."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = ds_wind.assign({
             "hs": ds_wind["hs_sea"].clip(min=0.5),
             "tp": xr.full_like(ds_wind["hs_sea"], 10.0),
@@ -364,7 +364,7 @@ class TestDerivedVariables:
 
     def test_uorb_shallow_water_uniform(self, ds_wind):
         """In very shallow water, velocity is nearly depth-uniform."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = ds_wind.assign({
             "hs": xr.full_like(ds_wind["hs_sea"], 0.5),
             "tp": xr.full_like(ds_wind["hs_sea"], 20.0),
@@ -378,7 +378,7 @@ class TestDerivedVariables:
     def test_uorb_soulsby_formula(self):
         """Verify against the Soulsby (1997) eq. 2.44 analytical value."""
         import math
-        from gridstats.ops.derived import uorb, _wavenumber
+        from gridstats.derived.uorb import uorb, _wavenumber
         # Set up: Hs=2 m, Tp=10 s, depth=25 m, z=0 (seabed)
         Hs, Tp, h = 2.0, 10.0, 25.0
         omega = 2.0 * math.pi / Tp
@@ -394,7 +394,7 @@ class TestDerivedVariables:
 
     def test_uorb_dask(self, ds_wind):
         """uorb is dask-compatible and produces the same result as eager mode."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = ds_wind.assign({
             "hs": ds_wind["hs_sea"].clip(min=0.1),
             "tp": xr.full_like(ds_wind["hs_sea"], 8.0),
@@ -407,7 +407,7 @@ class TestDerivedVariables:
 
     def test_uorb_nan_for_zero_depth(self, ds_wind):
         """Zero or negative depth cells return NaN."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = ds_wind.assign({
             "hs": ds_wind["hs_sea"],
             "tp": xr.full_like(ds_wind["hs_sea"], 8.0),
@@ -417,7 +417,7 @@ class TestDerivedVariables:
 
     def test_uorb_solver_exact_vs_explicit(self):
         """The two solvers agree to within the documented 0.2 % tolerance."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = xr.Dataset(
             {"hs": (["t"], [2.0]), "tp": (["t"], [10.0])},
             coords={"t": [0]},
@@ -427,14 +427,14 @@ class TestDerivedVariables:
         assert abs(u_explicit - u_exact) / u_exact < 0.002
 
     def test_uorb_invalid_solver_raises(self):
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = xr.Dataset({"hs": (["t"], [1.0]), "tp": (["t"], [8.0])}, coords={"t": [0]})
         with pytest.raises(ValueError, match="solver"):
             uorb(ds, depth=20.0, solver="bad")
 
     def test_uorb_reference_surface_equals_bed_conversion(self, ds_wind):
         """reference='surface' with z=0 should equal reference='bed' with z=depth."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         h = 30.0
         ds_w = ds_wind.assign({
             "hs": ds_wind["hs_sea"],
@@ -447,7 +447,7 @@ class TestDerivedVariables:
 
     def test_uorb_reference_surface_midwater(self, ds_wind):
         """reference='surface' with z=z0 equals reference='bed' with z=depth-z0."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         h, z_surf = 40.0, 10.0
         ds_w = ds_wind.assign({
             "hs": ds_wind["hs_sea"],
@@ -459,7 +459,7 @@ class TestDerivedVariables:
 
     def test_uorb_reference_surface_long_name(self, ds_wind):
         """long_name reflects 'below surface' when reference='surface'."""
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds_w = ds_wind.assign({
             "hs": ds_wind["hs_sea"],
             "tp": ds_wind["fp"].pipe(lambda x: 1.0 / x),
@@ -468,7 +468,7 @@ class TestDerivedVariables:
         assert "below surface" in out.attrs["long_name"]
 
     def test_uorb_invalid_reference_raises(self):
-        from gridstats.ops.derived import uorb
+        from gridstats.derived.uorb import uorb
         ds = xr.Dataset({"hs": (["t"], [1.0]), "tp": (["t"], [8.0])}, coords={"t": [0]})
         with pytest.raises(ValueError, match="reference"):
             uorb(ds, depth=20.0, reference="bad")

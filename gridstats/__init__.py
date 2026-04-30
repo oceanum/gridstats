@@ -6,6 +6,7 @@ __version__ = "2.0.0"
 
 # Import loaders and ops so their @register_* decorators run, populating
 # the registry before any Pipeline or CLI code runs.
+import gridstats.derived  # noqa: F401
 import gridstats.loaders  # noqa: F401
 import gridstats.ops  # noqa: F401
 

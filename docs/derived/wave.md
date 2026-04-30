@@ -96,22 +96,22 @@ derived_vars:
 
 ## API reference
 
-::: gridstats.ops.derived.tp
+::: gridstats.derived.wave.tp
     options:
       show_source: false
       heading_level: 3
 
-::: gridstats.ops.derived.douglas_sea
+::: gridstats.derived.wave.douglas_sea
     options:
       show_source: false
       heading_level: 3
 
-::: gridstats.ops.derived.douglas_swell
+::: gridstats.derived.wave.douglas_swell
     options:
       show_source: false
       heading_level: 3
 
-::: gridstats.ops.derived.crossing_seas
+::: gridstats.derived.wave.crossing_seas
     options:
       show_source: false
       heading_level: 3

@@ -44,12 +44,12 @@ derived_vars:
 
 ## API reference
 
-::: gridstats.ops.derived.wspd
+::: gridstats.derived.wind.wspd
     options:
       show_source: false
       heading_level: 3
 
-::: gridstats.ops.derived.wdir
+::: gridstats.derived.wind.wdir
     options:
       show_source: false
       heading_level: 3

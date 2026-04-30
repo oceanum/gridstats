@@ -86,6 +86,7 @@ nav:
       - Ocean Current: derived/current.md
       - Wave Parameters: derived/wave.md
       - Wave Orbital Velocity: derived/uorb.md
+      - Sky Conditions: derived/sky.md
   - Data Loaders:
       - Overview: loaders/index.md
       - xarray: loaders/xarray.md
