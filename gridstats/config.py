@@ -56,6 +56,7 @@ class OutputConfig(BaseModel):
     updir: str | None = None
     append: bool = False
     consolidate: bool = False
+    global_attrs: dict[str, Any] = {}
 
 
 class ClusterConfig(BaseModel):

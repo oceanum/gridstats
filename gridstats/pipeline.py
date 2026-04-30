@@ -210,6 +210,7 @@ class Pipeline:
             source_ds,
             chunks=self.config.output.__dict__.get("chunks", {}),
             metadata=self.config.metadata,
+            global_attrs=self.config.output.global_attrs,
         )
 
         write(

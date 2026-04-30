@@ -76,17 +76,25 @@ def set_variable_attributes(dsout: xr.Dataset, extra_metadata: dict[str, Any] = 
     return dsout
 
 
-def set_global_attributes(source_ds: xr.Dataset, dsout: xr.Dataset) -> xr.Dataset:
+def set_global_attributes(
+    source_ds: xr.Dataset,
+    dsout: xr.Dataset,
+    extra_attrs: dict[str, Any] = {},
+) -> xr.Dataset:
     """Set global CF attributes on the output dataset.
+
+    Defaults are computed from the source dataset; ``extra_attrs`` is merged on
+    top so that user-supplied values override or extend the defaults.
 
     Args:
         source_ds: Original source dataset (used to extract time coverage).
         dsout: Output dataset to annotate.
+        extra_attrs: Additional or override global attributes from config.
 
     Returns:
         The output dataset with global attrs set.
     """
-    dsout.attrs = {
+    attrs = {
         "title": "Data stats",
         "institution": "Oceanum",
         "source": "gridstats",
@@ -95,12 +103,14 @@ def set_global_attributes(source_ds: xr.Dataset, dsout: xr.Dataset) -> xr.Datase
     if "time" in source_ds:
         try:
             t0, t1, tend = source_ds.time[[0, 1, -1]].to_index()
-            dsout.attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
-            dsout.attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
-            dsout.attrs["time_coverage_duration"] = (tend - t0).isoformat()
-            dsout.attrs["time_coverage_resolution"] = (t1 - t0).isoformat()
+            attrs["time_coverage_start"] = f"{t0:%Y-%m-%d %Hz}"
+            attrs["time_coverage_end"] = f"{tend:%Y-%m-%d %Hz}"
+            attrs["time_coverage_duration"] = (tend - t0).isoformat()
+            attrs["time_coverage_resolution"] = (t1 - t0).isoformat()
         except Exception:
             logger.debug("Could not compute time coverage attributes.")
+    attrs.update(extra_attrs)
+    dsout.attrs = attrs
     return dsout
 
 
@@ -113,6 +123,7 @@ def finalise(
     source_ds: xr.Dataset,
     chunks: dict[str, int] = {},
     metadata: dict[str, Any] = {},
+    global_attrs: dict[str, Any] = {},
 ) -> xr.Dataset:
     """Sort, chunk, transpose, and annotate the output dataset.
 
@@ -120,7 +131,8 @@ def finalise(
         dsout: Dataset to finalise.
         source_ds: Original source dataset for global attribute extraction.
         chunks: Output chunking specification.
-        metadata: Extra metadata to merge into attributes.
+        metadata: Extra metadata to merge into variable attributes.
+        global_attrs: Extra or override global dataset attributes.
 
     Returns:
         Finalised dataset ready for writing.
@@ -155,7 +167,7 @@ def finalise(
 
     # Set attributes
     dsout = set_variable_attributes(dsout, metadata)
-    dsout = set_global_attributes(source_ds, dsout)
+    dsout = set_global_attributes(source_ds, dsout, extra_attrs=global_attrs)
 
     return dsout
 

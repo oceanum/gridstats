@@ -67,6 +67,12 @@ class TestSetGlobalAttributes:
         assert "time_coverage_start" in out.attrs
         assert "time_coverage_end" in out.attrs
 
+    def test_extra_attrs_override_defaults(self, source_ds, dsout):
+        out = set_global_attributes(source_ds, dsout, extra_attrs={"institution": "NIWA", "project": "MyProject"})
+        assert out.attrs["institution"] == "NIWA"
+        assert out.attrs["project"] == "MyProject"
+        assert out.attrs["source"] == "gridstats"  # default still present
+
 
 class TestFinalise:
     def test_sorts_descending_dims(self, source_ds):

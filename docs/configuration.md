@@ -127,8 +127,20 @@ source:
 |---|---|---|---|
 | `outfile` | string | — | Output file path. Extension determines format: `.nc` for NetCDF4, `.zarr` for Zarr. Supports remote paths (`gs://`, `s3://`). |
 | `updir` | string | `null` | *Deprecated.* Write directly to a remote path via `outfile` instead. |
+| `global_attrs` | dict | `{}` | Global dataset attributes to add to or override the defaults (`title`, `institution`, `source`, `date_created`, time coverage fields). |
 | `append` | bool | `false` | Append variables to an existing Zarr store instead of overwriting it. If the store does not exist it is created. Variables already present in the store are deleted and rewritten; all other variables are left untouched. Consolidated metadata is intentionally skipped when writing — use `consolidate: true` in a dependent finalisation task. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
 | `consolidate` | bool | `false` | Run `zarr.consolidate_metadata()` after writing. Use this in a final task that depends on all parallel writers to produce a consolidated `.zmetadata` file for fast client-side opening. |
+
+Example — override institution and add a project title:
+
+```yaml
+output:
+  outfile: ./stats.zarr
+  global_attrs:
+    title: "New Zealand Wave Climatology"
+    institution: "NIWA"
+    project: "NZ-Waves-2025"
+```
 
 ### Parallel Zarr writes
 
