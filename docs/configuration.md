@@ -123,23 +123,43 @@ source:
 
 ## `output`
 
+Controls where and how results are written.
+
+### Fields
+
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `outfile` | string | — | Output file path. Extension determines format: `.nc` for NetCDF4, `.zarr` for Zarr. Supports remote paths (`gs://`, `s3://`). |
+| `outfile` | string | — | Output file path. Extension determines format: `.nc` for NetCDF4, `.zarr` for Zarr. Supports remote paths (`gs://`, `s3://`). **Required.** |
+| `global_attrs` | dict | `{}` | Global dataset attributes to add to or override the defaults. See [Global attributes](#global-attributes) below. |
+| `append` | bool | `false` | Add variables to an existing Zarr store rather than overwriting it. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
+| `consolidate` | bool | `false` | Run `zarr.consolidate_metadata()` after writing. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
 | `updir` | string | `null` | *Deprecated.* Write directly to a remote path via `outfile` instead. |
-| `global_attrs` | dict | `{}` | Global dataset attributes to add to or override the defaults (`title`, `institution`, `source`, `date_created`, time coverage fields). |
-| `append` | bool | `false` | Append variables to an existing Zarr store instead of overwriting it. If the store does not exist it is created. Variables already present in the store are deleted and rewritten; all other variables are left untouched. Consolidated metadata is intentionally skipped when writing — use `consolidate: true` in a dependent finalisation task. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
-| `consolidate` | bool | `false` | Run `zarr.consolidate_metadata()` after writing. Use this in a final task that depends on all parallel writers to produce a consolidated `.zmetadata` file for fast client-side opening. |
 
-Example — override institution and add a project title:
+### Global attributes
+
+By default, gridstats writes the following global attributes to every output file:
+
+| Attribute | Default value |
+|---|---|
+| `title` | `"Data stats"` |
+| `institution` | `"Oceanum"` |
+| `source` | `"gridstats"` |
+| `date_created` | Today's date (UTC) |
+| `time_coverage_start` | First timestamp in the source dataset |
+| `time_coverage_end` | Last timestamp in the source dataset |
+| `time_coverage_duration` | ISO 8601 duration |
+| `time_coverage_resolution` | ISO 8601 timestep |
+
+Any key in `global_attrs` is merged on top of these defaults, overriding the matching default or adding a new attribute:
 
 ```yaml
 output:
   outfile: ./stats.zarr
   global_attrs:
-    title: "New Zealand Wave Climatology"
+    title: "New Zealand Wave Climatology 1980–2020"
     institution: "NIWA"
     project: "NZ-Waves-2025"
+    references: "https://doi.org/10.xxxx/xxxxx"
 ```
 
 ### Parallel Zarr writes
