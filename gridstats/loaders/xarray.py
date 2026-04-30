@@ -51,11 +51,18 @@ class XarrayLoader:
         Returns:
             Lazily loaded, preprocessed xarray Dataset.
         """
-        logger.info("Opening dataset from urlpath: %s", config.urlpath)
+        chunks = config.chunks or {}
+        logger.info(
+            "xr.open_dataset(%r, engine=%r, chunks=%r, **%r)",
+            config.urlpath,
+            config.engine,
+            chunks,
+            config.open_kwargs,
+        )
         dset = xr.open_dataset(
             config.urlpath,
             engine=config.engine,
-            chunks=config.chunks or {},
+            chunks=chunks,
             **config.open_kwargs,
         )
         logger.debug("After open: %s", _ds_summary(dset))

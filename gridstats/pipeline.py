@@ -254,7 +254,11 @@ class Pipeline:
         if call.derived_vars:
             from gridstats.registry import get_derived
             for dvc in call.derived_vars:
-                logger.debug("[%s] Computing derived variable '%s' via '%s'", call.func, dvc.name, dvc.func)
+                kwargs_str = ", ".join(f"{k}={v!r}" for k, v in dvc.input_kwargs().items())
+                logger.info(
+                    "[%s] Defining derived variable '%s' = %s(%s)",
+                    call.func, dvc.name, dvc.func, kwargs_str,
+                )
                 fn_derived = get_derived(dvc.func)
                 data[dvc.name] = fn_derived(data, **dvc.input_kwargs())
 
