@@ -156,6 +156,30 @@ class TestPipeline:
         with pytest.raises(NotImplementedError, match="Multi-source"):
             Pipeline(config).run()
 
+    def test_derived_vars_included_when_data_vars_explicit(self, tmp_path, netcdf_source):
+        """Derived variables must survive variable selection even when not in data_vars."""
+        from gridstats.config import (
+            CallConfig, DerivedVarConfig, OutputConfig, PipelineConfig, XarraySourceConfig,
+        )
+        from gridstats.pipeline import Pipeline
+
+        config = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=str(tmp_path / "out.nc")),
+            calls=[
+                CallConfig(
+                    func="mean",
+                    dim="time",
+                    data_vars=["hs", "tp"],
+                    derived_vars=[DerivedVarConfig(name="uorb_bed", func="uorb", depth=20.0)],
+                )
+            ],
+        )
+        dsout = Pipeline(config).run()
+        assert "hs_mean" in dsout
+        assert "tp_mean" in dsout
+        assert "uorb_bed_mean" in dsout
+
     def test_apply_tiled(self, tmp_path, netcdf_source):
         from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from gridstats.pipeline import Pipeline

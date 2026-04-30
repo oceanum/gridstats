@@ -264,8 +264,10 @@ class Pipeline:
 
         # --- Variable selection (before rechunking) ---
         if call.data_vars != "all":
-            data = data[call.data_vars]
-            logger.debug("[%s] After var selection %s: %s", call.func, call.data_vars, _ds_summary(data))
+            derived_names = [dvc.name for dvc in call.derived_vars]
+            keep = list(call.data_vars) + [n for n in derived_names if n not in call.data_vars]
+            data = data[keep]
+            logger.debug("[%s] After var selection %s: %s", call.func, keep, _ds_summary(data))
 
         # --- Apply call-level rechunking to selected variables only ---
         if call.chunks:
