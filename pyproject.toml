@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gridstats"
-version = "2.0.0"
 description = "Oceanum library for computing gridded statistics on oceanographic datasets"
 authors = [{ name = "Oceanum Developers", email = "developers@oceanum.science" }]
 readme = "README.md"
@@ -61,6 +60,9 @@ gridstats = "gridstats.cli:main"
 # Entry points for third-party plugin packages.
 # Stat functions: [project.entry-points."gridstats.stats"]
 # Loaders:        [project.entry-points."gridstats.loaders"]
+
+[tool.setuptools.dynamic]
+version = {attr = "gridstats.__version__"}
 
 [tool.setuptools.packages.find]
 include = ["gridstats*"]
