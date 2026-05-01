@@ -47,7 +47,8 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      base_path: ['.']
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.tabbed:
@@ -92,6 +93,7 @@ nav:
       - xarray: loaders/xarray.md
       - intake: loaders/intake.md
   - Custom Plugins: plugins.md
+  - Changelog: changelog.md
   - API Reference:
       - Config: api/config.md
       - Pipeline: api/pipeline.md
