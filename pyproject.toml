@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gridstats"
+dynamic = ["version"]
 description = "Oceanum library for computing gridded statistics on oceanographic datasets"
 authors = [{ name = "Oceanum Developers", email = "developers@oceanum.science" }]
 readme = "README.md"
