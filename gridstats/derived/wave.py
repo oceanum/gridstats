@@ -66,7 +66,7 @@ def douglas_sea(
     arr = ds[hs_sea]
     out = xr.full_like(arr, fill_value=0, dtype="float32")
     for scale, (lo, hi) in enumerate(
-        zip(DOUGLAS_SEA_BOUNDS[:-1], DOUGLAS_SEA_BOUNDS[1:])
+        zip(DOUGLAS_SEA_BOUNDS[:-1], DOUGLAS_SEA_BOUNDS[1:]), start=1
     ):
         out = out.where(~((arr > lo) & (arr <= hi)), other=float(scale))
     out.attrs = {
