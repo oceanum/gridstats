@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.2.0 (unreleased)
+## 2.2.0 (2026-05-04)
 
 ### New Features
 
@@ -24,18 +24,15 @@
 
 ### Bug Fixes
 
+- **Douglas sea scale** — fixed an off-by-one error where all degrees were shifted one
+  lower than the correct Douglas classification (e.g. a 3 m sea was reported as degree 4
+  "moderate" instead of degree 5 "rough"). Degree 9 (phenomenal, Hs > 14 m) was also
+  never assigned.
 - **Crossing seas** — changed `hs_threshold` default from `0.0` to `0.5` m. A zero
   threshold allowed the function to flag crossing seas in near-calm conditions where
   partition directions are undefined and noisy. The Li (2016) criterion is meaningful
   only when both systems are energetically significant; `0.5` m is the standard
   operational floor.
-
-### Bug Fixes
-
-- **Douglas sea scale** — fixed an off-by-one error where all degrees were shifted one
-  lower than the correct Douglas classification (e.g. a 3 m sea was reported as degree 4
-  "moderate" instead of degree 5 "rough"). Degree 9 (phenomenal, Hs > 14 m) was also
-  never assigned.
 
 ### Improvements
 
