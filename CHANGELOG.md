@@ -18,6 +18,13 @@
   "moderate" instead of degree 5 "rough"). Degree 9 (phenomenal, Hs > 14 m) was also
   never assigned.
 
+### Improvements
+
+- **Douglas sea scale** — replaced the 9-iteration `xr.where` loop with a single
+  `xr.apply_ufunc(np.digitize, …)` call. Produces a flat dask graph (one task per chunk
+  instead of nine) and runs ~1.5× faster on eager arrays; gains are larger under dask
+  where the stacked task graph was a scheduling bottleneck.
+
 ---
 
 ## 2.1.0 (2026-05-01)

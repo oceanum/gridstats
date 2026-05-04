@@ -7,6 +7,8 @@ import xarray as xr
 from gridstats.registry import register_derived
 
 DOUGLAS_SEA_BOUNDS = [0.0, 0.1, 0.5, 1.25, 2.5, 4.0, 6.0, 9.0, 14.0, np.inf]
+# np.digitize edges: same bounds without the trailing inf (digitize handles >14 as index 9).
+_SEA_EDGES = np.array(DOUGLAS_SEA_BOUNDS[:-1])
 
 DOUGLAS_SWELL_BINS = [
     # (scale, hs_min, hs_max, lp_min, lp_max)
@@ -64,11 +66,16 @@ def douglas_sea(
         Douglas sea scale DataArray (integer-valued float32, 0–9).
     """
     arr = ds[hs_sea]
-    out = xr.full_like(arr, fill_value=0, dtype="float32")
-    for scale, (lo, hi) in enumerate(
-        zip(DOUGLAS_SEA_BOUNDS[:-1], DOUGLAS_SEA_BOUNDS[1:]), start=1
-    ):
-        out = out.where(~((arr > lo) & (arr <= hi)), other=float(scale))
+    out = xr.apply_ufunc(
+        np.digitize,
+        arr,
+        kwargs={"bins": _SEA_EDGES, "right": True},
+        dask="parallelized",
+        output_dtypes=[np.intp],
+    ).astype("float32")
+    # np.digitize returns len(bins)=9 for NaN inputs; restore to 0 to match
+    # the fill_value=0 behaviour of the previous loop-based implementation.
+    out = out.where(arr.notnull(), other=0.0)
     out.attrs = {
         "standard_name": "sea_surface_wave_douglas_sea_scale",
         "long_name": "douglas sea scale",
