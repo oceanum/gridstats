@@ -96,6 +96,91 @@ class TestAggregations:
 
 
 # ---------------------------------------------------------------------------
+# Mode
+# ---------------------------------------------------------------------------
+
+class TestMode:
+    # Bins suited for Douglas-style integer scale 0–9
+    DOUGLAS_BINS = [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5]
+
+    def _ds_with_known_mode(self, mode_val: float, n: int = 100) -> xr.Dataset:
+        """Dataset where `x` has a clear mode at `mode_val` (integer-valued)."""
+        rng = np.random.default_rng(0)
+        vals = rng.integers(0, 10, size=(n,)).astype("float32")
+        # Overwrite half the values with the target mode
+        vals[: n // 2] = mode_val
+        return xr.Dataset(
+            {"x": (["time"], vals)},
+            coords={"time": np.arange(n)},
+        )
+
+    def test_returns_correct_mode(self):
+        from gridstats.ops.aggregations import mode
+        ds = self._ds_with_known_mode(3.0)
+        out = mode(ds, dim="time", bins=self.DOUGLAS_BINS)
+        assert float(out["x"]) == pytest.approx(3.0)
+
+    def test_mode_reduces_time_dim(self, ds):
+        from gridstats.ops.aggregations import mode
+        out = mode(ds[["hs"]], dim="time", bins=np.arange(0, 6.5, 0.5).tolist())
+        assert "time" not in out.dims
+        assert out["hs"].shape == (3, 3)
+
+    def test_all_nan_returns_nan(self):
+        from gridstats.ops.aggregations import mode
+        ds = xr.Dataset(
+            {"x": (["time"], np.full(20, np.nan, dtype="float32"))},
+            coords={"time": np.arange(20)},
+        )
+        out = mode(ds, dim="time", bins=self.DOUGLAS_BINS)
+        assert np.isnan(float(out["x"]))
+
+    def test_weight_var_excluded_from_output(self):
+        from gridstats.ops.aggregations import mode
+        rng = np.random.default_rng(1)
+        ds = xr.Dataset(
+            {
+                "x": (["time"], rng.integers(0, 10, 50).astype("float32")),
+                "w": (["time"], rng.random(50).astype("float32")),
+            },
+            coords={"time": np.arange(50)},
+        )
+        out = mode(ds, dim="time", bins=self.DOUGLAS_BINS, weight_var="w")
+        assert "x" in out
+        assert "w" not in out
+
+    def test_weighted_mode_shifts_result(self):
+        from gridstats.ops.aggregations import mode
+        # 60 % occurrences at degree 2, but weight concentrates on degree 7
+        n = 100
+        vals = np.array([2.0] * 60 + [7.0] * 40, dtype="float32")
+        wts = np.array([0.1] * 60 + [10.0] * 40, dtype="float32")
+        ds = xr.Dataset(
+            {"x": (["time"], vals), "w": (["time"], wts)},
+            coords={"time": np.arange(n)},
+        )
+        unweighted = mode(ds[["x"]], dim="time", bins=self.DOUGLAS_BINS)
+        weighted = mode(ds, dim="time", bins=self.DOUGLAS_BINS, weight_var="w")
+        assert float(unweighted["x"]) == pytest.approx(2.0)
+        assert float(weighted["x"]) == pytest.approx(7.0)
+
+    def test_group_month_adds_month_dim(self, ds):
+        from gridstats.ops.aggregations import mode
+        out = mode(
+            ds[["hs"]], dim="time", bins=np.arange(0, 6.5, 0.5).tolist(), group="month"
+        )
+        assert "month" in out.dims
+        assert out.month.size == 12
+
+    def test_mode_value_within_bins(self, ds):
+        from gridstats.ops.aggregations import mode
+        bins = np.arange(0, 6.5, 0.5).tolist()
+        out = mode(ds[["hs"]], dim="time", bins=bins)
+        val = float(out["hs"].mean())
+        assert bins[0] <= val <= bins[-1]
+
+
+# ---------------------------------------------------------------------------
 # Exceedance
 # ---------------------------------------------------------------------------
 

@@ -4,6 +4,13 @@
 
 ### New Features
 
+- **`mode` stat** — new generic histogram-based mode stat. Returns the centre of the
+  most-occupied bin along the reduction dimension. Accepts explicit `bins` edges and an
+  optional `weight_var` for energy- or Hs-weighted modes. Supports the same `group`
+  parameter as all other aggregations. Particularly suited for ordinal data such as the
+  Douglas Sea Scale — pass half-integer edges (e.g. `[-0.5, 0.5, ..., 9.5]`) to get
+  one bin per integer degree. Dask-compatible via `apply_ufunc` with `vectorize=True`.
+
 - **Output masking** — new `mask:` block on the output config applies a spatial mask to
   all output variables before writing. Two types are supported: `notnull` (keep points
   where a source variable is non-null) and `threshold` (keep points satisfying a

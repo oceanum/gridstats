@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import xarray as xr
 
 from gridstats.registry import register_stat
@@ -159,3 +160,120 @@ def pcount(data: xr.Dataset, *, dim: str = "time", **kwargs) -> xr.Dataset:
         Dataset with values in [0, 100].
     """
     return 100 * data.count(dim) / data[dim].size
+
+
+def _np_mode(
+    arr: np.ndarray,
+    weights: np.ndarray,
+    bins: np.ndarray,
+    bin_centres: np.ndarray,
+) -> np.float32:
+    """Return the centre of the most-occupied histogram bin.
+
+    Returns NaN when all values are non-finite or the total weight is zero.
+    Module-level so it is picklable for dask workers.
+    """
+    valid = np.isfinite(arr) & np.isfinite(weights)
+    if not valid.any():
+        return np.float32(np.nan)
+    hist, _ = np.histogram(arr[valid], bins=bins, weights=weights[valid])
+    if hist.sum() == 0:
+        return np.float32(np.nan)
+    return bin_centres[np.argmax(hist)].astype(np.float32)
+
+
+def _apply_mode(
+    arr: xr.DataArray,
+    weights: xr.DataArray,
+    dim: str,
+    bins: np.ndarray,
+    bin_centres: np.ndarray,
+) -> xr.DataArray:
+    return xr.apply_ufunc(
+        _np_mode,
+        arr,
+        weights,
+        kwargs={"bins": bins, "bin_centres": bin_centres},
+        input_core_dims=[[dim], [dim]],
+        output_core_dims=[[]],
+        exclude_dims={dim},
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=["float32"],
+        dask_gufunc_kwargs={"allow_rechunk": True},
+    )
+
+
+@register_stat("mode")
+def mode(
+    data: xr.Dataset,
+    *,
+    dim: str = "time",
+    group: str | None = None,
+    bins: list[float],
+    weight_var: str | None = None,
+    **kwargs: Any,
+) -> xr.Dataset:
+    """Mode (most frequent value) along a dimension, computed via a histogram.
+
+    The return value is the centre of the most-occupied bin. For ordinal or
+    discrete data (e.g. Douglas Sea Scale 0–9) pass half-integer bin edges so
+    each integer gets its own bin:
+
+    ```yaml
+    bins: [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5]
+    ```
+
+    For continuous data, pass edges that capture the expected range at the
+    desired resolution (e.g. Hs in 0.25 m increments).
+
+    Args:
+        data: Input dataset.
+        dim: Dimension to reduce along (default ``'time'``).
+        group: Time component for grouped climatology: ``'month'``, ``'season'``,
+            or ``'year'``. When set, the output gains a dimension named after the
+            group.
+        bins: Bin edges as an explicit list. Must span the full data range —
+            values outside the range are silently ignored by ``np.histogram``.
+            Bin centres (midpoints of each edge pair) are returned as the mode
+            value.
+        weight_var: Variable in *data* to use as histogram weights. When
+            ``None`` every sample contributes equally (occurrence mode). Pass
+            ``'hs'`` for an Hs-weighted mode or ``'hs'`` squared for an
+            energy-weighted mode.
+        **kwargs: Accepted but not forwarded (pipeline compatibility).
+
+    Returns:
+        Reduced dataset with one variable per input variable (excluding
+        *weight_var*). Gains a *group* dimension when *group* is set.
+
+    Note:
+        ``bins`` must be provided explicitly. Auto-detection from data range is
+        not supported because it would force an eager compute on dask arrays.
+    """
+    bins_arr = np.asarray(bins, dtype="float64")
+    bin_centres = (0.5 * (bins_arr[:-1] + bins_arr[1:])).astype("float32")
+
+    compute_vars = [v for v in data.data_vars if v != weight_var]
+
+    def _compute(ds: xr.Dataset) -> xr.Dataset:
+        w = (
+            ds[weight_var].astype("float32")
+            if weight_var is not None
+            else xr.ones_like(ds[compute_vars[0]], dtype="float32")
+        )
+        return xr.Dataset(
+            {
+                v: _apply_mode(ds[v].astype("float32"), w, dim, bins_arr, bin_centres)
+                for v in compute_vars
+            }
+        )
+
+    if group is not None:
+        parts = [
+            _compute(group_ds).expand_dims({group: [key]})
+            for key, group_ds in data.groupby(f"{dim}.{group}")
+        ]
+        return xr.concat(parts, dim=group)
+
+    return _compute(data)
