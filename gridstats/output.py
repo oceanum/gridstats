@@ -4,8 +4,12 @@ from __future__ import annotations
 import copy
 import datetime
 import logging
+import operator as _op
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from gridstats.config import MaskConfig
 
 import numpy as np
 import yaml
@@ -115,6 +119,22 @@ def set_global_attributes(
 
 
 # ---------------------------------------------------------------------------
+# Masking
+# ---------------------------------------------------------------------------
+
+_OPERATORS = {"gt": _op.gt, "lt": _op.lt, "ge": _op.ge, "le": _op.le}
+
+
+def _build_mask(source_ds: xr.Dataset, mask_config: "MaskConfig") -> xr.DataArray:
+    arr = source_ds[mask_config.var]
+    if mask_config.isel:
+        arr = arr.isel(mask_config.isel)
+    if mask_config.type == "notnull":
+        return arr.notnull()
+    return _OPERATORS[mask_config.operator](arr, mask_config.value)
+
+
+# ---------------------------------------------------------------------------
 # Finalisation
 # ---------------------------------------------------------------------------
 
@@ -124,6 +144,7 @@ def finalise(
     chunks: dict[str, int] = {},
     metadata: dict[str, Any] = {},
     global_attrs: dict[str, Any] = {},
+    mask_config: "MaskConfig | None" = None,
 ) -> xr.Dataset:
     """Sort, chunk, transpose, and annotate the output dataset.
 
@@ -164,6 +185,11 @@ def finalise(
     for varname in dsout.data_vars:
         if dsout[varname].dtype == "float64":
             dsout[varname] = dsout[varname].astype("float32")
+
+    # Apply spatial mask
+    if mask_config is not None:
+        mask = _build_mask(source_ds, mask_config)
+        dsout = dsout.where(mask)
 
     # Set attributes
     dsout = set_variable_attributes(dsout, metadata)

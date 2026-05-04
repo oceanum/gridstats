@@ -10,7 +10,60 @@ Controls where and how results are written.
 | `global_attrs` | dict | `{}` | Global dataset attributes to add to or override the defaults. See [Global attributes](#global-attributes) below. |
 | `append` | bool | `false` | Add variables to an existing Zarr store rather than overwriting it. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
 | `consolidate` | bool | `false` | Run `zarr.consolidate_metadata()` after writing. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
+| `mask` | dict | `null` | Optional spatial mask applied to all output variables before writing. See [Masking](#masking) below. |
 | `updir` | string | `null` | *Deprecated.* Write directly to a remote path via `outfile` instead. |
+
+## Masking
+
+An optional spatial mask can be applied to all output variables before writing. The mask is derived from a variable in the **source** dataset and broadcast automatically across any extra dimensions (e.g. time, quantile, direction) in the output.
+
+Two mask types are supported, selected via the `type` field.
+
+### `notnull` — mask where a variable is null
+
+Keeps output values where the chosen source variable is non-null; sets everything else to NaN. The most common use case is deriving a land/ice mask from a single timestamp of a wave or depth variable.
+
+```yaml
+output:
+  outfile: out.zarr
+  mask:
+    type: notnull
+    var: hs          # source variable to test
+    isel:            # optional: reduce to 2-D before testing
+      time: 0
+```
+
+### `threshold` — mask by a numerical condition
+
+Keeps output values where `var <operator> value` is true.
+
+| `operator` | Condition |
+|---|---|
+| `gt` | `var > value` |
+| `lt` | `var < value` |
+| `ge` | `var >= value` |
+| `le` | `var <= value` |
+
+```yaml
+output:
+  outfile: out.zarr
+  mask:
+    type: threshold
+    var: depth
+    isel:
+      time: 0
+    operator: gt
+    value: 0.0       # keep ocean points (depth > 0)
+```
+
+### `isel`
+
+Both mask types accept an optional `isel` dict that reduces the source variable to a lower-dimensional slice before the mask is computed. This is the standard way to produce a 2-D `(latitude, longitude)` mask from a variable that also has a time dimension.
+
+```yaml
+isel:
+  time: 0      # use the first time step
+```
 
 ## Global attributes
 

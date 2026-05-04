@@ -3,7 +3,9 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from gridstats.config import NotnullMaskConfig, ThresholdMaskConfig
 from gridstats.output import (
+    _build_mask,
     finalise,
     set_global_attributes,
     set_variable_attributes,
@@ -91,6 +93,102 @@ class TestFinalise:
     def test_chunks_applied(self, source_ds, dsout):
         out = finalise(dsout, source_ds, chunks={"latitude": 2})
         assert out.chunks["latitude"] == (2, 1)
+
+
+class TestBuildMask:
+    @pytest.fixture
+    def spatial_source(self):
+        data = np.full((3, 3, 3), np.nan)
+        data[:, 1:, 1:] = 1.0  # non-null inland; first row/col stays NaN
+        return xr.Dataset(
+            {"hs": (["time", "latitude", "longitude"], data)},
+            coords={
+                "time": [0, 1, 2],
+                "latitude": [-40.0, -39.0, -38.0],
+                "longitude": [170.0, 171.0, 172.0],
+            },
+        )
+
+    def test_notnull_no_isel(self, spatial_source):
+        cfg = NotnullMaskConfig(type="notnull", var="hs")
+        mask = _build_mask(spatial_source, cfg)
+        assert mask.dims == ("time", "latitude", "longitude")
+        assert mask.dtype == bool
+
+    def test_notnull_with_isel_reduces_dims(self, spatial_source):
+        cfg = NotnullMaskConfig(type="notnull", var="hs", isel={"time": 0})
+        mask = _build_mask(spatial_source, cfg)
+        assert "time" not in mask.dims
+        assert mask.shape == (3, 3)
+
+    def test_notnull_correct_values(self, spatial_source):
+        cfg = NotnullMaskConfig(type="notnull", var="hs", isel={"time": 0})
+        mask = _build_mask(spatial_source, cfg)
+        assert not mask.values[0, 0]   # NaN point masked
+        assert mask.values[1, 1]       # valid point kept
+
+    def test_threshold_gt(self, spatial_source):
+        cfg = ThresholdMaskConfig(type="threshold", var="hs", isel={"time": 1}, operator="gt", value=0.5)
+        mask = _build_mask(spatial_source, cfg)
+        assert mask.shape == (3, 3)
+        assert mask.values[1, 1]       # 1.0 > 0.5
+        assert not mask.values[0, 0]   # NaN > 0.5 is False
+
+    def test_threshold_lt(self, spatial_source):
+        cfg = ThresholdMaskConfig(type="threshold", var="hs", isel={"time": 1}, operator="lt", value=2.0)
+        mask = _build_mask(spatial_source, cfg)
+        assert mask.values[1, 1]       # 1.0 < 2.0
+
+
+class TestFinaliseWithMask:
+    @pytest.fixture
+    def source_with_nans(self):
+        data = np.array([[[1.0, np.nan], [np.nan, 1.0]]])
+        return xr.Dataset(
+            {"hs": (["time", "latitude", "longitude"], data)},
+            coords={
+                "time": [0],
+                "latitude": [-40.0, -39.0],
+                "longitude": [170.0, 171.0],
+            },
+        )
+
+    def test_notnull_mask_applied(self, source_with_nans):
+        dsout = xr.Dataset(
+            {"hs_mean": (["latitude", "longitude"], np.ones((2, 2), dtype="float32"))},
+            coords={"latitude": [-40.0, -39.0], "longitude": [170.0, 171.0]},
+        )
+        cfg = NotnullMaskConfig(type="notnull", var="hs", isel={"time": 0})
+        out = finalise(dsout, source_with_nans, mask_config=cfg)
+        assert not np.isnan(out["hs_mean"].values[0, 0])   # hs=1.0 → kept
+        assert np.isnan(out["hs_mean"].values[0, 1])        # hs=NaN → masked
+
+    def test_no_mask_leaves_data_unchanged(self, source_with_nans):
+        dsout = xr.Dataset(
+            {"hs_mean": (["latitude", "longitude"], np.ones((2, 2), dtype="float32"))},
+            coords={"latitude": [-40.0, -39.0], "longitude": [170.0, 171.0]},
+        )
+        out = finalise(dsout, source_with_nans)
+        assert not np.any(np.isnan(out["hs_mean"].values))
+
+    def test_mask_broadcasts_over_extra_dims(self, source_with_nans):
+        dsout = xr.Dataset(
+            {
+                "hs_mean": (
+                    ["time", "latitude", "longitude"],
+                    np.ones((5, 2, 2), dtype="float32"),
+                )
+            },
+            coords={
+                "time": range(5),
+                "latitude": [-40.0, -39.0],
+                "longitude": [170.0, 171.0],
+            },
+        )
+        cfg = NotnullMaskConfig(type="notnull", var="hs", isel={"time": 0})
+        out = finalise(dsout, source_with_nans, mask_config=cfg)
+        # All time steps at the NaN location should be masked
+        assert np.all(np.isnan(out["hs_mean"].values[:, 0, 1]))
 
 
 class TestWriters:

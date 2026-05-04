@@ -49,6 +49,31 @@ SourceConfig = Annotated[
 # Other config models
 # ---------------------------------------------------------------------------
 
+class NotnullMaskConfig(BaseModel):
+    """Mask grid points where a source variable is null."""
+
+    type: Literal["notnull"]
+    var: str
+    isel: dict[str, Any] = {}
+
+
+class ThresholdMaskConfig(BaseModel):
+    """Mask grid points where a source variable does not satisfy a threshold condition."""
+
+    type: Literal["threshold"]
+    var: str
+    isel: dict[str, Any] = {}
+    operator: Literal["gt", "lt", "ge", "le"]
+    value: float
+
+
+#: Discriminated union — Pydantic selects the concrete type from the ``type`` field.
+MaskConfig = Annotated[
+    Union[NotnullMaskConfig, ThresholdMaskConfig],
+    Field(discriminator="type"),
+]
+
+
 class OutputConfig(BaseModel):
     """Configuration for pipeline output."""
 
@@ -57,6 +82,7 @@ class OutputConfig(BaseModel):
     append: bool = False
     consolidate: bool = False
     global_attrs: dict[str, Any] = {}
+    mask: MaskConfig | None = None
 
 
 class ClusterConfig(BaseModel):

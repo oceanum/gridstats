@@ -8,8 +8,10 @@ from gridstats.config import (
     CallConfig,
     ClusterConfig,
     IntakeSourceConfig,
+    NotnullMaskConfig,
     OutputConfig,
     PipelineConfig,
+    ThresholdMaskConfig,
     XarraySourceConfig,
 )
 
@@ -256,6 +258,71 @@ class TestPipelineConfig:
             metadata={"institution": "Test"},
         )
         assert config.metadata == {"institution": "Test"}
+
+
+class TestMaskConfig:
+    def test_notnull_basic(self):
+        c = NotnullMaskConfig(type="notnull", var="hs")
+        assert c.var == "hs"
+        assert c.isel == {}
+
+    def test_notnull_with_isel(self):
+        c = NotnullMaskConfig(type="notnull", var="hs", isel={"time": 0})
+        assert c.isel == {"time": 0}
+
+    def test_threshold_basic(self):
+        c = ThresholdMaskConfig(type="threshold", var="depth", operator="gt", value=0.0)
+        assert c.var == "depth"
+        assert c.operator == "gt"
+        assert c.value == 0.0
+
+    def test_threshold_invalid_operator_raises(self):
+        with pytest.raises(ValidationError):
+            ThresholdMaskConfig(type="threshold", var="depth", operator="eq", value=0.0)
+
+    def test_output_config_mask_none_by_default(self):
+        c = OutputConfig(outfile="out.zarr")
+        assert c.mask is None
+
+    def test_output_config_notnull_mask(self):
+        c = OutputConfig(
+            outfile="out.zarr",
+            mask={"type": "notnull", "var": "hs", "isel": {"time": 0}},
+        )
+        assert isinstance(c.mask, NotnullMaskConfig)
+        assert c.mask.var == "hs"
+
+    def test_output_config_threshold_mask(self):
+        c = OutputConfig(
+            outfile="out.zarr",
+            mask={"type": "threshold", "var": "depth", "operator": "gt", "value": 0.0},
+        )
+        assert isinstance(c.mask, ThresholdMaskConfig)
+
+    def test_output_config_invalid_mask_type_raises(self):
+        with pytest.raises(ValidationError):
+            OutputConfig(outfile="out.zarr", mask={"type": "shapefile", "var": "hs"})
+
+    def test_mask_via_pipeline_yaml(self, tmp_path):
+        import textwrap
+        yaml_content = textwrap.dedent("""\
+            source:
+              type: xarray
+              urlpath: data.zarr
+            output:
+              outfile: out.zarr
+              mask:
+                type: notnull
+                var: hs
+                isel: {time: 0}
+            calls:
+              - func: mean
+        """)
+        config_file = tmp_path / "config.yml"
+        config_file.write_text(yaml_content)
+        config = PipelineConfig.from_yaml(config_file)
+        assert isinstance(config.output.mask, NotnullMaskConfig)
+        assert config.output.mask.isel == {"time": 0}
 
 
 class TestDerivedVarConfig:

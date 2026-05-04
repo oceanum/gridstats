@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.2.0 (unreleased)
+
+### New Features
+
+- **Output masking** — new `mask:` block on the output config applies a spatial mask to
+  all output variables before writing. Two types are supported: `notnull` (keep points
+  where a source variable is non-null) and `threshold` (keep points satisfying a
+  numerical condition). Both accept an optional `isel:` dict to reduce the source
+  variable to a 2-D slice before the mask is computed, and xarray broadcasting ensures
+  the mask is applied correctly across any extra dimensions (time, quantile, direction).
+
+### Bug Fixes
+
+- **Douglas sea scale** — fixed an off-by-one error where all degrees were shifted one
+  lower than the correct Douglas classification (e.g. a 3 m sea was reported as degree 4
+  "moderate" instead of degree 5 "rough"). Degree 9 (phenomenal, Hs > 14 m) was also
+  never assigned.
+
+---
+
 ## 2.1.0 (2026-05-01)
 
 ### New Features
