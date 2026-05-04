@@ -11,6 +11,13 @@
   variable to a 2-D slice before the mask is computed, and xarray broadcasting ensures
   the mask is applied correctly across any extra dimensions (time, quantile, direction).
 
+### Documentation
+
+- **Douglas scales** — corrected scale descriptions in the `douglas_sea` docs table
+  (e.g. "Rippled" → "Calm (rippled)", "Wavelets" → "Smooth") and added a full
+  degree/description/range table to the `douglas_swell` docs, including a note on
+  degree 9.
+
 ### Bug Fixes
 
 - **Douglas sea scale** — fixed an off-by-one error where all degrees were shifted one

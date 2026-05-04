@@ -24,19 +24,21 @@ derived_vars:
 ## `douglas_sea` — Douglas sea scale
 
 Returns the Douglas sea scale (integer 0–9) from wind-sea significant wave height.
+Applied to wind-sea Hs (WMO convention); use `hs_sea` to point at the correct variable
+in your dataset.
 
-| Scale | Description | Hs range |
-|---|---|---|
-| 0 | Glassy | 0 m |
-| 1 | Rippled | 0–0.1 m |
-| 2 | Wavelets | 0.1–0.5 m |
-| 3 | Slight | 0.5–1.25 m |
-| 4 | Moderate | 1.25–2.5 m |
-| 5 | Rough | 2.5–4 m |
-| 6 | Very rough | 4–6 m |
-| 7 | High | 6–9 m |
-| 8 | Very high | 9–14 m |
-| 9 | Phenomenal | > 14 m |
+| Scale | Description       | Wind-sea Hs (m) |
+|------:|-------------------|-----------------|
+| 0     | Calm (glassy)     | 0               |
+| 1     | Calm (rippled)    | 0 – 0.1         |
+| 2     | Smooth            | 0.1 – 0.5       |
+| 3     | Slight            | 0.5 – 1.25      |
+| 4     | Moderate          | 1.25 – 2.5      |
+| 5     | Rough             | 2.5 – 4.0       |
+| 6     | Very rough        | 4.0 – 6.0       |
+| 7     | High              | 6.0 – 9.0       |
+| 8     | Very high         | 9.0 – 14.0      |
+| 9     | Phenomenal        | > 14.0          |
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -52,7 +54,22 @@ derived_vars:
 
 ## `douglas_swell` — Douglas swell scale
 
-Returns the Douglas swell scale (integer 0–9) from swell height and wavelength.
+Returns the Douglas swell scale (integer 0–8) from primary swell height and wavelength.
+Degree 9 ("confused") is a crossing-seas condition; apply `crossing_seas` separately and
+overlay it on the output where needed.
+
+| Scale | Description      | Swell Hs (m) | Wavelength (m) |
+|------:|------------------|--------------|----------------|
+| 0     | No swell         | ≤ 0          | —              |
+| 1     | Very low         | 0 – 2        | 0 – 200        |
+| 2     | Low              | 0 – 2        | > 200          |
+| 3     | Light            | 2 – 4        | 0 – 100        |
+| 4     | Moderate         | 2 – 4        | 100 – 200      |
+| 5     | Moderate rough   | 2 – 4        | > 200          |
+| 6     | Rough            | > 4          | 0 – 100        |
+| 7     | High             | > 4          | 100 – 200      |
+| 8     | Very high        | > 4          | > 200          |
+| 9     | Confused         | crossing seas — see `crossing_seas` ||
 
 | Parameter | Default | Description |
 |---|---|---|
