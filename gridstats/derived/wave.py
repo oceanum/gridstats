@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from gridstats.registry import register_derived
@@ -10,18 +11,20 @@ DOUGLAS_SEA_BOUNDS = [0.0, 0.1, 0.5, 1.25, 2.5, 4.0, 6.0, 9.0, 14.0, np.inf]
 # np.digitize edges: same bounds without the trailing inf (digitize handles >14 as index 9).
 _SEA_EDGES = np.array(DOUGLAS_SEA_BOUNDS[:-1])
 
-DOUGLAS_SWELL_BINS = [
-    # (scale, hs_min, hs_max, lp_min, lp_max)
-    (0, -np.inf, 0.0, -np.inf, np.inf),
-    (1, 0.0, 2.0, 0.0, 200.0),
-    (2, 0.0, 2.0, 200.0, np.inf),
-    (3, 2.0, 4.0, 0.0, 100.0),
-    (4, 2.0, 4.0, 100.0, 200.0),
-    (5, 2.0, 4.0, 200.0, np.inf),
-    (6, 4.0, np.inf, 0.0, 100.0),
-    (7, 4.0, np.inf, 100.0, 200.0),
-    (8, 4.0, np.inf, 200.0, np.inf),
-]
+# Degree 9 ("confused") is a crossing-seas condition, not a height/wavelength
+# threshold, so it is not listed here. Apply it via the crossing_seas derived
+# variable when a secondary swell partition is available.
+DOUGLAS_SWELL_INTERVALS = {
+    0: {"height": pd.Interval(-np.inf, 0.0), "length": pd.Interval(-np.inf, np.inf)},
+    1: {"height": pd.Interval(0.0, 2.0),     "length": pd.Interval(0.0, 200.0)},
+    2: {"height": pd.Interval(0.0, 2.0),     "length": pd.Interval(200.0, np.inf)},
+    3: {"height": pd.Interval(2.0, 4.0),     "length": pd.Interval(0.0, 100.0)},
+    4: {"height": pd.Interval(2.0, 4.0),     "length": pd.Interval(100.0, 200.0)},
+    5: {"height": pd.Interval(2.0, 4.0),     "length": pd.Interval(200.0, np.inf)},
+    6: {"height": pd.Interval(4.0, np.inf),  "length": pd.Interval(0.0, 100.0)},
+    7: {"height": pd.Interval(4.0, np.inf),  "length": pd.Interval(100.0, 200.0)},
+    8: {"height": pd.Interval(4.0, np.inf),  "length": pd.Interval(200.0, np.inf)},
+}
 
 
 @register_derived("tp")
@@ -104,8 +107,10 @@ def douglas_swell(
     hs = ds[hs_sw1]
     lp = ds[lp_sw1]
     out = xr.full_like(hs, fill_value=0, dtype="float32")
-    for scale, hs_lo, hs_hi, lp_lo, lp_hi in DOUGLAS_SWELL_BINS:
-        mask = (hs > hs_lo) & (hs <= hs_hi) & (lp > lp_lo) & (lp <= lp_hi)
+    for scale, intervals in DOUGLAS_SWELL_INTERVALS.items():
+        ih = intervals["height"]
+        il = intervals["length"]
+        mask = (hs > ih.left) & (hs <= ih.right) & (lp > il.left) & (lp <= il.right)
         out = out.where(~mask, other=float(scale))
     out.attrs = {
         "standard_name": "sea_surface_wave_douglas_swell_scale",

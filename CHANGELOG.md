@@ -24,6 +24,11 @@
   `xr.apply_ufunc(np.digitize, …)` call. Produces a flat dask graph (one task per chunk
   instead of nine) and runs ~1.5× faster on eager arrays; gains are larger under dask
   where the stacked task graph was a scheduling bottleneck.
+- **Douglas swell scale** — `DOUGLAS_SWELL_BINS` replaced with `DOUGLAS_SWELL_INTERVALS`,
+  a degree-keyed dict of `pd.Interval` pairs matching the original onstats definition.
+  Degree 9 ("confused") is documented as a crossing-seas condition that cannot be assigned
+  from height/wavelength thresholds alone; it was also unreachable in the original
+  (`pd.Interval(inf, inf)` is never satisfied by any finite value).
 
 ---
 
