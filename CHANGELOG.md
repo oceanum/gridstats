@@ -29,6 +29,11 @@
   Degree 9 ("confused") is documented as a crossing-seas condition that cannot be assigned
   from height/wavelength thresholds alone; it was also unreachable in the original
   (`pd.Interval(inf, inf)` is never satisfied by any finite value).
+- **Douglas swell scale** — replaced the 9-iteration `xr.where` loop with
+  `xr.apply_ufunc(_classify_swell)` backed by two `np.digitize` calls and a 3×3 LUT.
+  Eager compute cost is unchanged (2D classification has similar work to the loop), but
+  the dask task graph shrinks ~7× (54 → 8 tasks per chunk), reducing graph construction
+  and scheduler overhead on large multi-chunk hindcasts.
 
 ---
 

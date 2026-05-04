@@ -26,6 +26,26 @@ DOUGLAS_SWELL_INTERVALS = {
     8: {"height": pd.Interval(4.0, np.inf),  "length": pd.Interval(200.0, np.inf)},
 }
 
+# Derived from DOUGLAS_SWELL_INTERVALS for the apply_ufunc path.
+# Rows = hs band (low 0–2 m / moderate 2–4 m / high >4 m).
+# Cols = lp band (short ≤100 m / average 100–200 m / long >200 m).
+_HS_SWELL_EDGES = np.array([0.0, 2.0, 4.0])   # right=True → bands 0–3
+_LP_SWELL_EDGES = np.array([100.0, 200.0])     # right=True → bands 0–2
+_SWELL_LUT = np.array([
+    [1, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+], dtype=np.float32)
+
+
+def _classify_swell(hs_arr: np.ndarray, lp_arr: np.ndarray) -> np.ndarray:
+    h = np.digitize(hs_arr, _HS_SWELL_EDGES, right=True)  # 0=no-swell, 1–3=height band
+    l = np.digitize(lp_arr, _LP_SWELL_EDGES, right=True)  # 0–2=length band
+    out = _SWELL_LUT[np.clip(h - 1, 0, 2), l]             # fancy index → copy
+    out[h == 0] = 0.0                                       # hs ≤ 0: no swell
+    out[lp_arr <= 0.0] = 0.0                               # lp ≤ 0: unclassifiable
+    return out
+
 
 @register_derived("tp")
 def tp(
@@ -106,12 +126,14 @@ def douglas_swell(
     """
     hs = ds[hs_sw1]
     lp = ds[lp_sw1]
-    out = xr.full_like(hs, fill_value=0, dtype="float32")
-    for scale, intervals in DOUGLAS_SWELL_INTERVALS.items():
-        ih = intervals["height"]
-        il = intervals["length"]
-        mask = (hs > ih.left) & (hs <= ih.right) & (lp > il.left) & (lp <= il.right)
-        out = out.where(~mask, other=float(scale))
+    out = xr.apply_ufunc(
+        _classify_swell,
+        hs,
+        lp,
+        dask="parallelized",
+        output_dtypes=[np.float32],
+    )
+    out = out.where(hs.notnull() & lp.notnull(), other=0.0)
     out.attrs = {
         "standard_name": "sea_surface_wave_douglas_swell_scale",
         "long_name": "douglas swell scale",
