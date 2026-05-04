@@ -86,28 +86,42 @@ derived_vars:
 
 ## `crossing_seas` — Crossing-seas flag
 
-Boolean mask indicating crossing-seas conditions. Crossing seas are detected when two wave systems are separated by more than an angle threshold *and* the weaker system carries at least a minimum energy fraction.
+Boolean mask indicating crossing-seas conditions, implementing the Li (2016) criterion.
+A crossing sea is flagged when **both** of the following hold for at least one pair of
+wave systems:
+
+1. The shortest-arc angular separation between the two systems exceeds `angle_threshold`.
+2. Each system independently carries at least `energy_fraction` of total wave energy,
+   i.e. `Hs_partition > sqrt(energy_fraction) × Hs_total`.
+
+All direction variables must use the **same convention** (all coming-from, or all
+going-to). Check your hindcast metadata — mixing conventions silently produces wrong
+angular separations.
 
 | Parameter | Default | Description |
 |---|---|---|
 | `hs` | `"hs"` | Total significant wave height variable (m) |
 | `hs_sea` | `"hs_sea"` | Wind-sea Hs variable (m) |
 | `hs_sw1` | `"hs_sw1"` | Primary swell Hs variable (m) |
-| `dir_sea` | `"dir_sea"` | Wind-sea direction variable (degrees) |
-| `dir_sw1` | `"dir_sw1"` | Primary swell direction variable (degrees) |
-| `hs_sw2` | `None` | Secondary swell Hs variable (enables sw2 pair checks) |
-| `dir_sw2` | `None` | Secondary swell direction variable |
-| `hs_threshold` | `0.0` | Minimum total Hs (m) to report crossing seas |
-| `angle_threshold` | `40.0` | Minimum relative angle between two systems (degrees) |
-| `energy_fraction` | `0.2` | Minimum energy fraction of the weaker system |
+| `dir_sea` | `"dir_sea"` | Wind-sea mean direction variable (degrees) |
+| `dir_sw1` | `"dir_sw1"` | Primary swell mean direction variable (degrees) |
+| `hs_sw2` | `None` | Secondary swell Hs variable (enables sea/sw2 and sw1/sw2 pair checks) |
+| `dir_sw2` | `None` | Secondary swell mean direction variable (degrees) |
+| `hs_threshold` | `0.5` | Minimum total Hs (m) below which no crossing sea is reported. Raise to `1.0` for a strict alert product. |
+| `angle_threshold` | `40.0` | Minimum angular separation (degrees). Li (2016) default. Use `30.0` for a looser climatology map or `45.0` for a stricter event flag. |
+| `energy_fraction` | `0.2` | Minimum fraction of total energy each system must carry (Li 2016 default). |
 
 ```yaml
 derived_vars:
   - name: crossing_seas
     func: crossing_seas
-    angle_threshold: 45.0   # tighten the directional separation criterion
-    energy_fraction: 0.25
+    hs_threshold: 1.0       # strict event-flagging product
+    angle_threshold: 45.0   # tighter directional separation
 ```
+
+**Reference:** Li, X.M. (2016). A new insight from space into swell propagation and
+crossing in the global oceans. *Geophysical Research Letters*, 43(10), 5202–5209.
+<https://doi.org/10.1002/2016GL068818>
 
 ---
 

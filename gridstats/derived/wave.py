@@ -153,42 +153,52 @@ def crossing_seas(
     dir_sw1: str = "dir_sw1",
     hs_sw2: str | None = None,
     dir_sw2: str | None = None,
-    hs_threshold: float = 0.0,
+    hs_threshold: float = 0.5,
     angle_threshold: float = 40.0,
     energy_fraction: float = 0.2,
 ) -> xr.DataArray:
     """Boolean mask indicating crossing-seas conditions.
 
-    Crossing seas are identified when:
-    (1) The relative angle between two wave systems exceeds ``angle_threshold``.
-    (2) The less energetic system carries at least ``energy_fraction`` of total energy
-        (i.e. Hs_minor > sqrt(energy_fraction) * Hs_total).
+    Implements the Li (2016) criterion: a crossing sea is flagged when two wave
+    systems are separated by more than ``angle_threshold`` degrees *and* each system
+    independently carries at least ``energy_fraction`` of the total wave energy:
+
+        Hs_partition > sqrt(energy_fraction) * Hs_total
+
+    All direction variables must use the same convention (either all coming-from
+    or all going-to). The angular separation is the shortest arc in [0°, 180°].
 
     Args:
         ds: Input dataset.
         hs: Total significant wave height variable name (m).
         hs_sea: Wind-sea significant wave height variable name (m).
         hs_sw1: Primary swell significant wave height variable name (m).
-        dir_sea: Wind-sea direction variable name (degrees).
-        dir_sw1: Primary swell direction variable name (degrees).
-        hs_sw2: Secondary swell Hs variable name. Set to enable sea/sw2 and sw1/sw2
-            pair checks.
-        dir_sw2: Secondary swell direction variable name.
+        dir_sea: Wind-sea mean direction variable name (degrees).
+        dir_sw1: Primary swell mean direction variable name (degrees).
+        hs_sw2: Secondary swell Hs variable name. When set, also checks wind-sea/sw2
+            and sw1/sw2 pairs.
+        dir_sw2: Secondary swell mean direction variable name (degrees).
         hs_threshold: Minimum total Hs (m) below which crossing seas are not reported.
-        angle_threshold: Minimum relative angle (degrees) between two systems.
-        energy_fraction: Minimum energy fraction (relative to total Hs) for the
-            weaker system.
+            Defaults to 0.5 m; below this, partition directions are unreliable.
+            Raise to 1.0 m for a strict event-flagging product.
+        angle_threshold: Minimum angular separation (degrees) between two systems.
+            Li (2016) and most operational products use 40°. Use 30° for a looser
+            climatology or 45° for a stricter alert threshold.
+        energy_fraction: Minimum fraction of total wave energy each system must carry
+            (default 0.2, i.e. 20%). Translates to Hs_partition > sqrt(0.2) ≈ 0.45
+            × Hs_total.
 
     Returns:
         Boolean DataArray: True where crossing seas are detected.
 
     Reference:
         Li, X.M. (2016). A new insight from space into swell propagation and
-        crossing in the global oceans. Geophysical Research Letters, 43(10).
+        crossing in the global oceans. Geophysical Research Letters, 43(10),
+        5202–5209. https://doi.org/10.1002/2016GL068818
     """
     def _angle(d1: xr.DataArray, d2: xr.DataArray) -> xr.DataArray:
-        diff = np.abs(d1 % 360 - d2 % 360)
-        return np.minimum(diff, 360 - diff)
+        """Shortest-arc angular separation in [0°, 180°]."""
+        return np.abs((d1 - d2 + 180.0) % 360.0 - 180.0)
 
     hs_tot = ds[hs].where(ds[hs] > hs_threshold)
     min_hs = np.sqrt(energy_fraction) * hs_tot
@@ -209,8 +219,10 @@ def crossing_seas(
         result = c1 | c2 | c3
 
     result.attrs = {
-        "standard_name": "sea_surface_crossing_seas",
         "long_name": "crossing seas",
-        "units": "",
+        "units": "1",
+        "angle_threshold_deg": angle_threshold,
+        "energy_fraction": energy_fraction,
+        "hs_threshold_m": hs_threshold,
     }
     return result

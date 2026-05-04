@@ -17,6 +17,18 @@
   (e.g. "Rippled" → "Calm (rippled)", "Wavelets" → "Smooth") and added a full
   degree/description/range table to the `douglas_swell` docs, including a note on
   degree 9.
+- **Crossing seas** — rewrote the `crossing_seas` docs section: added a direction
+  convention warning (all inputs must use the same coming-from or going-to convention),
+  guidance on threshold choices (Li 2016 defaults and operational variants), and the
+  full Li (2016) reference with DOI.
+
+### Bug Fixes
+
+- **Crossing seas** — changed `hs_threshold` default from `0.0` to `0.5` m. A zero
+  threshold allowed the function to flag crossing seas in near-calm conditions where
+  partition directions are undefined and noisy. The Li (2016) criterion is meaningful
+  only when both systems are energetically significant; `0.5` m is the standard
+  operational floor.
 
 ### Bug Fixes
 
