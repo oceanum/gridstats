@@ -301,6 +301,75 @@ class TestDirectional:
 # Probability
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# DataArray input coercion (registry wrapper)
+# ---------------------------------------------------------------------------
+
+class TestDataArrayInput:
+    """Stat functions accept DataArray and return DataArray transparently."""
+
+    def _da(self, name="hs"):
+        rng = np.random.default_rng(7)
+        nt, ny, nx = 48, 3, 3
+        return xr.DataArray(
+            (rng.random((nt, ny, nx)) * 4 + 0.5).astype("float32"),
+            dims=["time", "latitude", "longitude"],
+            coords={
+                "time": xr.date_range("2020-01-01", periods=nt, freq="1h"),
+                "latitude": [-40.0, -39.0, -38.0],
+                "longitude": [170.0, 171.0, 172.0],
+            },
+            name=name,
+        )
+
+    def test_mean_returns_dataarray(self):
+        from gridstats.ops.aggregations import mean
+        out = mean(self._da(), dim="time")
+        assert isinstance(out, xr.DataArray)
+        assert out.name == "hs"
+        assert "time" not in out.dims
+
+    def test_max_returns_dataarray(self):
+        from gridstats.ops.aggregations import max
+        out = max(self._da(), dim="time")
+        assert isinstance(out, xr.DataArray)
+
+    def test_exceedance_returns_dataarray(self):
+        from gridstats.ops.exceedance import exceedance
+        out = exceedance(self._da(), dim="time", threshold=2.0)
+        assert isinstance(out, xr.DataArray)
+        assert float(out.min()) >= 0 and float(out.max()) <= 1
+
+    def test_nonexceedance_returns_dataarray(self):
+        from gridstats.ops.exceedance import nonexceedance
+        out = nonexceedance(self._da(), dim="time", threshold=2.0)
+        assert isinstance(out, xr.DataArray)
+
+    def test_mode_returns_dataarray(self):
+        from gridstats.ops.aggregations import mode
+        out = mode(self._da(), dim="time", bins=np.arange(0, 6.5, 0.5).tolist())
+        assert isinstance(out, xr.DataArray)
+
+    def test_unnamed_dataarray_works(self):
+        from gridstats.ops.aggregations import mean
+        da = self._da(name=None)
+        assert da.name is None
+        out = mean(da, dim="time")
+        assert isinstance(out, xr.DataArray)
+
+    def test_group_month_returns_dataarray(self):
+        from gridstats.ops.aggregations import mean
+        out = mean(self._da(), dim="time", group="month")
+        assert isinstance(out, xr.DataArray)
+        assert "month" in out.dims
+
+    def test_dataset_input_unchanged(self):
+        from gridstats.ops.aggregations import mean
+        ds = xr.Dataset({"hs": self._da()})
+        out = mean(ds, dim="time")
+        assert isinstance(out, xr.Dataset)
+
+
 class TestProbability:
     def test_range_probability(self, ds):
         from gridstats.ops.probability import range_probability

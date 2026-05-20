@@ -14,6 +14,7 @@ Built-in ops and loaders self-register via the @register_stat and
 """
 from __future__ import annotations
 
+import functools
 import logging
 from typing import Callable
 
@@ -32,13 +33,33 @@ _LOADERS: dict[str, LoaderCls] = {}
 
 
 def register_stat(name: str) -> Callable[[StatFn], StatFn]:
-    """Decorator to register a stat function under a given name."""
+    """Decorator to register a stat function under a given name.
+
+    The registered wrapper transparently accepts a ``DataArray`` in addition to
+    the standard ``Dataset``: the array is promoted to a single-variable Dataset
+    before calling the underlying function, then the result is unwrapped back to
+    a ``DataArray`` when the output contains exactly one variable.  When the
+    output contains multiple variables (e.g. grouped results that added a month
+    dimension are not affected — those stay as Dataset) the Dataset is returned
+    as-is.  Dataset inputs pass straight through with no overhead.
+    """
 
     def decorator(func: StatFn) -> StatFn:
         if name in _STATS:
             logger.warning("Stat '%s' is already registered; overwriting.", name)
-        _STATS[name] = func
-        return func
+
+        @functools.wraps(func)
+        def wrapper(data: xr.Dataset | xr.DataArray, *args, **kwargs):
+            if isinstance(data, xr.DataArray):
+                var_name = data.name or "_var"
+                result = func(data.to_dataset(name=var_name), *args, **kwargs)
+                if isinstance(result, xr.Dataset) and len(result.data_vars) == 1:
+                    return result[next(iter(result.data_vars))]
+                return result
+            return func(data, *args, **kwargs)
+
+        _STATS[name] = wrapper
+        return wrapper
 
     return decorator
 
