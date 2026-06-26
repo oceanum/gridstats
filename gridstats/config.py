@@ -197,5 +197,10 @@ class PipelineConfig(BaseModel):
     @classmethod
     def from_yaml(cls, path: str | Path) -> PipelineConfig:
         """Load and validate a pipeline config from a YAML file."""
-        raw = yaml.safe_load(Path(path).read_text())
+        return cls.from_yaml_string(Path(path).read_text())
+
+    @classmethod
+    def from_yaml_string(cls, text: str) -> PipelineConfig:
+        """Load and validate a pipeline config from a YAML string."""
+        raw = yaml.safe_load(text)
         return cls.model_validate(raw)

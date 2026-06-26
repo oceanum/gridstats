@@ -185,6 +185,18 @@ class Pipeline:
         """
         return cls(PipelineConfig.from_yaml(path))
 
+    @classmethod
+    def from_yaml_string(cls, text: str) -> Pipeline:
+        """Instantiate a Pipeline from a YAML configuration string.
+
+        Args:
+            text: YAML document conforming to the PipelineConfig schema.
+
+        Returns:
+            Ready-to-run Pipeline instance.
+        """
+        return cls(PipelineConfig.from_yaml_string(text))
+
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
