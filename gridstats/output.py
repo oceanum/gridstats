@@ -270,6 +270,54 @@ def write_zarr(
         zarr.consolidate_metadata(path)
 
 
+def upload(local_path: str, updir: str) -> str:
+    """Upload a written output file/store to a remote directory.
+
+    Copies ``local_path`` into ``updir`` under the same basename, so a local
+    ``./scratch/hs.zarr`` written with ``updir: gs://bucket/stats`` lands at
+    ``gs://bucket/stats/hs.zarr``. Works for any fsspec-supported target
+    (``gs://``, ``s3://``, local paths, ...). Directories (Zarr stores) are
+    copied recursively; single files (NetCDF) are copied directly.
+
+    Args:
+        local_path: Path to the file or directory produced by ``write``.
+        updir: Destination directory URL. The basename of ``local_path`` is
+            appended to form the final destination.
+
+    Returns:
+        The full destination path the output was uploaded to.
+
+    Raises:
+        FileNotFoundError: If ``local_path`` does not exist.
+    """
+    import fsspec
+
+    local = Path(local_path)
+    if "://" in str(local_path) and not str(local_path).startswith("file://"):
+        logger.warning(
+            "outfile %r is already remote; skipping updir upload.", str(local_path)
+        )
+        return str(local_path)
+    if not local.exists():
+        raise FileNotFoundError(f"Cannot upload missing output: {local}")
+
+    parent = updir.rstrip("/")
+    dest = parent + "/" + local.name
+    fs, _, _ = fsspec.get_fs_token_paths(dest)
+    try:
+        fs.makedirs(parent, exist_ok=True)
+    except (NotImplementedError, FileExistsError):
+        pass  # object stores have no real directories
+    logger.info("Uploading %s -> %s", local, dest)
+    if local.is_dir():
+        # Trailing slash copies the directory *contents* into ``dest`` so the
+        # store is not nested as ``dest/hs.zarr/hs.zarr``.
+        fs.put(str(local) + "/", dest, recursive=True)
+    else:
+        fs.put(str(local), dest)
+    return dest
+
+
 def write(
     dsout: xr.Dataset,
     path: str,

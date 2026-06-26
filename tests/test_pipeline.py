@@ -69,6 +69,36 @@ class TestPipeline:
         dsout = Pipeline(pipeline_config).run()
         assert "hs_mean" in dsout
 
+    def test_run_uploads_to_updir(self, tmp_path, netcdf_source):
+        from pathlib import Path
+
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
+
+        updir = tmp_path / "remote"
+        config = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=str(tmp_path / "out.zarr"), updir=str(updir)),
+            calls=[CallConfig(func="mean", dim="time", data_vars=["hs"])],
+        )
+        Pipeline(config).run()
+        uploaded = updir / "out.zarr"
+        assert uploaded.exists()
+        assert "hs_mean" in xr.open_zarr(uploaded)
+
+    def test_run_without_updir_does_not_upload(self, tmp_path, netcdf_source):
+        from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
+        from gridstats.pipeline import Pipeline
+
+        config = PipelineConfig(
+            source=XarraySourceConfig(type="xarray", urlpath=netcdf_source, engine="netcdf4"),
+            output=OutputConfig(outfile=str(tmp_path / "out.zarr")),
+            calls=[CallConfig(func="mean", dim="time", data_vars=["hs"])],
+        )
+        Pipeline(config).run()
+        # No sibling copies created when updir is unset.
+        assert list(tmp_path.glob("remote*")) == []
+
     def test_run_custom_suffix(self, tmp_path, netcdf_source):
         from gridstats.config import CallConfig, OutputConfig, PipelineConfig, XarraySourceConfig
         from gridstats.pipeline import Pipeline

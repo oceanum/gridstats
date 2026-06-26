@@ -78,6 +78,10 @@ class OutputConfig(BaseModel):
     """Configuration for pipeline output."""
 
     outfile: str
+    #: Optional remote directory to upload the written output to after the run.
+    #: The output is copied under its basename (e.g. ``outfile: ./scratch/hs.zarr``
+    #: with ``updir: gs://bucket/stats`` -> ``gs://bucket/stats/hs.zarr``). Any
+    #: fsspec target works. Ignored when ``outfile`` is already a remote path.
     updir: str | None = None
     append: bool = False
     consolidate: bool = False

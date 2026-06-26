@@ -16,7 +16,7 @@ import xarray as xr
 
 from gridstats.config import CallConfig, PipelineConfig
 from gridstats.loaders.xarray import _ds_summary
-from gridstats.output import finalise, write
+from gridstats.output import finalise, upload, write
 from gridstats.registry import get_loader, get_stat
 
 logger = logging.getLogger(__name__)
@@ -232,6 +232,10 @@ class Pipeline:
             append=self.config.output.append,
             consolidate=self.config.output.consolidate,
         )
+
+        if self.config.output.updir:
+            upload(self.config.output.outfile, self.config.output.updir)
+
         logger.info("Pipeline complete. Output: %s", self.config.output.outfile)
         return dsout
 

@@ -9,6 +9,7 @@ from gridstats.output import (
     finalise,
     set_global_attributes,
     set_variable_attributes,
+    upload,
     write,
     write_netcdf,
     write_zarr,
@@ -255,3 +256,37 @@ class TestWriters:
         import zarr
         store = zarr.open_consolidated(path)
         assert "hs_mean" in store
+
+
+class TestUpload:
+    def test_upload_zarr_dir(self, tmp_path, dsout):
+        src = str(tmp_path / "out.zarr")
+        write_zarr(dsout, src)
+        updir = tmp_path / "remote"
+        dest = upload(src, str(updir))
+        assert dest == str(updir / "out.zarr")
+        loaded = xr.open_zarr(dest)
+        assert "hs_mean" in loaded
+
+    def test_upload_netcdf_file(self, tmp_path, dsout):
+        src = str(tmp_path / "out.nc")
+        write_netcdf(dsout, src)
+        updir = tmp_path / "remote"
+        dest = upload(src, str(updir))
+        assert dest == str(updir / "out.nc")
+        loaded = xr.open_dataset(dest)
+        assert "hs_mean" in loaded
+
+    def test_upload_strips_trailing_slash(self, tmp_path, dsout):
+        src = str(tmp_path / "out.zarr")
+        write_zarr(dsout, src)
+        dest = upload(src, str(tmp_path / "remote") + "/")
+        assert dest == str(tmp_path / "remote" / "out.zarr")
+
+    def test_upload_skips_remote_outfile(self, tmp_path):
+        dest = upload("gs://bucket/stats/out.zarr", str(tmp_path / "remote"))
+        assert dest == "gs://bucket/stats/out.zarr"
+
+    def test_upload_missing_source_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            upload(str(tmp_path / "nope.zarr"), str(tmp_path / "remote"))
