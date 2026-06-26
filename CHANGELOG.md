@@ -1,6 +1,25 @@
 # Changelog
 
-## 2.3.0 (unreleased)
+## 2.3.0 (2026-06-26)
+
+### New Features
+
+- **`updir` output upload** — the `updir` field on the output config is now implemented.
+  After writing, the output (Zarr store or NetCDF file) is uploaded to the given remote
+  directory under its basename via fsspec, so it works for `gs://`, `s3://`, and local
+  targets (e.g. `outfile: ./scratch/hs.zarr` + `updir: gs://bucket/stats` →
+  `gs://bucket/stats/hs.zarr`). Useful for deployments that compute to fast local disk and
+  then publish the result. Skipped when `outfile` is already remote.
+- **Inline config via `$CONFIG`** — `gridstats run` can now read its YAML config from the
+  `$CONFIG` environment variable instead of a path argument, for deployment tools that
+  inject the config inline (e.g. Argo on k8s). The path argument takes precedence when
+  both are present.
+- **`hmo` sampling frequency control** — the `hmo` stat accepts an explicit `fs` (Hz)
+  parameter to override the sampling frequency. When omitted, `fs` is now inferred from
+  the *mean* sampling interval over the whole record (rounded to 3 decimal places) rather
+  than the first interval alone, making it robust to small timing jitter in model output
+  whose nominal cadence wanders by a few percent. Numeric (seconds) and `datetime64` time
+  coordinates are both supported.
 
 ---
 
