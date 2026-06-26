@@ -72,6 +72,25 @@ class TestCli:
         result = runner.invoke(app, ["run", "nonexistent.yml"])
         assert result.exit_code != 0
 
+    def test_run_from_env_var(self, config_file):
+        runner = CliRunner()
+        config_text = config_file.read_text()
+        result = runner.invoke(app, ["run"], env={"CONFIG": config_text})
+        assert result.exit_code == 0, result.output
+
+    def test_run_path_takes_precedence_over_env(self, config_file):
+        runner = CliRunner()
+        result = runner.invoke(
+            app, ["run", str(config_file)], env={"CONFIG": "not: valid: yaml"}
+        )
+        assert result.exit_code == 0, result.output
+
+    def test_run_no_config_anywhere_fails(self):
+        runner = CliRunner()
+        result = runner.invoke(app, ["run"], env={"CONFIG": ""})
+        assert result.exit_code != 0
+        assert "CONFIG" in result.output
+
     def test_list_stats(self):
         runner = CliRunner()
         result = runner.invoke(app, ["list-stats"])
