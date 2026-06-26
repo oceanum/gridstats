@@ -175,3 +175,14 @@ Commands:
   run         Run a stats pipeline from a YAML configuration file.
   list-stats  List all registered stat functions.
 ```
+
+### Inline config via `$CONFIG`
+
+`gridstats run` normally takes a path to a YAML file, but the config can also be supplied inline through the `CONFIG` environment variable. This suits deployment tools that inject the config as an environment variable rather than a file (e.g. Argo on Kubernetes):
+
+```bash
+export CONFIG="$(cat stats.yml)"
+gridstats run
+```
+
+The path argument takes precedence when both a path and `$CONFIG` are present. If neither is provided, the command exits with an error.

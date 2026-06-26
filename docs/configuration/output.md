@@ -11,7 +11,7 @@ Controls where and how results are written.
 | `append` | bool | `false` | Add variables to an existing Zarr store rather than overwriting it. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
 | `consolidate` | bool | `false` | Run `zarr.consolidate_metadata()` after writing. See [Parallel Zarr writes](#parallel-zarr-writes) below. |
 | `mask` | dict | `null` | Optional spatial mask applied to all output variables before writing. See [Masking](#masking) below. |
-| `updir` | string | `null` | *Deprecated.* Write directly to a remote path via `outfile` instead. |
+| `updir` | string | `null` | Optional remote directory to upload the written output to after the run. See [Uploading to a remote directory](#uploading-to-a-remote-directory) below. |
 
 ## Masking
 
@@ -64,6 +64,25 @@ Both mask types accept an optional `isel` dict that reduces the source variable 
 isel:
   time: 0      # use the first time step
 ```
+
+## Uploading to a remote directory
+
+Set `updir` to have gridstats upload the finished output to a remote directory once the run completes. The output is copied under its basename, so `outfile: ./scratch/hs.zarr` with `updir: gs://my-bucket/stats` lands at `gs://my-bucket/stats/hs.zarr`. Any fsspec-supported target works (`gs://`, `s3://`, local paths), and Zarr stores are copied recursively.
+
+```yaml
+output:
+  outfile: ./scratch/hs.zarr        # written to fast local disk first
+  updir: gs://my-bucket/stats       # then uploaded here
+```
+
+This is useful for deployments (e.g. Argo on k8s) that compute to local scratch and then publish the result to object storage.
+
+!!! note "Writing directly to remote storage"
+    For Zarr output you usually don't need `updir` at all — point `outfile` straight at a
+    `gs://` / `s3://` path and gridstats streams chunks to the bucket as it writes. Reach
+    for `updir` only when you want to stage the output on local disk first (faster writes,
+    or to keep partial results off remote storage until the run succeeds). When `outfile`
+    is already a remote path, `updir` is ignored.
 
 ## Global attributes
 

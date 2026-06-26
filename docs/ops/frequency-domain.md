@@ -18,8 +18,11 @@ Hs = 4 × √( ∫ S(f) df )
 |---|---|---|---|
 | `segsec` | float | `256` | Welch segment length in seconds. Longer segments give finer frequency resolution. |
 | `bands` | dict | see below | Mapping of band label to `[fmin, fmax]` in Hz. `null` for a bound means use the data's min/max frequency. |
+| `fs` | float | `null` | Sampling frequency in Hz. When omitted it is inferred from the time coordinate (see below). Set explicitly to override. |
 
-The sampling frequency is inferred automatically from the time coordinate spacing.
+### Sampling frequency
+
+When `fs` is not given, it is inferred from the **mean** sampling interval over the whole record (rounded to 3 decimal places), not just the first interval. This is robust to small timing jitter — e.g. model output whose nominal 1 Hz cadence wanders by a few percent because the internal time step varies — and the rounding lets a nominal 1 s cadence collapse cleanly to `fs = 1.0`. Both numeric (seconds) and `datetime64` time coordinates are supported. Pass `fs` explicitly when the time coordinate is unreliable or absent.
 
 Output variables are renamed to `hs_{band_label}` and the result has a `band` coordinate.
 
@@ -64,7 +67,7 @@ Override with custom bands:
 ---
 
 !!! note
-    `hmo` expects a regularly sampled time series of surface elevation (or equivalent). Gaps or irregular sampling will produce inaccurate PSD estimates.
+    `hmo` expects an approximately regularly sampled time series of surface elevation (or equivalent). Small timing jitter is tolerated (the inferred `fs` uses the mean interval), but true gaps or strongly irregular sampling will produce inaccurate PSD estimates.
 
 ---
 
