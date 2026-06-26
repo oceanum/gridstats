@@ -626,3 +626,51 @@ class TestDerivedVariables:
         ds = xr.Dataset({"hs": (["t"], [1.0]), "tp": (["t"], [8.0])}, coords={"t": [0]})
         with pytest.raises(ValueError, match="reference"):
             uorb(ds, depth=20.0, reference="bad")
+
+
+# ---------------------------------------------------------------------------
+# Frequency-domain: hmo / _infer_fs
+# ---------------------------------------------------------------------------
+
+class TestHmo:
+    def test_infer_fs_jittered_seconds(self):
+        """Mean rate + rounding collapses jittered ~1 Hz cadence to fs=1.0."""
+        from gridstats.ops.frequency_domain import _infer_fs
+        rng = np.random.default_rng(0)
+        n = 2000
+        # nominal 1 s cadence with a few percent jitter on each interval
+        times = np.cumsum(1.0 + (rng.random(n) - 0.5) * 0.1)
+        times = times - times[0]
+        assert _infer_fs(times) == 1.0
+
+    def test_infer_fs_datetime64(self):
+        """datetime64 coords are converted from ns to seconds."""
+        from gridstats.ops.frequency_domain import _infer_fs
+        times = xr.date_range("2020-01-01", periods=100, freq="2s").values
+        assert _infer_fs(times) == pytest.approx(0.5)
+
+    def test_hmo_fs_override(self):
+        """Explicit fs is used instead of inferring from the time axis."""
+        from gridstats.ops.frequency_domain import hmo
+        rng = np.random.default_rng(1)
+        nt = 4096
+        ds = xr.Dataset(
+            {"eta": (["time", "x"], rng.standard_normal((nt, 2)).astype("float32"))},
+            coords={"time": np.arange(nt, dtype="float64")},
+        )
+        out = hmo(ds, segsec=256, fs=2.0, bands={"tot": [None, None]})
+        assert "hs_eta" in out.data_vars
+        assert np.all(np.isfinite(out["hs_eta"].values))
+
+    def test_hmo_band_naming(self):
+        """The op renames vars to hs_{var} and stacks bands on a 'band' coord."""
+        from gridstats.ops.frequency_domain import hmo
+        rng = np.random.default_rng(2)
+        nt = 4096
+        ds = xr.Dataset(
+            {"eta": (["time", "x"], rng.standard_normal((nt, 2)).astype("float32"))},
+            coords={"time": np.arange(nt, dtype="float64")},
+        )
+        out = hmo(ds, segsec=256, bands={"low": [0.0083, 0.04], "tot": [None, None]})
+        assert set(out.data_vars) == {"hs_eta"}
+        assert list(out["band"].values) == ["low", "tot"]

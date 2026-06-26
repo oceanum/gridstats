@@ -50,6 +50,31 @@ def _np_hs(x: np.ndarray, fs: float, segsec: float, bands: np.ndarray) -> np.nda
     return np.array(hs, dtype="float32")
 
 
+def _infer_fs(times: np.ndarray, ndigits: int = 3) -> float:
+    """Infer the sampling frequency (Hz) from a time coordinate.
+
+    Uses the mean sampling interval over the whole record rather than a single
+    interval, which is robust to small timing jitter (e.g. model output whose
+    nominal 1 Hz cadence wanders by a few percent because the internal time
+    step varies). The mean interval is rounded to ``ndigits`` decimal places so
+    that a nominal-1 s cadence collapses cleanly to ``dt = 1.0`` / ``fs = 1.0``.
+
+    Args:
+        times: 1-D array of time values. ``datetime64`` arrays are converted
+            from nanoseconds to seconds; numeric arrays are assumed to be in
+            seconds already.
+        ndigits: Decimal places to round the mean interval (seconds) to.
+
+    Returns:
+        Sampling frequency in Hz.
+    """
+    span = times[-1] - times[0]
+    if np.issubdtype(times.dtype, np.datetime64):
+        span = span / np.timedelta64(1, "s")
+    dt = round(float(span) / (times.size - 1), ndigits)
+    return 1.0 / dt
+
+
 @register_stat("hmo")
 def hmo(
     data: xr.Dataset,
@@ -57,6 +82,7 @@ def hmo(
     dim: str = "time",
     segsec: float = 256,
     bands: dict[str, list[float | None]] = BANDS,
+    fs: float | None = None,
     group: str | None = None,
     **kwargs,
 ) -> xr.Dataset:
@@ -72,6 +98,9 @@ def hmo(
         segsec: Welch segment length in seconds.
         bands: Mapping of band label to [fmin, fmax] in Hz.
             None values are replaced by the data's min/max frequency.
+        fs: Sampling frequency in Hz. If ``None`` (default) it is inferred from
+            the mean sampling interval of ``dim`` (rounded to 3 decimal places),
+            which tolerates small timing jitter. Set explicitly to override.
         group: Time component to group by (not typically meaningful for Hmo).
 
     Returns:
@@ -79,8 +108,8 @@ def hmo(
         coordinate.
     """
     bands_array = np.array(list(bands.values()), dtype=float)
-    dt = float(np.diff(data[dim].values[:2])[0]) / 1e9  # ns → seconds
-    fs = 1.0 / dt
+    if fs is None:
+        fs = _infer_fs(data[dim].values)
 
     dsout = xr.apply_ufunc(
         _np_hs,
