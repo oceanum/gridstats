@@ -2,7 +2,7 @@
 
 __author__ = "Oceanum Developers"
 __email__ = "developers@oceanum.science"
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 
 # Import loaders and ops so their @register_* decorators run, populating
 # the registry before any Pipeline or CLI code runs.
